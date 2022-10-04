@@ -1,6 +1,5 @@
 #pragma once
 
-#include <atomic>
 #include <cstdint>
 
 #include "Macros.h"
@@ -16,9 +15,9 @@ public:
     uint32_t Release();
 
 protected:
-    virtual ~RefCountPtr();
+    virtual ~RefCountPtr() = default;
 
 private:
-    std::atomic<uint32_t>* refCount;
+    uint32_t refCount;
 };
 }  // namespace PixelWeave

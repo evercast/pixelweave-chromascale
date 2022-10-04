@@ -34,6 +34,10 @@ VulkanDevice::VulkanDevice(const std::shared_ptr<VulkanInstance>& instance, vk::
     const vk::DeviceCreateInfo deviceCreateInfo = vk::DeviceCreateInfo().setQueueCreateInfos(queueCreateInfo);
     mLogicalDevice = PW_ASSERT_VK(mPhysicalDevice.createDevice(deviceCreateInfo));
     mComputeQueue = mLogicalDevice.getQueue(queueFamilyIndex, 0);
+
+    const vk::CommandPoolCreateInfo commandPoolCreateInfo =
+        vk::CommandPoolCreateInfo().setQueueFamilyIndex(queueFamilyIndex).setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
+    mCommandPool = PW_ASSERT_VK(mLogicalDevice.createCommandPool(commandPoolCreateInfo));
 }
 
 VideoConverter* VulkanDevice::CreateVideoConverter()
@@ -92,6 +96,7 @@ void VulkanDevice::DestroyBuffer(Buffer& buffer)
 
 VulkanDevice::~VulkanDevice()
 {
+    mLogicalDevice.destroyCommandPool(mCommandPool);
     mLogicalDevice.destroy();
     mVulkanInstance = nullptr;
 }

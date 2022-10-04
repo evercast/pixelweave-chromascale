@@ -41,5 +41,6 @@ private:
     vk::PhysicalDevice mPhysicalDevice;
     vk::Device mLogicalDevice;
     vk::Queue mComputeQueue;
+    vk::CommandPool mCommandPool;
 };
 }  // namespace PixelWeave

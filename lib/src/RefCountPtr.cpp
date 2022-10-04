@@ -2,28 +2,20 @@
 
 namespace PixelWeave
 {
-RefCountPtr::RefCountPtr()
-{
-    refCount = new std::atomic<uint32_t>(1);
-}
+RefCountPtr::RefCountPtr() : refCount(1) {}
 
 void RefCountPtr::AddRef()
 {
-    ++(*refCount);
+    ++refCount;
 }
 
 uint32_t RefCountPtr::Release()
 {
-    const uint32_t currentCount = (*refCount)--;
-    if (currentCount == 0) {
+    refCount--;
+    if (refCount == 0) {
         delete this;
     }
-    return currentCount;
-}
-
-RefCountPtr::~RefCountPtr()
-{
-    delete refCount;
+    return refCount;
 }
 
 }  // namespace PixelWeave
