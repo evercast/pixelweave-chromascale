@@ -19,7 +19,6 @@ set(SOURCE
     src/VulkanDevice.cpp
     src/Device.cpp
     src/VulkanInstance.cpp
-    src/VideoConverter.cpp
     src/VulkanVideoConverter.cpp
     src/RefCountPtr.cpp
 )

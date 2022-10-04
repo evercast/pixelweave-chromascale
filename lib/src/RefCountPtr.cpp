@@ -1,5 +1,3 @@
-#define PIXEL_WEAVE_REF_COUNT_PTR_IMPL
-
 #include "RefCountPtr.h"
 
 namespace PixelWeave
