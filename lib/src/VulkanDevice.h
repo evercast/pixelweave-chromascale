@@ -18,6 +18,22 @@ public:
 
     VideoConverter* CreateVideoConverter() override;
 
+    struct Buffer {
+        vk::DeviceSize size;
+        vk::Buffer bufferHandle;
+        vk::DeviceMemory memoryHandle;
+    };
+
+    Buffer CreateBuffer(
+        const vk::DeviceSize& size,
+        const vk::BufferUsageFlags& usageFlags,
+        const vk::MemoryPropertyFlags& memoryFlags);
+
+    uint8_t* MapBuffer(Buffer& buffer);
+    void UnmapBuffer(Buffer& buffer);
+
+    void DestroyBuffer(Buffer& buffer);
+
     ~VulkanDevice() override;
 
 private:

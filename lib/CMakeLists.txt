@@ -7,6 +7,8 @@ set(HEADERS
     include/VideoConverter.h
     include/RefCountPtr.h
     include/Macros.h
+    include/PixelFormat.h
+    include/VideoFrameWrapper.h
 )
 
 # Private headers and source files
@@ -21,6 +23,7 @@ set(SOURCE
     src/VulkanInstance.cpp
     src/VulkanVideoConverter.cpp
     src/RefCountPtr.cpp
+    src/PixelFormat.cpp
 )
 
 add_library(${SUBPROJECT_NAME} SHARED
