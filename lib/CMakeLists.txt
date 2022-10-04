@@ -3,16 +3,25 @@ set(SUBPROJECT_NAME "PixelWeave")
 # Attach source files to build
 set(HEADERS
     include/Device.h
-    include/VulkanDevice.h
-    include/VulkanInstance.h
-    include/DebugUtils.h
     include/Result.h
+    include/VideoConverter.h
+    include/RefCountPtr.h
+    include/Macros.h
 )
 
+# Private headers and source files
 set(SOURCE
+    src/VulkanDevice.h
+    src/VulkanInstance.h
+    src/DebugUtils.h
+    src/VulkanVideoConverter.h
+
     src/VulkanDevice.cpp
     src/Device.cpp
     src/VulkanInstance.cpp
+    src/VideoConverter.cpp
+    src/VulkanVideoConverter.cpp
+    src/RefCountPtr.cpp
 )
 
 add_library(${SUBPROJECT_NAME} SHARED
@@ -36,6 +45,9 @@ endif()
 # Disable exceptions
 string(REGEX REPLACE "/EH[a-z]+" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
+
+# Setup DLL export macro
+add_compile_definitions(PW_IS_LIB)
 
 # Find Vulkan SDK
 add_compile_definitions(VULKAN_HPP_NO_EXCEPTIONS)

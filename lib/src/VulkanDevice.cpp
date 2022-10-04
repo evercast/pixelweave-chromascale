@@ -2,10 +2,11 @@
 
 #include "DebugUtils.h"
 #include "VulkanInstance.h"
+#include "VulkanVideoConverter.h"
 
 namespace PixelWeave
 {
-ResultValue<std::shared_ptr<Device>> VulkanDevice::Create()
+ResultValue<Device*> VulkanDevice::Create()
 {
     const auto instanceResult = VulkanInstance::Create();
     if (instanceResult.result == Result::Success) {
@@ -33,6 +34,11 @@ VulkanDevice::VulkanDevice(const std::shared_ptr<VulkanInstance>& instance, vk::
     const vk::DeviceCreateInfo deviceCreateInfo = vk::DeviceCreateInfo().setQueueCreateInfos(queueCreateInfo);
     mLogicalDevice = PW_ASSERT_VK(mPhysicalDevice.createDevice(deviceCreateInfo));
     mComputeQueue = mLogicalDevice.getQueue(queueFamilyIndex, 0);
+}
+
+VideoConverter* VulkanDevice::CreateVideoConverter()
+{
+    return new VulkanVideoConverter(this);
 }
 
 VulkanDevice::~VulkanDevice()

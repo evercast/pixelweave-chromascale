@@ -13,7 +13,7 @@ class VulkanInstance
 {
 public:
     static ResultValue<std::shared_ptr<VulkanInstance>> Create();
-    static ResultValue<std::shared_ptr<Device>> CreateDevice(const std::shared_ptr<VulkanInstance>& instance);
+    static ResultValue<Device*> CreateDevice(const std::shared_ptr<VulkanInstance>& instance);
 
     VulkanInstance(const vk::Instance& instance);
 

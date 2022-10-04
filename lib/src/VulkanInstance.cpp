@@ -89,16 +89,16 @@ VulkanInstance::VulkanInstance(const vk::Instance& instance) : mInstanceHandle(i
                 vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance)
             .setPfnUserCallback(vkDebugCallback);
 
-    const vk::DebugUtilsMessengerEXT debugMessenger =
+    mDebugMessenger =
         PW_ASSERT_VK(mInstanceHandle.createDebugUtilsMessengerEXT(debugCallbackCreateInfo, nullptr, mDynamicDispatcher));
 #endif
 }
 
-ResultValue<std::shared_ptr<Device>> VulkanInstance::CreateDevice(const std::shared_ptr<VulkanInstance>& instance)
+ResultValue<Device*> VulkanInstance::CreateDevice(const std::shared_ptr<VulkanInstance>& instance)
 {
     auto [result, physicalDevice] = instance->FindSuitablePhysicalDevice();
     if (result == Result::Success) {
-        return {Result::Success, std::make_shared<VulkanDevice>(instance, physicalDevice)};
+        return {Result::Success, new VulkanDevice(instance, physicalDevice)};
     }
     return {Result::Error, nullptr};
 }

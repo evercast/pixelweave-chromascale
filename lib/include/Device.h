@@ -1,20 +1,19 @@
 #pragma once
 
-#include <memory>
-
+#include "Macros.h"
+#include "RefCountPtr.h"
 #include "Result.h"
-
-#ifdef PIXEL_WEAVE_DEVICE_IMPL
-#define PIXEL_WEAVE_LIB_CLASS __declspec(dllexport)
-#else
-#define PIXEL_WEAVE_LIB_CLASS __declspec(dllimport)
-#endif
+#include "VideoConverter.h"
 
 namespace PixelWeave
 {
-class PIXEL_WEAVE_LIB_CLASS Device
+class PIXEL_WEAVE_LIB_CLASS Device : public RefCountPtr
 {
 public:
-    static ResultValue<std::shared_ptr<Device>> Create();
+    static ResultValue<Device*> Create();
+
+    virtual VideoConverter* CreateVideoConverter() = 0;
+
+    virtual ~Device() = default;
 };
 }  // namespace PixelWeave
