@@ -15,6 +15,7 @@ class ResourceLoader
 {
 public:
     static Resource Load(const ResourceId& resourceId);
+    static void Cleanup(Resource& resource);
 };
 
 }  // namespace PixelWeave

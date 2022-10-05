@@ -3,6 +3,7 @@
 #include <fstream>
 
 #include "DebugUtils.h"
+#include "ResourceLoader.h"
 #include "VulkanInstance.h"
 #include "VulkanVideoConverter.h"
 
@@ -127,21 +128,12 @@ VulkanDevice::ComputePipelineResources VulkanDevice::CreateComputePipeline()
     const vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo().setSetLayouts(resources.descriptorLayout);
     resources.pipelineLayout = PW_ASSERT_VK(mLogicalDevice.createPipelineLayout(pipelineLayoutInfo));
 
-    // Load hardcoded path (use ResourceLoader in the future)
-    std::vector<uint8_t> rawData;
-    {
-        std::string shaderPath("../../lib/src/shaders/convert.comp.spv");
-        std::ifstream file(shaderPath, std::ios::binary | std::ios::ate);
-        std::streamsize fileSize = file.tellg();
-        file.seekg(0, std::ios::beg);
-        rawData.resize(fileSize);
-        file.read(reinterpret_cast<char*>(rawData.data()), fileSize);
-        file.close();
-    }
+    Resource shaderResource = ResourceLoader::Load(ResourceId::ComputeShader);
     vk::ShaderModuleCreateInfo shaderCreateInfo = vk::ShaderModuleCreateInfo()
-                                                      .setCodeSize(rawData.size() * sizeof(uint8_t))
-                                                      .setPCode(reinterpret_cast<const uint32_t*>(rawData.data()));
+                                                      .setCodeSize(shaderResource.size * sizeof(uint8_t))
+                                                      .setPCode(reinterpret_cast<const uint32_t*>(shaderResource.buffer));
     resources.shader = PW_ASSERT_VK(mLogicalDevice.createShaderModule(shaderCreateInfo));
+    ResourceLoader::Cleanup(shaderResource);
 
     const vk::PipelineShaderStageCreateInfo stageCreateInfo =
         vk::PipelineShaderStageCreateInfo().setStage(vk::ShaderStageFlagBits::eCompute).setModule(resources.shader).setPName("main");

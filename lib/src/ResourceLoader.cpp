@@ -18,6 +18,10 @@ Resource ResourceLoader::Load(const ResourceId& resourceId)
             break;
     }
     HMODULE module = nullptr;
+    GetModuleHandleExA(
+        GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+        (LPCSTR)&ResourceLoader::Load,
+        &module);
     HRSRC resource = FindResource(module, MAKEINTRESOURCE(actualId), RT_RCDATA);
     if (resource != nullptr) {
         size_t bufferSize = SizeofResource(module, resource);
@@ -34,4 +38,11 @@ Resource ResourceLoader::Load(const ResourceId& resourceId)
     }
     return {0, nullptr};
 }
+
+void ResourceLoader::Cleanup(Resource& resource) {
+    delete[] resource.buffer;
+    resource.buffer = nullptr;
+    resource.size = 0;
+}
+
 }  // namespace PixelWeave
