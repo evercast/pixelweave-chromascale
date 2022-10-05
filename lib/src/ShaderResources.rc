@@ -1,4 +1,4 @@
 #include <windows.h>
 #include "ShaderResources.h"
 
-PW_RESOURCE_COMPUTE_SHADER RCDATA "E:\\Code\\pixelweave\\lib\\src\\shaders\\convert.comp.spv"
+PW_RESOURCE_COMPUTE_SHADER RCDATA "..\\..\\lib\\src\\shaders\\convert.comp.spv"
