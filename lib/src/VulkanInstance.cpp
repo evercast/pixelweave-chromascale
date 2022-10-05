@@ -28,7 +28,7 @@ ResultValue<std::shared_ptr<VulkanInstance>> VulkanInstance::Create()
                                             .setApplicationVersion(VK_MAKE_VERSION(0, 0, 1))
                                             .setPEngineName("PixelWeave")
                                             .setEngineVersion(VK_MAKE_VERSION(0, 0, 1))
-                                            .setApiVersion(VK_API_VERSION_1_0);
+                                            .setApiVersion(VK_API_VERSION_1_2);
     std::vector<const char*> layersToEnable
     {
 #if defined(_DEBUG)
@@ -36,7 +36,7 @@ ResultValue<std::shared_ptr<VulkanInstance>> VulkanInstance::Create()
 #endif
     };
 
-    std::vector<const char*> extensionsToEnable;
+    std::vector<const char*> extensionsToEnable{};
 #if defined(_DEBUG)
     {
         const std::vector<const char*> debugExtensions{VK_EXT_DEBUG_REPORT_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME};
@@ -89,8 +89,7 @@ VulkanInstance::VulkanInstance(const vk::Instance& instance) : mInstanceHandle(i
                 vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance)
             .setPfnUserCallback(vkDebugCallback);
 
-    mDebugMessenger =
-        PW_ASSERT_VK(mInstanceHandle.createDebugUtilsMessengerEXT(debugCallbackCreateInfo, nullptr, mDynamicDispatcher));
+    mDebugMessenger = PW_ASSERT_VK(mInstanceHandle.createDebugUtilsMessengerEXT(debugCallbackCreateInfo, nullptr, mDynamicDispatcher));
 #endif
 }
 
@@ -116,6 +115,12 @@ ResultValue<vk::PhysicalDevice> VulkanInstance::FindSuitablePhysicalDevice()
         }
         if (properties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu) {
             currentDeviceScore += 100;
+        }
+        vk::PhysicalDeviceVulkan12Features physicalDeviceFeatures1_2{};
+        vk::PhysicalDeviceFeatures2 physicalDeviceFeatures = vk::PhysicalDeviceFeatures2().setPNext(&physicalDeviceFeatures1_2);
+        physicalDevice.getFeatures2(&physicalDeviceFeatures);
+        if (!physicalDeviceFeatures1_2.uniformAndStorageBuffer8BitAccess) {
+            currentDeviceScore = 0;
         }
         if (chosenDeviceScore < currentDeviceScore) {
             chosenDevice = physicalDevice;

@@ -18,6 +18,7 @@ public:
 
     VideoConverter* CreateVideoConverter() override;
 
+    // Memory handling
     struct Buffer {
         vk::DeviceSize size;
         vk::Buffer bufferHandle;
@@ -33,6 +34,16 @@ public:
     void UnmapBuffer(Buffer& buffer);
 
     void DestroyBuffer(Buffer& buffer);
+
+    // Pipeline handling
+
+    struct ComputePipelineResources {
+        vk::DescriptorSetLayout descriptorLayout;
+        vk::PipelineLayout pipelineLayout;
+        vk::ShaderModule shader;
+        vk::Pipeline pipeline;
+    };
+    ComputePipelineResources CreateComputePipeline();
 
     ~VulkanDevice() override;
 

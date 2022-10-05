@@ -9,10 +9,10 @@ int main()
         auto videoConverter = device->CreateVideoConverter();
 
         std::vector<uint8_t> fakeSrcBuffer(1280 * 720 * 4, 0);
-        PixelWeave::ProtoVideoFrame srcFrame{fakeSrcBuffer.data(), 1280, 1280, 720, PixelWeave::PixelFormat::Interleaved8BitUYVY};
+        PixelWeave::ProtoVideoFrame srcFrame{fakeSrcBuffer.data(), 1280 * 4, 1280, 720, PixelWeave::PixelFormat::Interleaved8BitUYVY};
 
         std::vector<uint8_t> fakeDstBuffer(1280 * 720 * 4, 0);
-        PixelWeave::ProtoVideoFrame dstFrame{fakeSrcBuffer.data(), 1280, 1280, 720, PixelWeave::PixelFormat::Planar8Bit422};
+        PixelWeave::ProtoVideoFrame dstFrame{fakeSrcBuffer.data(), 1280 * 4, 1280, 720, PixelWeave::PixelFormat::Planar8Bit422};
 
         videoConverter->Convert(srcFrame, dstFrame);
 

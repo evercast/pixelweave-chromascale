@@ -1,5 +1,7 @@
 #include "VulkanDevice.h"
 
+#include <fstream>
+
 #include "DebugUtils.h"
 #include "VulkanInstance.h"
 #include "VulkanVideoConverter.h"
@@ -31,8 +33,16 @@ VulkanDevice::VulkanDevice(const std::shared_ptr<VulkanInstance>& instance, vk::
     const std::vector<float> queuePriorities{1.0f};
     vk::DeviceQueueCreateInfo queueCreateInfo =
         vk::DeviceQueueCreateInfo().setQueueFamilyIndex(queueFamilyIndex).setQueuePriorities(queuePriorities);
-    const vk::DeviceCreateInfo deviceCreateInfo = vk::DeviceCreateInfo().setQueueCreateInfos(queueCreateInfo);
+
+    vk::PhysicalDeviceVulkan12Features physicalDeviceFeatures1_2{};
+    vk::PhysicalDeviceFeatures2 physicalDeviceFeatures = vk::PhysicalDeviceFeatures2().setPNext(&physicalDeviceFeatures1_2);
+    physicalDevice.getFeatures2(&physicalDeviceFeatures);
+
+    const vk::DeviceCreateInfo deviceCreateInfo = vk::DeviceCreateInfo()
+                                                      .setQueueCreateInfos(queueCreateInfo)
+                                                      .setPNext(&physicalDeviceFeatures);
     mLogicalDevice = PW_ASSERT_VK(mPhysicalDevice.createDevice(deviceCreateInfo));
+
     mComputeQueue = mLogicalDevice.getQueue(queueFamilyIndex, 0);
 
     const vk::CommandPoolCreateInfo commandPoolCreateInfo =
@@ -92,6 +102,54 @@ void VulkanDevice::DestroyBuffer(Buffer& buffer)
     mLogicalDevice.freeMemory(buffer.memoryHandle);
     mLogicalDevice.destroyBuffer(buffer.bufferHandle);
     buffer.size = 0;
+}
+
+VulkanDevice::ComputePipelineResources VulkanDevice::CreateComputePipeline()
+{
+    ComputePipelineResources resources;
+
+    const std::vector<vk::DescriptorSetLayoutBinding> descriptorLayoutBindings{
+        vk::DescriptorSetLayoutBinding()
+            .setBinding(0)
+            .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+            .setStageFlags(vk::ShaderStageFlagBits::eCompute)
+            .setDescriptorCount(1),
+        vk::DescriptorSetLayoutBinding()
+            .setBinding(1)
+            .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+            .setStageFlags(vk::ShaderStageFlagBits::eCompute)
+            .setDescriptorCount(1)};
+
+    const vk::DescriptorSetLayoutCreateInfo descriptorLayoutInfo =
+        vk::DescriptorSetLayoutCreateInfo().setBindings(descriptorLayoutBindings);
+    resources.descriptorLayout = PW_ASSERT_VK(mLogicalDevice.createDescriptorSetLayout(descriptorLayoutInfo));
+
+    const vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo().setSetLayouts(resources.descriptorLayout);
+    resources.pipelineLayout = PW_ASSERT_VK(mLogicalDevice.createPipelineLayout(pipelineLayoutInfo));
+
+    // Load hardcoded path (use ResourceLoader in the future)
+    std::vector<uint8_t> rawData;
+    {
+        std::string shaderPath("../../lib/src/shaders/convert.comp.spv");
+        std::ifstream file(shaderPath, std::ios::binary | std::ios::ate);
+        std::streamsize fileSize = file.tellg();
+        file.seekg(0, std::ios::beg);
+        rawData.resize(fileSize);
+        file.read(reinterpret_cast<char*>(rawData.data()), fileSize);
+        file.close();
+    }
+    vk::ShaderModuleCreateInfo shaderCreateInfo = vk::ShaderModuleCreateInfo()
+                                                      .setCodeSize(rawData.size() * sizeof(uint8_t))
+                                                      .setPCode(reinterpret_cast<const uint32_t*>(rawData.data()));
+    resources.shader = PW_ASSERT_VK(mLogicalDevice.createShaderModule(shaderCreateInfo));
+
+    const vk::PipelineShaderStageCreateInfo stageCreateInfo =
+        vk::PipelineShaderStageCreateInfo().setStage(vk::ShaderStageFlagBits::eCompute).setModule(resources.shader).setPName("main");
+    const vk::ComputePipelineCreateInfo computePipelineInfo =
+        vk::ComputePipelineCreateInfo().setLayout(resources.pipelineLayout).setStage(stageCreateInfo);
+    resources.pipeline = PW_ASSERT_VK(mLogicalDevice.createComputePipeline(nullptr, computePipelineInfo));
+
+    return resources;
 }
 
 VulkanDevice::~VulkanDevice()

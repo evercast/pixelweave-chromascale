@@ -12,7 +12,8 @@ VulkanVideoConverter::VulkanVideoConverter(VulkanDevice* device) : mDevice(nullp
 
 void VulkanVideoConverter::Convert(const ProtoVideoFrame& src, ProtoVideoFrame& dst)
 {
-    const vk::DeviceSize srcBufferSize = src.stride * src.height * PixelFormatHelpers::BytesPerSample(src.pixelFormat);
+    // Create source buffer and copy CPU memory into it
+    const vk::DeviceSize srcBufferSize = src.stride * src.height;
     mSrcBuffer = mDevice->CreateBuffer(
         srcBufferSize,
         vk::BufferUsageFlagBits::eStorageBuffer,
@@ -22,12 +23,17 @@ void VulkanVideoConverter::Convert(const ProtoVideoFrame& src, ProtoVideoFrame& 
     std::copy_n(src.buffer, srcBufferSize, mappedSrcBuffer);
     mDevice->UnmapBuffer(mSrcBuffer);
 
-    const vk::DeviceSize dstBufferSize = dst.stride * dst.height * PixelFormatHelpers::BytesPerSample(dst.pixelFormat);
+    // Create CPU readable dest buffer to do conversions in
+    const vk::DeviceSize dstBufferSize = dst.stride * dst.height;
     mDstBuffer = mDevice->CreateBuffer(
         dstBufferSize,
         vk::BufferUsageFlagBits::eStorageBuffer,
         vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
+    // Create compute pipeline and bindings
+    mDevice->CreateComputePipeline();
+
+    // Copy contents into CPU buffer
     uint8_t* mappedDstBuffer = mDevice->MapBuffer(mDstBuffer);
     std::copy_n(mappedDstBuffer, dstBufferSize, dst.buffer);
     mDevice->UnmapBuffer(mDstBuffer);

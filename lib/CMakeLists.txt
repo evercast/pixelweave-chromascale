@@ -17,6 +17,10 @@ set(SOURCE
     src/VulkanInstance.h
     src/DebugUtils.h
     src/VulkanVideoConverter.h
+    src/ShaderResources.h
+    src/ShaderResources.rc
+    src/ResourceLoader.h
+    src/ResourceLoader.cpp
 
     src/VulkanDevice.cpp
     src/Device.cpp
