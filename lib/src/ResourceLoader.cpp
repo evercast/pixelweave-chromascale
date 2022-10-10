@@ -9,11 +9,11 @@
 namespace PixelWeave
 {
 
-Resource ResourceLoader::Load(const ResourceId& resourceId)
+Resource ResourceLoader::Load(const Resource::Id& resourceId)
 {
     uint32_t actualId = 0;
     switch (resourceId) {
-        case ResourceId::ComputeShader:
+        case Resource::Id::ComputeShader:
             actualId = PW_RESOURCE_COMPUTE_SHADER;
             break;
     }

@@ -23,6 +23,7 @@ public:
         vk::DeviceSize size;
         vk::Buffer bufferHandle;
         vk::DeviceMemory memoryHandle;
+        vk::DescriptorBufferInfo descriptorInfo;
     };
 
     Buffer CreateBuffer(
@@ -42,8 +43,20 @@ public:
         vk::PipelineLayout pipelineLayout;
         vk::ShaderModule shader;
         vk::Pipeline pipeline;
+        vk::DescriptorPool descriptorPool;
+        vk::DescriptorSet descriptorSet;
     };
-    ComputePipelineResources CreateComputePipeline();
+    ComputePipelineResources CreateComputePipeline(const Buffer& srcBuffer, const Buffer& dstBuffer);
+    void DestroyComputePipeline(ComputePipelineResources& pipelineResources);
+
+    vk::CommandBuffer CreateCommandBuffer();
+    void SubmitCommand(const vk::CommandBuffer& commandBuffer, const vk::Fence& fence);
+    void DestroyCommand(vk::CommandBuffer& commandBuffer);
+
+    vk::Fence CreateFence();
+    void WaitForFence(vk::Fence& fence);
+    void DestroyFence(vk::Fence& fence);
+
 
     ~VulkanDevice() override;
 

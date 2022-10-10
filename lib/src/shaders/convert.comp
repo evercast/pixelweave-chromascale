@@ -4,17 +4,18 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_8bit_storage : require
+#extension GL_EXT_scalar_block_layout : require
 
 #define LOCAL_WORKGROUP_SIZE 16
 
 layout(local_size_x = LOCAL_WORKGROUP_SIZE) in;
-layout(std140, set = 0, binding = 0) readonly buffer SrcPicture
+layout(scalar, set = 0, binding = 0) readonly buffer SrcPicture
 {
     uint8_t[] pBuffer;
 }
 srcPicture;
 
-layout(std140, set = 0, binding = 1) buffer DstPicture
+layout(scalar, set = 0, binding = 1) buffer DstPicture
 {
     uint8_t[] pBuffer;
 }
