@@ -7,8 +7,24 @@
 #extension GL_EXT_scalar_block_layout : require
 
 #define LOCAL_WORKGROUP_SIZE 16
+layout(local_size_x = LOCAL_WORKGROUP_SIZE, local_size_y = LOCAL_WORKGROUP_SIZE) in;
 
-layout(local_size_x = LOCAL_WORKGROUP_SIZE) in;
+struct PictureInfo {
+    uint width;
+    uint height;
+    uint stride;  // Luma stride in planar formats
+    uint chromaWidth;
+    uint chromaHeight;
+    uint chromaStride;
+};
+
+layout(push_constant) uniform Constants
+{
+    PictureInfo srcPicture;
+    PictureInfo dstPicture;
+}
+pictureInfo;
+
 layout(scalar, set = 0, binding = 0) readonly buffer SrcPicture
 {
     uint8_t[] pBuffer;
@@ -23,6 +39,30 @@ dstPicture;
 
 void main()
 {
-    uint bufferIndex = gl_GlobalInvocationID.x;
-    dstPicture.pBuffer[bufferIndex] = srcPicture.pBuffer[bufferIndex];
+    const uvec2 chromaCoords = gl_GlobalInvocationID.xy;
+    const uvec2 lumaCoords = uvec2(chromaCoords.x * 2, chromaCoords.y);
+    // Read UYVY samples from source buffer
+    const PictureInfo srcPictureInfo = pictureInfo.srcPicture;
+    const uint srcBytesPerSample = 4;
+    const uint srcBufferIndex = chromaCoords.y * srcPictureInfo.stride + (chromaCoords.x * srcBytesPerSample);
+
+    const uint8_t uSample = srcPicture.pBuffer[srcBufferIndex];
+    const uint8_t ySample1 = srcPicture.pBuffer[srcBufferIndex + 1];
+    const uint8_t vSample = srcPicture.pBuffer[srcBufferIndex + 2];
+    const uint8_t ySample2 = srcPicture.pBuffer[srcBufferIndex + 3];
+
+    // Write into planar 422 buffer
+    const PictureInfo dstPictureInfo = pictureInfo.dstPicture;
+
+    const uint dstYBufferIndex = lumaCoords.y * dstPictureInfo.stride + lumaCoords.x;
+    dstPicture.pBuffer[dstYBufferIndex] = ySample1;
+    dstPicture.pBuffer[dstYBufferIndex + 1] = ySample2;
+
+    const uint baseUIndex = dstPictureInfo.height * dstPictureInfo.stride;
+    const uint dstUBufferIndex = baseUIndex + chromaCoords.y * dstPictureInfo.chromaStride + chromaCoords.x;
+    dstPicture.pBuffer[dstUBufferIndex] = uSample;
+
+    const uint baseVIndex = baseUIndex + dstPictureInfo.chromaHeight * dstPictureInfo.chromaStride;
+    const uint dstVBufferIndex = baseVIndex + chromaCoords.y * dstPictureInfo.chromaStride + chromaCoords.x;
+    dstPicture.pBuffer[dstVBufferIndex] = vSample;
 }

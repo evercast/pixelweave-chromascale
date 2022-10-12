@@ -26,7 +26,7 @@ void VulkanVideoConverter::Convert(const ProtoVideoFrame& src, ProtoVideoFrame& 
     mDevice->UnmapBuffer(mSrcBuffer);
 
     // Create CPU readable dest buffer to do conversions in
-    const vk::DeviceSize dstBufferSize = dst.stride * dst.height;
+    const vk::DeviceSize dstBufferSize = dst.stride * dst.height + dst.height * ((dst.width + 1) / 2) + dst.height * ((dst.width + 1) / 2);
     mDstBuffer = mDevice->CreateBuffer(
         dstBufferSize,
         vk::BufferUsageFlagBits::eStorageBuffer,
@@ -37,18 +37,44 @@ void VulkanVideoConverter::Convert(const ProtoVideoFrame& src, ProtoVideoFrame& 
     mCommand = mDevice->CreateCommandBuffer();
 
     // Record command buffer
-    const vk::CommandBufferBeginInfo commandBeginInfo = vk::CommandBufferBeginInfo();
-    PW_ASSERT_VK(mCommand.begin(commandBeginInfo));
-    mCommand.bindPipeline(vk::PipelineBindPoint::eCompute, mPipelineResources.pipeline);
-    mCommand
-        .bindDescriptorSets(vk::PipelineBindPoint::eCompute, mPipelineResources.pipelineLayout, 0, mPipelineResources.descriptorSet, {});
-    mCommand.dispatch(static_cast<uint32_t>(dstBufferSize / 16), 1, 1);
-    PW_ASSERT_VK(mCommand.end());
+    {
+        const vk::CommandBufferBeginInfo commandBeginInfo = vk::CommandBufferBeginInfo();
+        PW_ASSERT_VK(mCommand.begin(commandBeginInfo));
+        mCommand.bindPipeline(vk::PipelineBindPoint::eCompute, mPipelineResources.pipeline);
+        mCommand.bindDescriptorSets(
+            vk::PipelineBindPoint::eCompute,
+            mPipelineResources.pipelineLayout,
+            0,
+            mPipelineResources.descriptorSet,
+            {});
+
+        // Hardcoded to 422 for now
+        const uint32_t srcChromaStride = (src.width + 1) / 2;
+        const uint32_t srcChromaHeight = src.height;
+        const uint32_t srcChromaWidth = (src.width + 1) / 2;
+
+        const uint32_t dstChromaStride = (dst.width + 1) / 2;
+        const uint32_t dstChromaHeight = dst.height;
+        const uint32_t dstChromaWidth = (dst.width + 1) / 2;
+
+        const InOutPictureInfo pictureInfo{
+            {src.width, src.height, src.stride, srcChromaWidth, srcChromaHeight, srcChromaStride},
+            {dst.width, dst.height, dst.stride, dstChromaWidth, dstChromaHeight, dstChromaStride}};
+        mCommand
+            .pushConstants(mPipelineResources.pipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(InOutPictureInfo), &pictureInfo);
+
+        const uint32_t groupCountX = dstChromaWidth / 16;
+        const uint32_t groupCountY = dstChromaHeight / 16;
+        mCommand.dispatch(groupCountX, groupCountY, 1);
+
+        PW_ASSERT_VK(mCommand.end());
+    }
 
     // Dispatch command in compute queue
-    mWaitComputeFence = mDevice->CreateFence();
-    mDevice->SubmitCommand(mCommand, mWaitComputeFence);
-    mDevice->WaitForFence(mWaitComputeFence);
+    vk::Fence computeFence = mDevice->CreateFence();
+    mDevice->SubmitCommand(mCommand, computeFence);
+    mDevice->WaitForFence(computeFence);
+    mDevice->DestroyFence(computeFence);
 
     // Copy contents into CPU buffer
     uint8_t* mappedDstBuffer = mDevice->MapBuffer(mDstBuffer);
@@ -56,7 +82,6 @@ void VulkanVideoConverter::Convert(const ProtoVideoFrame& src, ProtoVideoFrame& 
     mDevice->UnmapBuffer(mDstBuffer);
 
     // Cleanup
-    mDevice->DestroyFence(mWaitComputeFence);
     mDevice->DestroyCommand(mCommand);
     mDevice->DestroyComputePipeline(mPipelineResources);
     mDevice->DestroyBuffer(mSrcBuffer);

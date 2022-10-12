@@ -6,6 +6,7 @@
 #include "ResourceLoader.h"
 #include "VulkanInstance.h"
 #include "VulkanVideoConverter.h"
+#include "VideoFrameWrapper.h"
 
 namespace PixelWeave
 {
@@ -128,7 +129,11 @@ VulkanDevice::ComputePipelineResources VulkanDevice::CreateComputePipeline(const
     resources.descriptorLayout = PW_ASSERT_VK(mLogicalDevice.createDescriptorSetLayout(descriptorLayoutInfo));
 
     // Create pipeline including layout, shader (loaded from file), and pipeline itself
-    const vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo().setSetLayouts(resources.descriptorLayout);
+    const vk::PushConstantRange pushConstantInfo =
+        vk::PushConstantRange().setOffset(0).setSize(sizeof(InOutPictureInfo)).setStageFlags(vk::ShaderStageFlagBits::eCompute);
+
+    const vk::PipelineLayoutCreateInfo pipelineLayoutInfo =
+        vk::PipelineLayoutCreateInfo().setSetLayouts(resources.descriptorLayout).setPushConstantRanges(pushConstantInfo);
     resources.pipelineLayout = PW_ASSERT_VK(mLogicalDevice.createPipelineLayout(pipelineLayoutInfo));
 
     Resource shaderResource = ResourceLoader::Load(Resource::Id::ComputeShader);

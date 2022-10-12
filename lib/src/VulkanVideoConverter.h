@@ -22,6 +22,5 @@ private:
 
     VulkanDevice::ComputePipelineResources mPipelineResources;
     vk::CommandBuffer mCommand;
-    vk::Fence mWaitComputeFence;
 };
 }  // namespace PixelWeave
