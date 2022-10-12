@@ -15,6 +15,9 @@ public:
     ~VulkanVideoConverter() override;
 
 private:
+    void InitResources(const ProtoVideoFrame& src, ProtoVideoFrame& dst);
+    void Cleanup();
+
     VulkanDevice* mDevice;
 
     VulkanDevice::Buffer mSrcBuffer;
@@ -22,5 +25,7 @@ private:
 
     VulkanDevice::ComputePipelineResources mPipelineResources;
     vk::CommandBuffer mCommand;
+
+    bool mIsInitialized;
 };
 }  // namespace PixelWeave
