@@ -92,7 +92,7 @@ void VulkanVideoConverter::InitResources(const ProtoVideoFrame& src, ProtoVideoF
             .pushConstants(mPipelineResources.pipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(InOutPictureInfo), &pictureInfo);
 
         const uint32_t groupCountX = dstChromaWidth / 16;
-        const uint32_t groupCountY = dstChromaHeight / 16;
+        const uint32_t groupCountY = dstChromaHeight / 8;
         mCommand.dispatch(groupCountX, groupCountY, 1);
 
         // Wait for compute stage and copy results back to local memory

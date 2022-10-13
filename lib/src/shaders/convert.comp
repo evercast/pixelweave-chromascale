@@ -6,8 +6,10 @@
 #extension GL_EXT_shader_8bit_storage : require
 #extension GL_EXT_scalar_block_layout : require
 
-#define LOCAL_WORKGROUP_SIZE 16
-layout(local_size_x = LOCAL_WORKGROUP_SIZE, local_size_y = LOCAL_WORKGROUP_SIZE) in;
+#define LOCAL_WORKGROUP_SIZE_X 16
+#define LOCAL_WORKGROUP_SIZE_Y 8
+
+layout(local_size_x = LOCAL_WORKGROUP_SIZE_X, local_size_y = LOCAL_WORKGROUP_SIZE_Y) in;
 
 struct PictureInfo {
     uint width;
