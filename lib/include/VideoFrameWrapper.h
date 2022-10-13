@@ -12,6 +12,20 @@ struct ProtoVideoFrame {
     uint32_t width;
     uint32_t height;
     PixelFormat pixelFormat;
+
+    uint64_t GetBufferSize() const
+    {
+        switch (pixelFormat) {
+            case PixelFormat::Interleaved8BitUYVY:
+                return stride * height;
+            case PixelFormat::Planar8Bit422: {
+                const uint64_t lumaSize = stride * height;
+                const uint64_t chromaSize = ((width + 1) / 2) * height;
+                return lumaSize + chromaSize * 2;
+            }
+        }
+        return 0;
+    }
 };
 
 struct PictureInfo {
