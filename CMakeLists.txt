@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.19.2 FATAL_ERROR)
 
 set(VERSION 0.0.1)
 set(PROJECT_NAME PixelWeave)
