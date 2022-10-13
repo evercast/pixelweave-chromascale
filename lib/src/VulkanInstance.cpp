@@ -110,32 +110,35 @@ ResultValue<vk::PhysicalDevice> VulkanInstance::FindSuitablePhysicalDevice()
     for (const vk::PhysicalDevice& physicalDevice : physicalDevices) {
         const vk::PhysicalDeviceProperties properties = physicalDevice.getProperties();
         uint32_t currentDeviceScore = 0;
-        if (properties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu) {
-            currentDeviceScore += 1000;
-        }
-        if (properties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu) {
-            currentDeviceScore += 100;
-        }
-        vk::PhysicalDeviceVulkan12Features physicalDeviceFeatures1_2{};
-        vk::PhysicalDeviceFeatures2 physicalDeviceFeatures = vk::PhysicalDeviceFeatures2().setPNext(&physicalDeviceFeatures1_2);
-        physicalDevice.getFeatures2(&physicalDeviceFeatures);
-        if (!physicalDeviceFeatures1_2.uniformAndStorageBuffer8BitAccess) {
-            currentDeviceScore = 0;
+        {
+            if (properties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu) {
+                currentDeviceScore += 1000;
+            }
+            if (properties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu) {
+                currentDeviceScore += 100;
+            }
+            vk::PhysicalDeviceVulkan12Features physicalDeviceFeatures1_2{};
+            vk::PhysicalDeviceFeatures2 physicalDeviceFeatures = vk::PhysicalDeviceFeatures2().setPNext(&physicalDeviceFeatures1_2);
+            physicalDevice.getFeatures2(&physicalDeviceFeatures);
+            if (!physicalDeviceFeatures1_2.uniformAndStorageBuffer8BitAccess) {
+                currentDeviceScore = 0;
+            }
+            const std::vector<vk::QueueFamilyProperties> queueFamiliesProperties = physicalDevice.getQueueFamilyProperties();
+            const bool hasComputeQueue = std::any_of(
+                queueFamiliesProperties.begin(),
+                queueFamiliesProperties.end(),
+                [](const vk::QueueFamilyProperties& properties) -> bool {
+                    return static_cast<bool>(properties.queueFlags & vk::QueueFlagBits::eCompute);
+                });
+            if (!hasComputeQueue) {
+                currentDeviceScore = 0;
+            }
         }
         if (chosenDeviceScore < currentDeviceScore) {
             chosenDevice = physicalDevice;
             chosenDeviceScore = currentDeviceScore;
         }
-        const std::vector<vk::QueueFamilyProperties> queueFamiliesProperties = physicalDevice.getQueueFamilyProperties();
-        const bool hasComputeQueue = std::any_of(
-            queueFamiliesProperties.begin(),
-            queueFamiliesProperties.end(),
-            [](const vk::QueueFamilyProperties& properties) -> bool {
-                return static_cast<bool>(properties.queueFlags & vk::QueueFlagBits::eCompute);
-            });
-        if (!hasComputeQueue) {
-            currentDeviceScore = 0;
-        }
+
     }
     return {chosenDeviceScore > 0 ? Result::Success : Result::Error, chosenDevice};
 }

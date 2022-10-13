@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include <vulkan/vulkan.hpp>
 
 #include "VideoConverter.h"
@@ -26,6 +28,6 @@ private:
     VulkanDevice::ComputePipelineResources mPipelineResources;
     vk::CommandBuffer mCommand;
 
-    bool mIsInitialized;
+    std::optional<ProtoVideoFrame> mPrevSourceFrame, mPrevDstFrame;
 };
 }  // namespace PixelWeave

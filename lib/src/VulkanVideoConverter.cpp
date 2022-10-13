@@ -8,7 +8,7 @@
 
 namespace PixelWeave
 {
-VulkanVideoConverter::VulkanVideoConverter(VulkanDevice* device) : mDevice(nullptr), mIsInitialized(false)
+VulkanVideoConverter::VulkanVideoConverter(VulkanDevice* device) : mDevice(nullptr)
 {
     device->AddRef();
     mDevice = device;
@@ -76,42 +76,64 @@ void VulkanVideoConverter::Cleanup()
     mDevice->DestroyBuffer(mDstBuffer);
 }
 
+struct Timer {
+    void Start() { beginTime = std::chrono::steady_clock::now(); }
+    uint64_t ElapsedMillis()
+    {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beginTime).count();
+    }
+    std::chrono::steady_clock::time_point beginTime;
+};
+
+bool AreFramePropertiesEqual(const ProtoVideoFrame& frameA, const ProtoVideoFrame& frameB)
+{
+    return frameA.stride == frameB.stride && frameA.width == frameB.width && frameA.height == frameB.height &&
+           frameA.pixelFormat == frameB.pixelFormat;
+}
+
 void VulkanVideoConverter::Convert(const ProtoVideoFrame& src, ProtoVideoFrame& dst)
 {
-    if (!mIsInitialized) {
-        mIsInitialized = true;
+    Timer timer;
+    timer.Start();
+
+    const bool wasInitialized = mPrevSourceFrame.has_value() && mPrevDstFrame.has_value();
+    if (!wasInitialized || !AreFramePropertiesEqual(mPrevSourceFrame.value(), src) ||
+        !AreFramePropertiesEqual(mPrevDstFrame.value(), dst)) {
+        if (wasInitialized) {
+            Cleanup();
+        }
         InitResources(src, dst);
+        mPrevSourceFrame = src;
+        mPrevDstFrame = dst;
     }
 
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     // Copy src buffer into GPU readable buffer
+    Timer stageTimer;
+    stageTimer.Start();
     const vk::DeviceSize srcBufferSize = src.stride * src.height;
     uint8_t* mappedSrcBuffer = mDevice->MapBuffer(mSrcBuffer);
     std::copy_n(src.buffer, srcBufferSize, mappedSrcBuffer);
     mDevice->UnmapBuffer(mSrcBuffer);
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::cout << "Copying src buffer took " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << " ms" << std::endl;
+    PW_LOG("Copying src buffer took " << stageTimer.ElapsedMillis() << " ms");
 
     const vk::DeviceSize dstBufferSize = dst.stride * dst.height + dst.height * ((dst.width + 1) / 2) + dst.height * ((dst.width + 1) / 2);
 
     // Dispatch command in compute queue
-    begin = std::chrono::steady_clock::now();
+    stageTimer.Start();
     vk::Fence computeFence = mDevice->CreateFence();
     mDevice->SubmitCommand(mCommand, computeFence);
     mDevice->WaitForFence(computeFence);
     mDevice->DestroyFence(computeFence);
-    end = std::chrono::steady_clock::now();
-    std::cout << "Compute took " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << " ms"
-              << std::endl;
+    PW_LOG("Compute took " << stageTimer.ElapsedMillis() << " ms");
 
     // Copy contents into CPU buffer
-    begin = std::chrono::steady_clock::now();
+    stageTimer.Start();
     uint8_t* mappedDstBuffer = mDevice->MapBuffer(mDstBuffer);
     std::copy_n(mappedDstBuffer, dstBufferSize, dst.buffer);
     mDevice->UnmapBuffer(mDstBuffer);
-    end = std::chrono::steady_clock::now();
-    std::cout << "Copy back took " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << " ms" << std::endl;
-    std::cout << std::endl;
+    PW_LOG("Copy back took " << stageTimer.ElapsedMillis() << " ms");
+
+    PW_LOG("Total frame processing time: " << timer.ElapsedMillis() << " ms" << std::endl);
 }
 
 VulkanVideoConverter::~VulkanVideoConverter()
