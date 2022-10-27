@@ -4,9 +4,9 @@
 
 #include "DebugUtils.h"
 #include "ResourceLoader.h"
+#include "VideoFrameWrapper.h"
 #include "VulkanInstance.h"
 #include "VulkanVideoConverter.h"
-#include "VideoFrameWrapper.h"
 
 namespace PixelWeave
 {
@@ -36,8 +36,10 @@ VulkanDevice::VulkanDevice(const std::shared_ptr<VulkanInstance>& instance, vk::
     vk::DeviceQueueCreateInfo queueCreateInfo =
         vk::DeviceQueueCreateInfo().setQueueFamilyIndex(queueFamilyIndex).setQueuePriorities(queuePriorities);
 
+    vk::PhysicalDeviceVulkan11Features physicalDeviceFeatures1_1{};
     vk::PhysicalDeviceVulkan12Features physicalDeviceFeatures1_2{};
-    vk::PhysicalDeviceFeatures2 physicalDeviceFeatures = vk::PhysicalDeviceFeatures2().setPNext(&physicalDeviceFeatures1_2);
+    physicalDeviceFeatures1_1.setPNext(&physicalDeviceFeatures1_2);
+    vk::PhysicalDeviceFeatures2 physicalDeviceFeatures = vk::PhysicalDeviceFeatures2().setPNext(&physicalDeviceFeatures1_1);
     physicalDevice.getFeatures2(&physicalDeviceFeatures);
 
     const vk::DeviceCreateInfo deviceCreateInfo =
@@ -56,18 +58,9 @@ VideoConverter* VulkanDevice::CreateVideoConverter()
     return new VulkanVideoConverter(this);
 }
 
-VulkanDevice::Buffer VulkanDevice::CreateBuffer(
-    const vk::DeviceSize& size,
-    const vk::BufferUsageFlags& usageFlags,
-    const vk::MemoryPropertyFlags& memoryFlags)
+vk::DeviceMemory VulkanDevice::AllocateMemory(const vk::MemoryPropertyFlags& memoryFlags, const vk::MemoryRequirements memoryRequirements)
 {
-    // Create buffer (a memory view)
-    const vk::BufferCreateInfo bufferCreateInfo =
-        vk::BufferCreateInfo().setSize(size).setUsage(usageFlags).setSharingMode(vk::SharingMode::eExclusive);
-    const vk::Buffer bufferHandle = PW_ASSERT_VK(mLogicalDevice.createBuffer(bufferCreateInfo));
-
     // Find suitable memory to allocate the buffer in
-    const vk::MemoryRequirements memoryRequirements = mLogicalDevice.getBufferMemoryRequirements(bufferHandle);
     const vk::PhysicalDeviceMemoryProperties memoryProperties = mPhysicalDevice.getMemoryProperties();
     uint32_t selectedMemoryIndex = 0;
     for (uint32_t memoryIndex = 0; memoryIndex < memoryProperties.memoryTypeCount; ++memoryIndex) {
@@ -81,7 +74,21 @@ VulkanDevice::Buffer VulkanDevice::CreateBuffer(
     // Allocate memory for the buffer
     const vk::MemoryAllocateInfo allocateInfo =
         vk::MemoryAllocateInfo().setAllocationSize(memoryRequirements.size).setMemoryTypeIndex(selectedMemoryIndex);
-    const vk::DeviceMemory memoryHandle = PW_ASSERT_VK(mLogicalDevice.allocateMemory(allocateInfo));
+    return PW_ASSERT_VK(mLogicalDevice.allocateMemory(allocateInfo));
+}
+
+VulkanDevice::Buffer VulkanDevice::CreateBuffer(
+    const vk::DeviceSize& size,
+    const vk::BufferUsageFlags& usageFlags,
+    const vk::MemoryPropertyFlags& memoryFlags)
+{
+    // Create buffer (a memory view)
+    const vk::BufferCreateInfo bufferCreateInfo =
+        vk::BufferCreateInfo().setSize(size).setUsage(usageFlags).setSharingMode(vk::SharingMode::eExclusive);
+    const vk::Buffer bufferHandle = PW_ASSERT_VK(mLogicalDevice.createBuffer(bufferCreateInfo));
+
+    const vk::MemoryRequirements memoryRequirements = mLogicalDevice.getBufferMemoryRequirements(bufferHandle);
+    const vk::DeviceMemory memoryHandle = AllocateMemory(memoryFlags, memoryRequirements);
 
     PW_ASSERT_VK(mLogicalDevice.bindBufferMemory(bufferHandle, memoryHandle, 0));
 
@@ -105,6 +112,11 @@ void VulkanDevice::DestroyBuffer(Buffer& buffer)
     mLogicalDevice.freeMemory(buffer.memoryHandle);
     mLogicalDevice.destroyBuffer(buffer.bufferHandle);
     buffer.size = 0;
+}
+
+ResultValue<VulkanTexture*> VulkanDevice::CreateTexture(PixelFormat pixelFormat, uint32_t width, uint32_t height, vk::ImageUsageFlags usage)
+{
+    return VulkanTexture::Create(this, pixelFormat, width, height, usage);
 }
 
 VulkanDevice::ComputePipelineResources VulkanDevice::CreateComputePipeline(const Buffer& srcBuffer, const Buffer& dstBuffer)

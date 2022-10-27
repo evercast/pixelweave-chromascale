@@ -117,12 +117,20 @@ ResultValue<vk::PhysicalDevice> VulkanInstance::FindSuitablePhysicalDevice()
             if (properties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu) {
                 currentDeviceScore += 100;
             }
+
+            vk::PhysicalDeviceVulkan11Features physicalDeviceFeatures1_1{};
             vk::PhysicalDeviceVulkan12Features physicalDeviceFeatures1_2{};
-            vk::PhysicalDeviceFeatures2 physicalDeviceFeatures = vk::PhysicalDeviceFeatures2().setPNext(&physicalDeviceFeatures1_2);
+            physicalDeviceFeatures1_1.setPNext(&physicalDeviceFeatures1_2);
+            vk::PhysicalDeviceFeatures2 physicalDeviceFeatures = vk::PhysicalDeviceFeatures2().setPNext(&physicalDeviceFeatures1_1);
             physicalDevice.getFeatures2(&physicalDeviceFeatures);
+
+            if (!physicalDeviceFeatures1_1.samplerYcbcrConversion) {
+                currentDeviceScore = 0;
+            }
             if (!physicalDeviceFeatures1_2.uniformAndStorageBuffer8BitAccess) {
                 currentDeviceScore = 0;
             }
+
             const std::vector<vk::QueueFamilyProperties> queueFamiliesProperties = physicalDevice.getQueueFamilyProperties();
             const bool hasComputeQueue = std::any_of(
                 queueFamiliesProperties.begin(),
@@ -138,7 +146,6 @@ ResultValue<vk::PhysicalDevice> VulkanInstance::FindSuitablePhysicalDevice()
             chosenDevice = physicalDevice;
             chosenDeviceScore = currentDeviceScore;
         }
-
     }
     return {chosenDeviceScore > 0 ? Result::Success : Result::Error, chosenDevice};
 }

@@ -17,22 +17,29 @@ set(SOURCE
     src/VulkanInstance.h
     src/DebugUtils.h
     src/VulkanVideoConverter.h
-    src/ShaderResources.h
-    src/ShaderResources.rc
     src/ResourceLoader.h
     src/ResourceLoader.cpp
-
     src/VulkanDevice.cpp
     src/Device.cpp
     src/VulkanInstance.cpp
     src/VulkanVideoConverter.cpp
     src/RefCountPtr.cpp
     src/PixelFormat.cpp
+    src/VulkanTexture.h
+    src/VulkanTexture.cpp
 )
+
+if (WIN32)
+    set(PLATFORM_SPECIFIC_SOURCES
+        src/ShaderResources.h
+        src/ShaderResources.rc
+    )
+endif()
 
 add_library(${SUBPROJECT_NAME} SHARED
     ${HEADERS}
     ${SOURCE}
+    ${PLATFORM_SPECIFIC_SOURCES}
 )
 
 include_directories(include)

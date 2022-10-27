@@ -24,6 +24,7 @@ private:
 
     VulkanDevice::Buffer mSrcLocalBuffer;
     VulkanDevice::Buffer mSrcDeviceBuffer;
+    VulkanTexture* mSrcTexture;
 
     VulkanDevice::Buffer mDstLocalBuffer;
     VulkanDevice::Buffer mDstDeviceBuffer;

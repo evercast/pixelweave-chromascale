@@ -27,6 +27,13 @@ void VulkanVideoConverter::InitResources(const ProtoVideoFrame& src, ProtoVideoF
         vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
         vk::MemoryPropertyFlagBits::eDeviceLocal);
 
+    auto [result, texture] = mDevice->CreateTexture(
+        src.pixelFormat,
+        src.width,
+        src.height,
+        vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst);
+    mSrcTexture = texture;
+
     // Create CPU readable dest buffer to do conversions in
     const vk::DeviceSize dstBufferSize = dst.GetBufferSize();
     mDstLocalBuffer = mDevice->CreateBuffer(
