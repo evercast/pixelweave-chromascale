@@ -39,32 +39,54 @@ layout(scalar, set = 0, binding = 1) buffer DstPicture
 }
 dstPicture;
 
-void main()
-{
-    const uvec2 chromaCoords = gl_GlobalInvocationID.xy;
-    const uvec2 lumaCoords = uvec2(chromaCoords.x * 2, chromaCoords.y);
-    // Read UYVY samples from source buffer
+void read422Sample(const uvec2 blockCoords, out uint8_t ySample1, out uint8_t ySample2, out uint8_t uSample, out uint8_t vSample) {
+    const uvec2 lumaCoords = uvec2(blockCoords.x * 2, blockCoords.y);
     const PictureInfo srcPictureInfo = pictureInfo.srcPicture;
     const uint srcBytesPerSample = 4;
-    const uint srcBufferIndex = chromaCoords.y * srcPictureInfo.stride + (chromaCoords.x * srcBytesPerSample);
+    const uint srcBufferIndex = blockCoords.y * srcPictureInfo.stride + (blockCoords.x * srcBytesPerSample);
 
-    const uint8_t uSample = srcPicture.pBuffer[srcBufferIndex];
-    const uint8_t ySample1 = srcPicture.pBuffer[srcBufferIndex + 1];
-    const uint8_t vSample = srcPicture.pBuffer[srcBufferIndex + 2];
-    const uint8_t ySample2 = srcPicture.pBuffer[srcBufferIndex + 3];
+    uSample = srcPicture.pBuffer[srcBufferIndex];
+    ySample1 = srcPicture.pBuffer[srcBufferIndex + 1];
+    vSample = srcPicture.pBuffer[srcBufferIndex + 2];
+    ySample2 = srcPicture.pBuffer[srcBufferIndex + 3];
+}
 
-    // Write into planar 422 buffer
+void write422Sample(const uvec2 blockCoords, const uint8_t ySample1, const uint8_t ySample2, const uint8_t uSample, const uint8_t vSample) {
+    // Only planar format for now
     const PictureInfo dstPictureInfo = pictureInfo.dstPicture;
+    const uvec2 lumaCoords = uvec2(blockCoords.x * 2, blockCoords.y);
 
     const uint dstYBufferIndex = lumaCoords.y * dstPictureInfo.stride + lumaCoords.x;
     dstPicture.pBuffer[dstYBufferIndex] = ySample1;
     dstPicture.pBuffer[dstYBufferIndex + 1] = ySample2;
 
     const uint baseUIndex = dstPictureInfo.height * dstPictureInfo.stride;
-    const uint dstUBufferIndex = baseUIndex + chromaCoords.y * dstPictureInfo.chromaStride + chromaCoords.x;
+    const uint dstUBufferIndex = baseUIndex + blockCoords.y * dstPictureInfo.chromaStride + blockCoords.x;
     dstPicture.pBuffer[dstUBufferIndex] = uSample;
 
     const uint baseVIndex = baseUIndex + dstPictureInfo.chromaHeight * dstPictureInfo.chromaStride;
-    const uint dstVBufferIndex = baseVIndex + chromaCoords.y * dstPictureInfo.chromaStride + chromaCoords.x;
+    const uint dstVBufferIndex = baseVIndex + blockCoords.y * dstPictureInfo.chromaStride + blockCoords.x;
     dstPicture.pBuffer[dstVBufferIndex] = vSample;
+}
+
+void main()
+{
+    const uvec2 blockCoords = gl_GlobalInvocationID.xy;
+    // Read UYVY samples from source buffer
+    uint8_t ySample1;
+    uint8_t ySample2;
+    uint8_t uSample;
+    uint8_t vSample;
+
+    const PictureInfo srcPictureInfo = pictureInfo.srcPicture;
+    const PictureInfo dstPictureInfo = pictureInfo.dstPicture;
+    vec2 readBlockCoords = vec2(float(blockCoords.x) / float(dstPictureInfo.chromaWidth), float(blockCoords.y) / float(dstPictureInfo.chromaHeight));
+    vec2 srcChromaRes = vec2(float(srcPictureInfo.chromaWidth), float(srcPictureInfo.chromaHeight));
+    readBlockCoords = floor(readBlockCoords * srcChromaRes + vec2(0.5));
+    readBlockCoords = clamp(readBlockCoords, vec2(0.0,0.0), srcChromaRes - vec2(1.0));
+
+    read422Sample(uvec2(readBlockCoords), ySample1, ySample2, uSample, vSample);
+
+    // Write into planar 422 buffer
+    write422Sample(blockCoords, ySample1, ySample2, uSample, vSample);
 }

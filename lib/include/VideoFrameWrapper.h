@@ -26,6 +26,39 @@ struct ProtoVideoFrame {
         }
         return 0;
     }
+
+    uint32_t GetChromaWidth() const
+    {
+        switch (pixelFormat) {
+            case PixelFormat::Interleaved8BitUYVY:
+            case PixelFormat::Planar8Bit422: {
+                return (width + 1) / 2;
+            }
+        }
+        return 0;
+    }
+
+    uint32_t GetChromaHeight() const
+    {
+        switch (pixelFormat) {
+            case PixelFormat::Interleaved8BitUYVY:
+            case PixelFormat::Planar8Bit422: {
+                return height;
+            }
+        }
+        return 0;
+    }
+
+    uint32_t GetChromaStride() const
+    {
+        switch (pixelFormat) {
+            case PixelFormat::Interleaved8BitUYVY:
+            case PixelFormat::Planar8Bit422: {
+                return (width + 1) / 2;
+            }
+        }
+        return 0;
+    }
 };
 
 struct PictureInfo {

@@ -77,22 +77,14 @@ void VulkanVideoConverter::InitResources(const ProtoVideoFrame& src, ProtoVideoF
             {});
 
         // Hardcoded to 422 for now
-        const uint32_t srcChromaStride = (src.width + 1) / 2;
-        const uint32_t srcChromaHeight = src.height;
-        const uint32_t srcChromaWidth = (src.width + 1) / 2;
-
-        const uint32_t dstChromaStride = (dst.width + 1) / 2;
-        const uint32_t dstChromaHeight = dst.height;
-        const uint32_t dstChromaWidth = (dst.width + 1) / 2;
-
         const InOutPictureInfo pictureInfo{
-            {src.width, src.height, src.stride, srcChromaWidth, srcChromaHeight, srcChromaStride},
-            {dst.width, dst.height, dst.stride, dstChromaWidth, dstChromaHeight, dstChromaStride}};
+            {src.width, src.height, src.stride, src.GetChromaWidth(), src.GetChromaHeight(), src.GetChromaStride()},
+            {dst.width, dst.height, dst.stride, dst.GetChromaWidth(), dst.GetChromaHeight(), dst.GetChromaStride()}};
         mCommand
             .pushConstants(mPipelineResources.pipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(InOutPictureInfo), &pictureInfo);
 
-        const uint32_t groupCountX = dstChromaWidth / 16;
-        const uint32_t groupCountY = dstChromaHeight / 8;
+        const uint32_t groupCountX = dst.GetChromaWidth() / 16;
+        const uint32_t groupCountY = dst.GetChromaHeight() / 8;
         mCommand.dispatch(groupCountX, groupCountY, 1);
 
         // Wait for compute stage and copy results back to local memory

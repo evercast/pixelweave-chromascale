@@ -8,11 +8,8 @@ int main()
 {
     auto [result, device] = PixelWeave::Device::Create();
     if (result == PixelWeave::Result::Success) {
-        const uint32_t width = 1920;
-        const uint32_t height = 1080;
-
-        const uint32_t srcWidth = width;
-        const uint32_t srcHeight = height;
+        const uint32_t srcWidth = 64;
+        const uint32_t srcHeight = 64;
         const uint64_t srcStride = srcWidth * 2;
         const uint64_t srcBufferSize = srcHeight * srcStride;
         uint8_t* srcBuffer = new uint8_t[srcBufferSize];
@@ -27,8 +24,8 @@ int main()
         }
         PixelWeave::ProtoVideoFrame srcFrame{srcBuffer, srcStride, srcWidth, srcHeight, PixelWeave::PixelFormat::Interleaved8BitUYVY};
 
-        const uint32_t dstWidth = width;
-        const uint32_t dstHeight = height;
+        const uint32_t dstWidth = 32;
+        const uint32_t dstHeight = 32;
         const uint64_t dstStride = dstWidth;
         const uint64_t dstBufferSize = dstHeight * dstStride * 2;
         uint8_t* dstBuffer = new uint8_t[dstBufferSize];
