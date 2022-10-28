@@ -3,7 +3,8 @@
 #include <vulkan/vulkan.hpp>
 
 #include "Device.h"
-#include "VulkanTexture.h"
+#include "VulkanImage.h"
+#include "VulkanBuffer.h"
 
 namespace PixelWeave
 {
@@ -21,25 +22,13 @@ public:
 
     // Memory handling
     vk::DeviceMemory AllocateMemory(const vk::MemoryPropertyFlags& memoryFlags, const vk::MemoryRequirements memoryRequirements);
-
-    struct Buffer {
-        vk::DeviceSize size;
-        vk::Buffer bufferHandle;
-        vk::DeviceMemory memoryHandle;
-        vk::DescriptorBufferInfo descriptorInfo;
-    };
-
-    Buffer CreateBuffer(
+    
+    VulkanBuffer* CreateBuffer(
         const vk::DeviceSize& size,
         const vk::BufferUsageFlags& usageFlags,
         const vk::MemoryPropertyFlags& memoryFlags);
 
-    uint8_t* MapBuffer(Buffer& buffer);
-    void UnmapBuffer(Buffer& buffer);
-
-    void DestroyBuffer(Buffer& buffer);
-
-    ResultValue<VulkanTexture*> CreateTexture(PixelFormat pixelFormat, uint32_t width, uint32_t height, vk::ImageUsageFlags usage);
+    VulkanImage* CreateImage(PixelFormat pixelFormat, uint32_t width, uint32_t height, vk::ImageUsageFlags usage);
 
     // Pipeline handling
 
@@ -51,7 +40,7 @@ public:
         vk::DescriptorPool descriptorPool;
         vk::DescriptorSet descriptorSet;
     };
-    ComputePipelineResources CreateComputePipeline(const Buffer& srcBuffer, const Buffer& dstBuffer);
+    ComputePipelineResources CreateComputePipeline(const VulkanBuffer* srcBuffer, const VulkanBuffer* dstBuffer);
     void DestroyComputePipeline(ComputePipelineResources& pipelineResources);
 
     vk::CommandBuffer CreateCommandBuffer();

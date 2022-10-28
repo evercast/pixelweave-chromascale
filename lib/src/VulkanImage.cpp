@@ -1,4 +1,4 @@
-#include "VulkanTexture.h"
+#include "VulkanImage.h"
 
 #include "DebugUtils.h"
 #include "VulkanDevice.h"
@@ -12,13 +12,13 @@ vk::Format PixelFormatToVkImageFormat(const PixelFormat& pixelFormat)
         case PixelFormat::Interleaved8BitUYVY:
             return vk::Format::eG8B8G8R8422Unorm;
         case PixelFormat::Planar8Bit422:
-            return vk::Format::eG8B8R83Plane422Unorm;
+            return vk::Format::eG8B8R83Plane420Unorm;
     }
     PW_ASSERT_MSG(false, "Failed to convert pixel format to valid Vulkan format");
     return vk::Format::eUndefined;
 }
 
-ResultValue<VulkanTexture*> VulkanTexture::Create(
+VulkanImage* VulkanImage::Create(
     VulkanDevice* device,
     PixelFormat pixelFormat,
     uint32_t width,
@@ -34,7 +34,7 @@ ResultValue<VulkanTexture*> VulkanTexture::Create(
                                         .setMipLevels(1)
                                         .setArrayLayers(1)
                                         .setSamples(vk::SampleCountFlagBits::e1)
-                                        .setTiling(vk::ImageTiling::eOptimal)
+                                        .setTiling(vk::ImageTiling::eLinear)
                                         .setSharingMode(vk::SharingMode::eExclusive)
                                         .setInitialLayout(vk::ImageLayout::eUndefined)
                                         .setExtent(vk::Extent3D{width, height, 1})
@@ -51,7 +51,7 @@ ResultValue<VulkanTexture*> VulkanTexture::Create(
     const vk::SamplerYcbcrConversionCreateInfo samplerConversionInfo = vk::SamplerYcbcrConversionCreateInfo()
                                                                            .setFormat(PixelFormatToVkImageFormat(pixelFormat))
                                                                            .setYcbcrModel(vk::SamplerYcbcrModelConversion::eYcbcr709)
-                                                                           .setYcbcrRange(vk::SamplerYcbcrRange::eItuFull)
+                                                                           .setYcbcrRange(vk::SamplerYcbcrRange::eItuNarrow)
                                                                            .setComponents(vk::ComponentMapping{
                                                                                vk::ComponentSwizzle::eIdentity,
                                                                                vk::ComponentSwizzle::eIdentity,
@@ -96,24 +96,29 @@ ResultValue<VulkanTexture*> VulkanTexture::Create(
                                                   .setUnnormalizedCoordinates(false)
                                                   .setPNext(&samplerConversionInfoExt);
     const vk::Sampler sampler = PW_ASSERT_VK(logicalDevice.createSampler(samplerInfo));
-    VulkanTexture* texture = new VulkanTexture(device, image, imageBufferMemory, samplerConversion, imageView, sampler);
-
-    return {Result::Success, texture};
+    return new VulkanImage(device, image, imageBufferMemory, memoryRequirements.size, samplerConversion, imageView, sampler);
 }
 
-VulkanTexture::VulkanTexture(
+VulkanImage::VulkanImage(
     VulkanDevice* device,
     vk::Image image,
     vk::DeviceMemory memory,
+    vk::DeviceSize memorySize,
     vk::SamplerYcbcrConversion samplerConversion,
     vk::ImageView imageView,
     vk::Sampler sampler)
-    : mDevice(device), mImage(image), mMemory(memory), mSamplerConversion(samplerConversion), mImageView(imageView), mSampler(sampler)
+    : mDevice(device),
+      mImage(image),
+      mMemory(memory),
+      mMemorySize(memorySize),
+      mSamplerConversion(samplerConversion),
+      mImageView(imageView),
+      mSampler(sampler)
 {
     mDevice->AddRef();
 }
 
-VulkanTexture::~VulkanTexture()
+VulkanImage::~VulkanImage()
 {
     vk::Device& logicalDevice = mDevice->GetLogicalDevice();
     logicalDevice.destroySampler(mSampler);

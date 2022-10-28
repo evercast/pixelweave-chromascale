@@ -27,13 +27,6 @@ void VulkanVideoConverter::InitResources(const ProtoVideoFrame& src, ProtoVideoF
         vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
         vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-    auto [result, texture] = mDevice->CreateTexture(
-        src.pixelFormat,
-        src.width,
-        src.height,
-        vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst);
-    mSrcTexture = texture;
-
     // Create CPU readable dest buffer to do conversions in
     const vk::DeviceSize dstBufferSize = dst.GetBufferSize();
     mDstLocalBuffer = mDevice->CreateBuffer(
@@ -57,14 +50,14 @@ void VulkanVideoConverter::InitResources(const ProtoVideoFrame& src, ProtoVideoF
         // Copy local memory into VRAM and add barrier for next stage
         {
             mCommand.copyBuffer(
-                mSrcLocalBuffer.bufferHandle,
-                mSrcDeviceBuffer.bufferHandle,
-                vk::BufferCopy().setSize(mSrcLocalBuffer.size).setDstOffset(0).setSrcOffset(0));
+                mSrcLocalBuffer->GetBufferHandle(),
+                mSrcDeviceBuffer->GetBufferHandle(),
+                vk::BufferCopy().setSize(mSrcLocalBuffer->GetBufferSize()).setDstOffset(0).setSrcOffset(0));
             const vk::BufferMemoryBarrier bufferBarrier = vk::BufferMemoryBarrier()
                                                               .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
-                                                              .setBuffer(mSrcDeviceBuffer.bufferHandle)
+                                                              .setBuffer(mSrcDeviceBuffer->GetBufferHandle())
                                                               .setOffset(0)
-                                                              .setSize(mSrcDeviceBuffer.size);
+                                                              .setSize(mSrcDeviceBuffer->GetBufferSize());
             mCommand.pipelineBarrier(
                 vk::PipelineStageFlagBits::eTransfer,
                 vk::PipelineStageFlagBits::eComputeShader,
@@ -106,9 +99,9 @@ void VulkanVideoConverter::InitResources(const ProtoVideoFrame& src, ProtoVideoF
         {
             const vk::BufferMemoryBarrier bufferBarrier = vk::BufferMemoryBarrier()
                                                               .setSrcAccessMask(vk::AccessFlagBits::eShaderWrite)
-                                                              .setBuffer(mDstDeviceBuffer.bufferHandle)
+                                                              .setBuffer(mDstDeviceBuffer->GetBufferHandle())
                                                               .setOffset(0)
-                                                              .setSize(mDstDeviceBuffer.size);
+                                                              .setSize(mDstDeviceBuffer->GetBufferSize());
             mCommand.pipelineBarrier(
                 vk::PipelineStageFlagBits::eComputeShader,
                 vk::PipelineStageFlagBits::eTransfer,
@@ -118,9 +111,9 @@ void VulkanVideoConverter::InitResources(const ProtoVideoFrame& src, ProtoVideoF
                 {});
 
             mCommand.copyBuffer(
-                mDstDeviceBuffer.bufferHandle,
-                mDstLocalBuffer.bufferHandle,
-                vk::BufferCopy().setSize(mDstDeviceBuffer.size).setDstOffset(0).setSrcOffset(0));
+                mDstDeviceBuffer->GetBufferHandle(),
+                mDstLocalBuffer->GetBufferHandle(),
+                vk::BufferCopy().setSize(mDstDeviceBuffer->GetBufferSize()).setDstOffset(0).setSrcOffset(0));
         }
 
         PW_ASSERT_VK(mCommand.end());
@@ -131,10 +124,10 @@ void VulkanVideoConverter::Cleanup()
 {
     mDevice->DestroyCommand(mCommand);
     mDevice->DestroyComputePipeline(mPipelineResources);
-    mDevice->DestroyBuffer(mSrcLocalBuffer);
-    mDevice->DestroyBuffer(mSrcDeviceBuffer);
-    mDevice->DestroyBuffer(mDstLocalBuffer);
-    mDevice->DestroyBuffer(mDstDeviceBuffer);
+    mSrcLocalBuffer->Release();
+    mSrcDeviceBuffer->Release();
+    mDstDeviceBuffer->Release();
+    mDstLocalBuffer->Release();
 }
 
 struct Timer {
@@ -176,9 +169,9 @@ void VulkanVideoConverter::Convert(const ProtoVideoFrame& src, ProtoVideoFrame& 
     Timer stageTimer;
     stageTimer.Start();
     const vk::DeviceSize srcBufferSize = src.GetBufferSize();
-    uint8_t* mappedSrcBuffer = mDevice->MapBuffer(mSrcLocalBuffer);
+    uint8_t* mappedSrcBuffer = mSrcLocalBuffer->MapBuffer();
     std::copy_n(src.buffer, srcBufferSize, mappedSrcBuffer);
-    mDevice->UnmapBuffer(mSrcLocalBuffer);
+    mSrcLocalBuffer->UnmapBuffer();
     PW_LOG("Copying src buffer took " << stageTimer.ElapsedMicros() << " us");
 
     // Dispatch command in compute queue
@@ -192,9 +185,9 @@ void VulkanVideoConverter::Convert(const ProtoVideoFrame& src, ProtoVideoFrame& 
     // Copy contents into CPU buffer
     stageTimer.Start();
     const vk::DeviceSize dstBufferSize = dst.GetBufferSize();
-    uint8_t* mappedDstBuffer = mDevice->MapBuffer(mDstLocalBuffer);
+    uint8_t* mappedDstBuffer = mDstLocalBuffer->MapBuffer();
     std::copy_n(mappedDstBuffer, dstBufferSize, dst.buffer);
-    mDevice->UnmapBuffer(mDstLocalBuffer);
+    mDstLocalBuffer->UnmapBuffer();
     PW_LOG("Copy back took " << stageTimer.ElapsedMicros() << " us");
 
     PW_LOG("Total frame processing time: " << timer.ElapsedMillis() << " ms" << std::endl);

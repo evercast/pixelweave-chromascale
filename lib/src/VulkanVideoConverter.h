@@ -22,12 +22,11 @@ private:
 
     VulkanDevice* mDevice;
 
-    VulkanDevice::Buffer mSrcLocalBuffer;
-    VulkanDevice::Buffer mSrcDeviceBuffer;
-    VulkanTexture* mSrcTexture;
+    VulkanBuffer* mSrcLocalBuffer;
+    VulkanBuffer* mSrcDeviceBuffer;
 
-    VulkanDevice::Buffer mDstLocalBuffer;
-    VulkanDevice::Buffer mDstDeviceBuffer;
+    VulkanBuffer* mDstLocalBuffer;
+    VulkanBuffer* mDstDeviceBuffer;
 
     VulkanDevice::ComputePipelineResources mPipelineResources;
     vk::CommandBuffer mCommand;

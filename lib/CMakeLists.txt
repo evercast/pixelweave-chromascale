@@ -25,8 +25,10 @@ set(SOURCE
     src/VulkanVideoConverter.cpp
     src/RefCountPtr.cpp
     src/PixelFormat.cpp
-    src/VulkanTexture.h
-    src/VulkanTexture.cpp
+    src/VulkanImage.h
+    src/VulkanImage.cpp
+    src/VulkanBuffer.h
+    src/VulkanBuffer.cpp
 )
 
 if (WIN32)

@@ -77,49 +77,20 @@ vk::DeviceMemory VulkanDevice::AllocateMemory(const vk::MemoryPropertyFlags& mem
     return PW_ASSERT_VK(mLogicalDevice.allocateMemory(allocateInfo));
 }
 
-VulkanDevice::Buffer VulkanDevice::CreateBuffer(
+VulkanBuffer* VulkanDevice::CreateBuffer(
     const vk::DeviceSize& size,
     const vk::BufferUsageFlags& usageFlags,
     const vk::MemoryPropertyFlags& memoryFlags)
 {
-    // Create buffer (a memory view)
-    const vk::BufferCreateInfo bufferCreateInfo =
-        vk::BufferCreateInfo().setSize(size).setUsage(usageFlags).setSharingMode(vk::SharingMode::eExclusive);
-    const vk::Buffer bufferHandle = PW_ASSERT_VK(mLogicalDevice.createBuffer(bufferCreateInfo));
-
-    const vk::MemoryRequirements memoryRequirements = mLogicalDevice.getBufferMemoryRequirements(bufferHandle);
-    const vk::DeviceMemory memoryHandle = AllocateMemory(memoryFlags, memoryRequirements);
-
-    PW_ASSERT_VK(mLogicalDevice.bindBufferMemory(bufferHandle, memoryHandle, 0));
-
-    const vk::DescriptorBufferInfo bufferInfo = vk::DescriptorBufferInfo().setBuffer(bufferHandle).setOffset(0).setRange(size);
-
-    return Buffer{size, bufferHandle, memoryHandle, bufferInfo};
+    return VulkanBuffer::Create(this, size, usageFlags, memoryFlags);
 }
 
-uint8_t* VulkanDevice::MapBuffer(Buffer& buffer)
+VulkanImage* VulkanDevice::CreateImage(PixelFormat pixelFormat, uint32_t width, uint32_t height, vk::ImageUsageFlags usage)
 {
-    return static_cast<uint8_t*>(PW_ASSERT_VK(mLogicalDevice.mapMemory(buffer.memoryHandle, 0, buffer.size)));
+    return VulkanImage::Create(this, pixelFormat, width, height, usage);
 }
 
-void VulkanDevice::UnmapBuffer(Buffer& buffer)
-{
-    mLogicalDevice.unmapMemory(buffer.memoryHandle);
-}
-
-void VulkanDevice::DestroyBuffer(Buffer& buffer)
-{
-    mLogicalDevice.freeMemory(buffer.memoryHandle);
-    mLogicalDevice.destroyBuffer(buffer.bufferHandle);
-    buffer.size = 0;
-}
-
-ResultValue<VulkanTexture*> VulkanDevice::CreateTexture(PixelFormat pixelFormat, uint32_t width, uint32_t height, vk::ImageUsageFlags usage)
-{
-    return VulkanTexture::Create(this, pixelFormat, width, height, usage);
-}
-
-VulkanDevice::ComputePipelineResources VulkanDevice::CreateComputePipeline(const Buffer& srcBuffer, const Buffer& dstBuffer)
+VulkanDevice::ComputePipelineResources VulkanDevice::CreateComputePipeline(const VulkanBuffer* srcBuffer, const VulkanBuffer* dstBuffer)
 {
     ComputePipelineResources resources;
 
@@ -162,7 +133,8 @@ VulkanDevice::ComputePipelineResources VulkanDevice::CreateComputePipeline(const
     resources.pipeline = PW_ASSERT_VK(mLogicalDevice.createComputePipeline(nullptr, computePipelineInfo));
 
     // Write descriptor sets for each buffer
-    const vk::DescriptorPoolSize poolSize = vk::DescriptorPoolSize().setDescriptorCount(2).setType(vk::DescriptorType::eStorageBuffer);
+    const vk::DescriptorPoolSize poolSize =
+        vk::DescriptorPoolSize().setDescriptorCount(2).setType(vk::DescriptorType::eStorageBuffer);
     const vk::DescriptorPoolCreateInfo poolInfo =
         vk::DescriptorPoolCreateInfo().setPoolSizes(poolSize).setMaxSets(1).setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
     resources.descriptorPool = PW_ASSERT_VK(mLogicalDevice.createDescriptorPool(poolInfo));
@@ -173,18 +145,18 @@ VulkanDevice::ComputePipelineResources VulkanDevice::CreateComputePipeline(const
                                                                   .setDescriptorSetCount(1);
     resources.descriptorSet = PW_ASSERT_VK(mLogicalDevice.allocateDescriptorSets(descriptorAllocInfo))[0];
 
-    const std::vector<vk::WriteDescriptorSet> bufferWriteDescriptorSet{
+    const std::vector<vk::WriteDescriptorSet> imageWriteDescriptorSet{
         vk::WriteDescriptorSet()
             .setDstSet(resources.descriptorSet)
             .setDescriptorType(vk::DescriptorType::eStorageBuffer)
             .setDstBinding(0)
-            .setBufferInfo(srcBuffer.descriptorInfo),
+            .setBufferInfo(srcBuffer->GetDescriptorInfo()),
         vk::WriteDescriptorSet()
             .setDstSet(resources.descriptorSet)
             .setDescriptorType(vk::DescriptorType::eStorageBuffer)
             .setDstBinding(1)
-            .setBufferInfo(dstBuffer.descriptorInfo)};
-    mLogicalDevice.updateDescriptorSets(bufferWriteDescriptorSet, {});
+            .setBufferInfo(dstBuffer->GetDescriptorInfo())};
+    mLogicalDevice.updateDescriptorSets(imageWriteDescriptorSet, {});
 
     return resources;
 }
