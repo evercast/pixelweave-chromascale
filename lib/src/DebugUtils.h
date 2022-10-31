@@ -3,8 +3,8 @@
 #include <sstream>
 #include <string>
 
-#include "VulkanBase.h"
 #include "Macros.h"
+#include "VulkanBase.h"
 
 #ifdef PW_PLATFORM_WINDOWS
 #include <Windows.h>
