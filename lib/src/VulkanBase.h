@@ -1,4 +1,6 @@
 #pragma once
 
-#define VULKAN_HPP_ASSERT(condition) (condition)
+#include "Macros.h"
+
+#define VULKAN_HPP_ASSERT(condition) PW_UNUSED(condition)
 #include <vulkan/vulkan.hpp>

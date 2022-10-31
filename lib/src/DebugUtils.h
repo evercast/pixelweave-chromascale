@@ -4,6 +4,7 @@
 #include <string>
 
 #include "VulkanBase.h"
+#include "Macros.h"
 
 #ifdef PW_PLATFORM_WINDOWS
 #include <Windows.h>
@@ -33,13 +34,13 @@
         }                                                                                             \
     }
 #else
-#define PW_ASSERT_MSG(condition, message) (condition)
+#define PW_ASSERT_MSG(condition, message) PW_UNUSED(condition)
 #endif
 #endif
 
 #ifdef PW_PLATFORM_MACOS
 #define PW_LOG(message)
-#define PW_ASSERT_MSG(condition, message) condition
+#define PW_ASSERT_MSG(condition, message) PW_UNUSED(condition)
 #endif
 
 #define PW_ASSERT(condition) PW_ASSERT_MSG(condition, "")

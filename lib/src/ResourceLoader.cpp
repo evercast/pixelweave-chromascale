@@ -63,8 +63,8 @@ Resource LoadMac(const Resource::Id& resourceId)
         }
         break;
     }
-    CFBundleRef mainBundle = CFBundleGetMainBundle();
-    CFURLRef urlRef = CFBundleCopyResourceURL(mainBundle, resourceName.name, resourceName.extension, NULL);
+    CFBundleRef libraryBundle = CFBundleGetBundleWithIdentifier(CFSTR(PW_BUNDLE_ID));
+    CFURLRef urlRef = CFBundleCopyResourceURL(libraryBundle, resourceName.name, resourceName.extension, NULL);
     CFStringRef urlString = CFURLCopyFileSystemPath(urlRef, kCFURLPOSIXPathStyle);
     std::string path = CFStringGetCStringPtr(urlString, kCFStringEncodingUTF8);
     FILE* file = fopen(path.c_str(), "rb");
@@ -79,6 +79,7 @@ Resource LoadMac(const Resource::Id& resourceId)
         fclose(file);
         return result;
     }
+    return {0, nullptr};
 }
 #endif
 

@@ -10,6 +10,7 @@ set_property(TARGET ${SUBPROJECT_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 if(MSVC)
 	target_compile_options(${SUBPROJECT_NAME} PRIVATE /W4 /WX)
 else()
+	# Disable Werror for now, since I didn't find a way having the compiler ignore warnings in vulkan headers
 	#target_compile_options(${SUBPROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 

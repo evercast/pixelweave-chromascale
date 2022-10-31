@@ -9,7 +9,7 @@ namespace PixelWeave
 static VKAPI_ATTR VkBool32 VKAPI_CALL vkDebugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT,
-    const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
+    const VkDebugUtilsMessengerCallbackDataEXT*,
     void*)
 {
     PW_LOG(callbackData->pMessage);
