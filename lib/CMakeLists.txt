@@ -58,3 +58,21 @@ add_compile_definitions(VULKAN_HPP_NO_EXCEPTIONS)
 find_package(Vulkan REQUIRED)
 target_link_libraries(${SUBPROJECT_NAME} ${Vulkan_LIBRARIES})
 include_directories(${Vulkan_INCLUDE_DIRS})
+
+if (APPLE)
+
+set(RESOURCE_FILES src/shaders/convert.comp.spv)
+message(STATUS ${RESOURCE_FILES})
+set_target_properties(${SUBPROJECT_NAME} PROPERTIES
+  FRAMEWORK TRUE
+  FRAMEWORK_VERSION A
+  MACOSX_BUNDLE TRUE
+  MACOSX_FRAMEWORK_IDENTIFIER us.evercast.pixelweave
+  VERSION 1.0.0
+  SOVERSION 1.0.0
+  PUBLIC_HEADER "${HEADERS}"
+  RESOURCE "${RESOURCE_FILES}"
+)
+target_link_libraries(${SUBPROJECT_NAME} "-framework CoreFoundation")
+
+endif()

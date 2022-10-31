@@ -1,10 +1,15 @@
 #include "ResourceLoader.h"
 
 #include <algorithm>
+#include <string>
 
 #ifdef PW_PLATFORM_WINDOWS
 #include <Windows.h>
 #include "ShaderResources.h"
+#endif
+
+#ifdef PW_PLATFORM_MACOS
+#include <CoreFoundation/CFBundle.h>
 #endif
 
 namespace PixelWeave
@@ -42,12 +47,47 @@ Resource LoadWindows(const Resource::Id& resourceId)
 }
 #endif
 
+#ifdef PW_PLATFORM_MACOS
+Resource LoadMac(const Resource::Id& resourceId)
+{
+    struct ResourceName {
+        CFStringRef name = CFSTR("");
+        CFStringRef extension = CFSTR("");
+    };
+    
+    ResourceName resourceName;
+    switch (resourceId) {
+        case Resource::Id::ComputeShader:
+        {
+            resourceName = ResourceName { CFSTR("convert.comp"), CFSTR("spv") };
+        }
+        break;
+    }
+    CFBundleRef mainBundle = CFBundleGetMainBundle();
+    CFURLRef urlRef = CFBundleCopyResourceURL(mainBundle, resourceName.name, resourceName.extension, NULL);
+    CFStringRef urlString = CFURLCopyFileSystemPath(urlRef, kCFURLPOSIXPathStyle);
+    std::string path = CFStringGetCStringPtr(urlString, kCFStringEncodingUTF8);
+    FILE* file = fopen(path.c_str(), "rb");
+    if (file != nullptr) {
+        fseek(file, 0L, SEEK_END);
+        size_t fileSize = ftell(file);
+        fseek(file, 0L, SEEK_SET);
+        Resource result;
+        result.size = fileSize;
+        result.buffer = new uint8_t[fileSize];
+        fread(result.buffer, fileSize, sizeof(uint8_t), file);
+        fclose(file);
+        return result;
+    }
+}
+#endif
+
 Resource ResourceLoader::Load(const Resource::Id& resourceId)
 {
 #if defined(PW_PLATFORM_WINDOWS)
     return LoadWindows(resourceId);
 #elif defined(PW_PLATFORM_MACOS)
-    return {0, nullptr};
+    return LoadMac(resourceId);
 #endif
 }
 
