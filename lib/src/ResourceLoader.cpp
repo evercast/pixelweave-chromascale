@@ -2,14 +2,16 @@
 
 #include <algorithm>
 
+#ifdef PW_PLATFORM_WINDOWS
 #include <Windows.h>
-
 #include "ShaderResources.h"
+#endif
 
 namespace PixelWeave
 {
 
-Resource ResourceLoader::Load(const Resource::Id& resourceId)
+#ifdef PW_PLATFORM_WINDOWS
+Resource LoadWindows(const Resource::Id& resourceId)
 {
     uint32_t actualId = 0;
     switch (resourceId) {
@@ -37,6 +39,16 @@ Resource ResourceLoader::Load(const Resource::Id& resourceId)
         }
     }
     return {0, nullptr};
+}
+#endif
+
+Resource ResourceLoader::Load(const Resource::Id& resourceId)
+{
+#if defined(PW_PLATFORM_WINDOWS)
+    return LoadWindows(resourceId);
+#elsif defined(PW_PLATFORM_MACOS)
+    return {0, nullptr};
+#endif
 }
 
 void ResourceLoader::Cleanup(Resource& resource) {

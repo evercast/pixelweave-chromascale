@@ -5,7 +5,7 @@
 
 namespace PixelWeave
 {
-#if defined(_DEBUG)
+#if defined(PW_DEBUG)
 static VKAPI_ATTR VkBool32 VKAPI_CALL vkDebugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT,
@@ -31,13 +31,17 @@ ResultValue<std::shared_ptr<VulkanInstance>> VulkanInstance::Create()
                                             .setApiVersion(VK_API_VERSION_1_2);
     std::vector<const char*> layersToEnable
     {
-#if defined(_DEBUG)
+#if defined(PW_DEBUG)
         "VK_LAYER_KHRONOS_validation"
 #endif
     };
 
-    std::vector<const char*> extensionsToEnable{};
-#if defined(_DEBUG)
+    std::vector<const char*> extensionsToEnable{
+#if defined(PW_PLATFORM_MACOS)
+        VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME
+#endif
+    };
+#if defined(PW_DEBUG)
     {
         const std::vector<const char*> debugExtensions{VK_EXT_DEBUG_REPORT_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME};
         extensionsToEnable.insert(extensionsToEnable.end(), debugExtensions.begin(), debugExtensions.end());
@@ -60,8 +64,14 @@ ResultValue<std::shared_ptr<VulkanInstance>> VulkanInstance::Create()
     if (!allExtensionsSupported) {
         return {Result::Error, nullptr};
     }
+    
+    vk::InstanceCreateFlags createFlags;
+#ifdef PW_PLATFORM_MACOS
+    createFlags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
+#endif
+    
     const vk::InstanceCreateInfo instanceInfo = vk::InstanceCreateInfo()
-                                                    .setFlags(vk::InstanceCreateFlags())
+                                                    .setFlags(createFlags)
                                                     .setPApplicationInfo(&appInfo)
                                                     .setPEnabledExtensionNames(extensionsToEnable)
                                                     .setPEnabledLayerNames(layersToEnable);
@@ -78,7 +88,7 @@ VulkanInstance::VulkanInstance(const vk::Instance& instance) : mInstanceHandle(i
     mDynamicDispatcher = vk::DispatchLoaderDynamic(mInstanceHandle, vkGetInstanceProcAddr);
     mDynamicDispatcher.init(mInstanceHandle, vkGetInstanceProcAddr);
 
-#if defined(_DEBUG)
+#if defined(PW_DEBUG)
     const vk::DebugUtilsMessengerCreateInfoEXT debugCallbackCreateInfo =
         vk::DebugUtilsMessengerCreateInfoEXT()
             .setMessageSeverity(
@@ -152,7 +162,7 @@ ResultValue<vk::PhysicalDevice> VulkanInstance::FindSuitablePhysicalDevice()
 
 VulkanInstance::~VulkanInstance()
 {
-#if defined(_DEBUG)
+#if defined(PW_DEBUG)
     mInstanceHandle.destroyDebugUtilsMessengerEXT(mDebugMessenger, nullptr, mDynamicDispatcher);
 #endif
     mInstanceHandle.destroy();

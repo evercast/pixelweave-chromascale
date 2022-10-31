@@ -3,11 +3,15 @@
 #include <sstream>
 #include <string>
 
+#include "Macros.h"
 #include <vulkan/vulkan.hpp>
 
+#ifdef PW_PLATFORM_WINDOWS
 #include <Windows.h>
 #include <debugapi.h>
+#endif
 
+#ifdef PW_PLATFORM_WINDOWS
 #define PW_LOG(message)                        \
     {                                          \
         std::wostringstream os_;               \
@@ -15,7 +19,7 @@
         OutputDebugStringW(os_.str().c_str()); \
     }
 
-#if _DEBUG
+#if PW_DEBUG
 
 #define PW_ASSERT_MSG(condition, message)                                                             \
     {                                                                                                 \
@@ -31,6 +35,12 @@
     }
 #else
 #define PW_ASSERT_MSG(condition, message) (condition)
+#endif
+#endif
+
+#ifdef PW_PLATFORM_MACOS
+#define PW_LOG(message)
+#define PW_ASSERT_MSG(condition, message) condition
 #endif
 
 #define PW_ASSERT(condition) PW_ASSERT_MSG(condition, "")

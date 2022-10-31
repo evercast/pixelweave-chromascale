@@ -1,6 +1,9 @@
 #pragma once
 
 #include <cstdint>
+#include <stddef.h>
+
+#include "Macros.h"
 
 namespace PixelWeave
 {

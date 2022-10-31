@@ -2,6 +2,7 @@
 
 #include <optional>
 
+#include "Macros.h"
 #include <vulkan/vulkan.hpp>
 
 #include "VideoConverter.h"

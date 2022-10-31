@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include "Macros.h"
 #include <vulkan/vulkan.hpp>
 
 #include "Device.h"
@@ -24,7 +25,7 @@ private:
 
     vk::Instance mInstanceHandle;
     vk::DispatchLoaderDynamic mDynamicDispatcher;
-#if defined(_DEBUG)
+#if defined(PW_DEBUG)
     vk::DebugUtilsMessengerEXT mDebugMessenger;
 #endif
 };
