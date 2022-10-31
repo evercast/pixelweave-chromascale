@@ -24,8 +24,8 @@ int main()
         }
         PixelWeave::VideoFrameWrapper srcFrame{srcBuffer, srcStride, srcWidth, srcHeight, PixelWeave::PixelFormat::Interleaved8BitUYVY};
 
-        const uint32_t dstWidth = 32;
-        const uint32_t dstHeight = 32;
+        const uint32_t dstWidth = 64;
+        const uint32_t dstHeight = 64;
         const uint64_t dstStride = dstWidth;
         const uint64_t dstBufferSize = dstHeight * dstStride * 2;
         uint8_t* dstBuffer = new uint8_t[dstBufferSize];

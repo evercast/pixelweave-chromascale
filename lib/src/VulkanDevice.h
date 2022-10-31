@@ -40,7 +40,7 @@ public:
         vk::DescriptorPool descriptorPool;
         vk::DescriptorSet descriptorSet;
     };
-    ComputePipelineResources CreateComputePipeline(const VulkanBuffer* srcBuffer, const VulkanBuffer* dstBuffer);
+    ComputePipelineResources CreateComputePipeline(const VideoFrameWrapper& src, const VulkanBuffer* srcBuffer, const VideoFrameWrapper& dst, const VulkanBuffer* dstBuffer);
     void DestroyComputePipeline(ComputePipelineResources& pipelineResources);
 
     vk::CommandBuffer CreateCommandBuffer();

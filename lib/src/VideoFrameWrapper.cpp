@@ -48,4 +48,24 @@ uint32_t VideoFrameWrapper::GetChromaStride() const
     }
     return 0;
 }
+
+SubsampleType VideoFrameWrapper::GetSubsampleType() const {
+    static_assert(AllPixelFormats.size() == 8);
+    switch (pixelFormat) {
+        case PixelFormat::Interleved8BitBGRA:
+        case PixelFormat::Interleaved8BitRGBA:
+            return SubsampleType::RGB;
+        case PixelFormat::Planar8Bit420:
+        case PixelFormat::Planar8Bit420YV12:
+        case PixelFormat::Planar8Bit422NV12:
+            return SubsampleType::YUV420;
+        case PixelFormat::Planar8Bit422:
+        case PixelFormat::Interleaved8BitUYVY:
+            return SubsampleType::YUV422;
+        case PixelFormat::Planar8Bit444:
+            return SubsampleType::YUV444;
+    }
+    return SubsampleType::RGB;
+}
+
 }  // namespace PixelWeave

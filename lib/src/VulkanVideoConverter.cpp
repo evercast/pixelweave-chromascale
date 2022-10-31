@@ -39,7 +39,7 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
         vk::MemoryPropertyFlagBits::eDeviceLocal);
 
     // Create compute pipeline and bindings
-    mPipelineResources = mDevice->CreateComputePipeline(mSrcDeviceBuffer, mDstDeviceBuffer);
+    mPipelineResources = mDevice->CreateComputePipeline(src, mSrcDeviceBuffer, dst, mDstDeviceBuffer);
     mCommand = mDevice->CreateCommandBuffer();
 
     // Record command buffer
@@ -75,13 +75,6 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
             0,
             mPipelineResources.descriptorSet,
             {});
-
-        // Hardcoded to 422 for now
-        const InOutPictureInfo pictureInfo{
-            {src.width, src.height, src.stride, src.GetChromaWidth(), src.GetChromaHeight(), src.GetChromaStride()},
-            {dst.width, dst.height, dst.stride, dst.GetChromaWidth(), dst.GetChromaHeight(), dst.GetChromaStride()}};
-        mCommand
-            .pushConstants(mPipelineResources.pipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(InOutPictureInfo), &pictureInfo);
 
         const uint32_t groupCountX = dst.GetChromaWidth() / 16;
         const uint32_t groupCountY = dst.GetChromaHeight() / 8;

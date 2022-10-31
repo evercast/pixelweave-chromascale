@@ -19,6 +19,7 @@ struct PIXEL_WEAVE_LIB_CLASS VideoFrameWrapper
     uint32_t GetChromaWidth() const;
     uint32_t GetChromaHeight() const;
     uint32_t GetChromaStride() const;
+    SubsampleType GetSubsampleType() const;
 };
 
 struct PictureInfo {

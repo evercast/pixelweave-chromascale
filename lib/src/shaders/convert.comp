@@ -9,23 +9,41 @@
 #define LOCAL_WORKGROUP_SIZE_X 16
 #define LOCAL_WORKGROUP_SIZE_Y 8
 
+// See PixelFormat.h
+const uint PixelFormatInterleaved8BitUYVY = 0;
+const uint PixelFormatInterleved8BitBGRA = 1;
+const uint PixelFormatInterleaved8BitRGBA = 2;
+const uint PixelFormatPlanar8Bit420 = 3;
+const uint PixelFormatPlanar8Bit422 = 4;
+const uint PixelFormatPlanar8Bit444 = 5;
+const uint PixelFormatPlanar8Bit420YV12 = 6;
+const uint PixelFormatPlanar8Bit422NV12 = 7;
+
+const uint SUBSAMPLE_TYPE_RGB = 0;
+const uint SUBSAMPLE_TYPE_YUV420 = 1;
+const uint SUBSAMPLE_TYPE_YUV422 = 2;
+const uint SUBSAMPLE_TYPE_YUV444 = 3;
+
+// Source picture properties (specialization constants for optimization)
+layout (constant_id = 0) const uint SRC_PICTURE_WIDTH = 0;
+layout (constant_id = 1) const uint SRC_PICTURE_HEIGHT = 0;
+layout (constant_id = 2) const uint SRC_PICTURE_STRIDE = 0; // Luma stride in planar formats
+layout (constant_id = 3) const uint SRC_PICTURE_CHROMA_WIDTH = 0;
+layout (constant_id = 4) const uint SRC_PICTURE_CHROMA_HEIGHT = 0;
+layout (constant_id = 5) const uint SRC_PICTURE_CHROMA_STRIDE = 0;
+layout (constant_id = 6) const uint SRC_PICTURE_FORMAT = 0;
+layout (constant_id = 7) const uint SRC_PICTURE_SUBSAMPLE_TYPE = 0;
+
+layout (constant_id = 8) const uint DST_PICTURE_WIDTH = 0;
+layout (constant_id = 9) const uint DST_PICTURE_HEIGHT = 0;
+layout (constant_id = 10) const uint DST_PICTURE_STRIDE = 0; // Luma stride in planar formats
+layout (constant_id = 11) const uint DST_PICTURE_CHROMA_WIDTH = 0;
+layout (constant_id = 12) const uint DST_PICTURE_CHROMA_HEIGHT = 0;
+layout (constant_id = 13) const uint DST_PICTURE_CHROMA_STRIDE = 0;
+layout (constant_id = 14) const uint DST_PICTURE_FORMAT = 0;
+layout (constant_id = 15) const uint DST_PICTURE_SUBSAMPLE_TYPE = 0;
+
 layout(local_size_x = LOCAL_WORKGROUP_SIZE_X, local_size_y = LOCAL_WORKGROUP_SIZE_Y) in;
-
-struct PictureInfo {
-    uint width;
-    uint height;
-    uint stride;  // Luma stride in planar formats
-    uint chromaWidth;
-    uint chromaHeight;
-    uint chromaStride;
-};
-
-layout(push_constant) uniform Constants
-{
-    PictureInfo srcPicture;
-    PictureInfo dstPicture;
-}
-pictureInfo;
 
 layout(scalar, set = 0, binding = 0) readonly buffer SrcPicture
 {
@@ -39,54 +57,93 @@ layout(scalar, set = 0, binding = 1) buffer DstPicture
 }
 dstPicture;
 
-void read422Sample(const uvec2 blockCoords, out uint8_t ySample1, out uint8_t ySample2, out uint8_t uSample, out uint8_t vSample) {
-    const uvec2 lumaCoords = uvec2(blockCoords.x * 2, blockCoords.y);
-    const PictureInfo srcPictureInfo = pictureInfo.srcPicture;
-    const uint srcBytesPerSample = 4;
-    const uint srcBufferIndex = blockCoords.y * srcPictureInfo.stride + (blockCoords.x * srcBytesPerSample);
+// Read functions, to retrieve and convert samples
+void read422SampleFrom422Buffer(const uvec2 blockCoords, out uint8_t ySample1, out uint8_t ySample2, out uint8_t uSample, out uint8_t vSample) {
+    if (SRC_PICTURE_FORMAT == PixelFormatInterleaved8BitUYVY) {
+        const uvec2 lumaCoords = uvec2(blockCoords.x * 2, blockCoords.y);
+        const uint srcBytesPerSample = 4;
+        const uint srcBufferIndex = blockCoords.y * SRC_PICTURE_STRIDE + (blockCoords.x * srcBytesPerSample);
 
-    uSample = srcPicture.pBuffer[srcBufferIndex];
-    ySample1 = srcPicture.pBuffer[srcBufferIndex + 1];
-    vSample = srcPicture.pBuffer[srcBufferIndex + 2];
-    ySample2 = srcPicture.pBuffer[srcBufferIndex + 3];
+        uSample = srcPicture.pBuffer[srcBufferIndex];
+        ySample1 = srcPicture.pBuffer[srcBufferIndex + 1];
+        vSample = srcPicture.pBuffer[srcBufferIndex + 2];
+        ySample2 = srcPicture.pBuffer[srcBufferIndex + 3];
+    }
 }
 
+void read422Sample(const uvec2 blockCoords, out uint8_t ySample1, out uint8_t ySample2, out uint8_t uSample, out uint8_t vSample) {
+    if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB) {
+
+    } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV420) {
+
+    } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV422) {
+        read422SampleFrom422Buffer(blockCoords, ySample1, ySample2, uSample, vSample);
+    } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV444) {
+
+    }
+}
+
+void read422SampleNearest(const vec2 normalizedBlockCoords, out uint8_t ySample1, out uint8_t ySample2, out uint8_t uSample, out uint8_t vSample) {
+    vec2 srcChromaRes = vec2(float(SRC_PICTURE_CHROMA_WIDTH), float(SRC_PICTURE_CHROMA_HEIGHT));
+    vec2 readBlockCoords = floor(normalizedBlockCoords * srcChromaRes + vec2(0.5));
+    readBlockCoords = clamp(readBlockCoords, vec2(0.0,0.0), srcChromaRes - vec2(1.0));
+    read422Sample(uvec2(readBlockCoords), ySample1, ySample2, uSample, vSample);
+}
+
+// Write functions, to store into the result buffer
 void write422Sample(const uvec2 blockCoords, const uint8_t ySample1, const uint8_t ySample2, const uint8_t uSample, const uint8_t vSample) {
     // Only planar format for now
-    const PictureInfo dstPictureInfo = pictureInfo.dstPicture;
     const uvec2 lumaCoords = uvec2(blockCoords.x * 2, blockCoords.y);
 
-    const uint dstYBufferIndex = lumaCoords.y * dstPictureInfo.stride + lumaCoords.x;
+    const uint dstYBufferIndex = lumaCoords.y * DST_PICTURE_STRIDE + lumaCoords.x;
     dstPicture.pBuffer[dstYBufferIndex] = ySample1;
     dstPicture.pBuffer[dstYBufferIndex + 1] = ySample2;
 
-    const uint baseUIndex = dstPictureInfo.height * dstPictureInfo.stride;
-    const uint dstUBufferIndex = baseUIndex + blockCoords.y * dstPictureInfo.chromaStride + blockCoords.x;
+    const uint baseUIndex = DST_PICTURE_HEIGHT * DST_PICTURE_STRIDE;
+    const uint dstUBufferIndex = baseUIndex + blockCoords.y * DST_PICTURE_CHROMA_STRIDE + blockCoords.x;
     dstPicture.pBuffer[dstUBufferIndex] = uSample;
 
-    const uint baseVIndex = baseUIndex + dstPictureInfo.chromaHeight * dstPictureInfo.chromaStride;
-    const uint dstVBufferIndex = baseVIndex + blockCoords.y * dstPictureInfo.chromaStride + blockCoords.x;
+    const uint baseVIndex = baseUIndex + DST_PICTURE_CHROMA_HEIGHT * DST_PICTURE_CHROMA_STRIDE;
+    const uint dstVBufferIndex = baseVIndex + blockCoords.y * DST_PICTURE_CHROMA_STRIDE + blockCoords.x;
     dstPicture.pBuffer[dstVBufferIndex] = vSample;
 }
 
+/*
+    Workflow:
+        -> The shader will read (and convert) any format passed to it. Meaning results always are in the target subsample format. Regardless of input.
+            -> If the source and target subsampling doesn't match, the shader will read as many samples as necessary to go from source subsample -> dst subsample
+                -> The function read422Sample will convert whatever the current input format is to SubsampleType
+                -> It will rely on read422From422 and friends to get the values out of the buffer using the actual source type
+                -> When the subsample method doesn't match it will convert it (example: going from RGB to 444 by converting via YUV matrix)
+            -> Some filtering may be used by calling read422SampleNearest and friends, if necessary
+        -> After everything is read, the shader will now have a block of samples in the same subsampling method as the dest. buffer
+        -> The shader will now write into the dst buffer depending on its format (see write420Sample, write422Sample, etc)    
+*/
 void main()
 {
     const uvec2 blockCoords = gl_GlobalInvocationID.xy;
     // Read UYVY samples from source buffer
-    uint8_t ySample1;
-    uint8_t ySample2;
-    uint8_t uSample;
-    uint8_t vSample;
+    bool needsScaling = SRC_PICTURE_WIDTH != DST_PICTURE_WIDTH || SRC_PICTURE_HEIGHT != DST_PICTURE_HEIGHT;
+    if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB) {
+        // TODO
+    } else if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV420) {
+        // TODO
+    } else if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV422) {
+        uint8_t ySample1;
+        uint8_t ySample2;
+        uint8_t uSample;
+        uint8_t vSample;
+        if (needsScaling) {
+            vec2 normalizedBlockCoords = vec2(float(blockCoords.x) / float(DST_PICTURE_CHROMA_WIDTH), float(blockCoords.y) / float(DST_PICTURE_CHROMA_HEIGHT));
+            read422SampleNearest(normalizedBlockCoords, ySample1, ySample2, uSample, vSample);
+        } else {
+            read422Sample(blockCoords, ySample1, ySample2, uSample, vSample);
+        }
+        write422Sample(blockCoords, ySample1, ySample2, uSample, vSample);
+    } else if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV444) {
+        // TODO
+    }
 
-    const PictureInfo srcPictureInfo = pictureInfo.srcPicture;
-    const PictureInfo dstPictureInfo = pictureInfo.dstPicture;
-    vec2 readBlockCoords = vec2(float(blockCoords.x) / float(dstPictureInfo.chromaWidth), float(blockCoords.y) / float(dstPictureInfo.chromaHeight));
-    vec2 srcChromaRes = vec2(float(srcPictureInfo.chromaWidth), float(srcPictureInfo.chromaHeight));
-    readBlockCoords = floor(readBlockCoords * srcChromaRes + vec2(0.5));
-    readBlockCoords = clamp(readBlockCoords, vec2(0.0,0.0), srcChromaRes - vec2(1.0));
-
-    read422Sample(uvec2(readBlockCoords), ySample1, ySample2, uSample, vSample);
 
     // Write into planar 422 buffer
-    write422Sample(blockCoords, ySample1, ySample2, uSample, vSample);
 }
