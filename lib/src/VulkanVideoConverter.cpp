@@ -14,7 +14,7 @@ VulkanVideoConverter::VulkanVideoConverter(VulkanDevice* device) : mDevice(nullp
     mDevice = device;
 }
 
-void VulkanVideoConverter::InitResources(const ProtoVideoFrame& src, ProtoVideoFrame& dst)
+void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFrameWrapper& dst)
 {
     // Create source buffer and copy CPU memory into it
     const vk::DeviceSize srcBufferSize = src.GetBufferSize();
@@ -135,13 +135,13 @@ struct Timer {
     std::chrono::steady_clock::time_point beginTime;
 };
 
-bool AreFramePropertiesEqual(const ProtoVideoFrame& frameA, const ProtoVideoFrame& frameB)
+bool AreFramePropertiesEqual(const VideoFrameWrapper& frameA, const VideoFrameWrapper& frameB)
 {
     return frameA.stride == frameB.stride && frameA.width == frameB.width && frameA.height == frameB.height &&
            frameA.pixelFormat == frameB.pixelFormat;
 }
 
-void VulkanVideoConverter::Convert(const ProtoVideoFrame& src, ProtoVideoFrame& dst)
+void VulkanVideoConverter::Convert(const VideoFrameWrapper& src, VideoFrameWrapper& dst)
 {
     Timer timer;
     timer.Start();

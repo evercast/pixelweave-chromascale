@@ -22,7 +22,7 @@ int main()
                 srcBuffer[baseIndex + 3] = 0xFF;  // Y
             }
         }
-        PixelWeave::ProtoVideoFrame srcFrame{srcBuffer, srcStride, srcWidth, srcHeight, PixelWeave::PixelFormat::Interleaved8BitUYVY};
+        PixelWeave::VideoFrameWrapper srcFrame{srcBuffer, srcStride, srcWidth, srcHeight, PixelWeave::PixelFormat::Interleaved8BitUYVY};
 
         const uint32_t dstWidth = 32;
         const uint32_t dstHeight = 32;
@@ -32,7 +32,7 @@ int main()
         for (uint32_t bufferIndex = 0; bufferIndex < dstBufferSize; ++bufferIndex) {
             dstBuffer[bufferIndex] = 0;
         }
-        PixelWeave::ProtoVideoFrame dstFrame{dstBuffer, dstStride, dstWidth, dstHeight, PixelWeave::PixelFormat::Planar8Bit422};
+        PixelWeave::VideoFrameWrapper dstFrame{dstBuffer, dstStride, dstWidth, dstHeight, PixelWeave::PixelFormat::Planar8Bit422};
 
         const auto videoConverter = device->CreateVideoConverter();
         for (int i = 0; i < 10; ++i) {

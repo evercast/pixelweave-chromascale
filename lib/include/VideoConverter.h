@@ -11,7 +11,7 @@ class PIXEL_WEAVE_LIB_CLASS VideoConverter : public RefCountPtr
 public:
     VideoConverter() = default;
 
-    virtual void Convert(const ProtoVideoFrame& source, ProtoVideoFrame& dst) = 0;
+    virtual void Convert(const VideoFrameWrapper& source, VideoFrameWrapper& dst) = 0;
 
     virtual ~VideoConverter() override = default;
 };

@@ -24,7 +24,7 @@ set(SOURCE
     src/VulkanInstance.cpp
     src/VulkanVideoConverter.cpp
     src/RefCountPtr.cpp
-    src/PixelFormat.cpp
+    src/VideoFrameWrapper.cpp
     src/VulkanImage.h
     src/VulkanImage.cpp
     src/VulkanBuffer.h

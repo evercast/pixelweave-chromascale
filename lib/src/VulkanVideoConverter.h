@@ -12,11 +12,11 @@ class VulkanVideoConverter : public VideoConverter
 {
 public:
     VulkanVideoConverter(VulkanDevice* device);
-    void Convert(const ProtoVideoFrame& src, ProtoVideoFrame& dst) override;
+    void Convert(const VideoFrameWrapper& src, VideoFrameWrapper& dst) override;
     ~VulkanVideoConverter() override;
 
 private:
-    void InitResources(const ProtoVideoFrame& src, ProtoVideoFrame& dst);
+    void InitResources(const VideoFrameWrapper& src, VideoFrameWrapper& dst);
     void Cleanup();
 
     VulkanDevice* mDevice;
@@ -30,6 +30,6 @@ private:
     VulkanDevice::ComputePipelineResources mPipelineResources;
     vk::CommandBuffer mCommand;
 
-    std::optional<ProtoVideoFrame> mPrevSourceFrame, mPrevDstFrame;
+    std::optional<VideoFrameWrapper> mPrevSourceFrame, mPrevDstFrame;
 };
 }  // namespace PixelWeave

@@ -6,59 +6,19 @@
 
 namespace PixelWeave
 {
-struct ProtoVideoFrame {
+
+struct PIXEL_WEAVE_LIB_CLASS VideoFrameWrapper
+{
     uint8_t* buffer;
     uint32_t stride;
     uint32_t width;
     uint32_t height;
     PixelFormat pixelFormat;
 
-    uint64_t GetBufferSize() const
-    {
-        switch (pixelFormat) {
-            case PixelFormat::Interleaved8BitUYVY:
-                return stride * height;
-            case PixelFormat::Planar8Bit422: {
-                const uint64_t lumaSize = stride * height;
-                const uint64_t chromaSize = ((width + 1) / 2) * height;
-                return lumaSize + chromaSize * 2;
-            }
-        }
-        return 0;
-    }
-
-    uint32_t GetChromaWidth() const
-    {
-        switch (pixelFormat) {
-            case PixelFormat::Interleaved8BitUYVY:
-            case PixelFormat::Planar8Bit422: {
-                return (width + 1) / 2;
-            }
-        }
-        return 0;
-    }
-
-    uint32_t GetChromaHeight() const
-    {
-        switch (pixelFormat) {
-            case PixelFormat::Interleaved8BitUYVY:
-            case PixelFormat::Planar8Bit422: {
-                return height;
-            }
-        }
-        return 0;
-    }
-
-    uint32_t GetChromaStride() const
-    {
-        switch (pixelFormat) {
-            case PixelFormat::Interleaved8BitUYVY:
-            case PixelFormat::Planar8Bit422: {
-                return (width + 1) / 2;
-            }
-        }
-        return 0;
-    }
+    uint64_t GetBufferSize() const;
+    uint32_t GetChromaWidth() const;
+    uint32_t GetChromaHeight() const;
+    uint32_t GetChromaStride() const;
 };
 
 struct PictureInfo {
