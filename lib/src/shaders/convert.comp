@@ -117,7 +117,20 @@ void write422Sample(const uvec2 blockCoords, const uint8_t ySample1, const uint8
                 -> When the subsample method doesn't match it will convert it (example: going from RGB to 444 by converting via YUV matrix)
             -> Some filtering may be used by calling read422SampleNearest and friends, if necessary
         -> After everything is read, the shader will now have a block of samples in the same subsampling method as the dest. buffer
-        -> The shader will now write into the dst buffer depending on its format (see write420Sample, write422Sample, etc)    
+        -> The shader will now write into the dst buffer depending on its format (see write420Sample, write422Sample, etc)
+
+        Examples:
+            No subsampling conversion:
+                read422SampleNearest()
+                    read422Sample()
+                        read422SampleFrom422Buffer() 
+                write422Sample()
+            From 420 buffer to 422 buffer:
+                read422SampleNearest()
+                    read422Sample()
+                        read420SampleFrom420Buffer()
+                        convert420SampleTo422Sample()
+                write422Sample()
 */
 void main()
 {
