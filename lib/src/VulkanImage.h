@@ -1,10 +1,8 @@
 #pragma once
 
-#include "Macros.h"
-#include <vulkan/vulkan.hpp>
-
 #include "PixelFormat.h"
 #include "RefCountPtr.h"
+#include "VulkanBase.h"
 
 namespace PixelWeave
 {

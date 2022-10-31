@@ -46,12 +46,13 @@ Resource ResourceLoader::Load(const Resource::Id& resourceId)
 {
 #if defined(PW_PLATFORM_WINDOWS)
     return LoadWindows(resourceId);
-#elsif defined(PW_PLATFORM_MACOS)
+#elif defined(PW_PLATFORM_MACOS)
     return {0, nullptr};
 #endif
 }
 
-void ResourceLoader::Cleanup(Resource& resource) {
+void ResourceLoader::Cleanup(Resource& resource)
+{
     delete[] resource.buffer;
     resource.buffer = nullptr;
     resource.size = 0;

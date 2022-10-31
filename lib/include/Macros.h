@@ -1,7 +1,5 @@
 #pragma once
 
-#define VULKAN_HPP_ASSERT(condition) (condition)
-
 #ifdef PW_PLATFORM_WINDOWS
 // Define dll export policy depeding on whether we're compiling
 // the actual library or an external module

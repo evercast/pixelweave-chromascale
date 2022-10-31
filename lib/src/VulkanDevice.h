@@ -1,11 +1,10 @@
 #pragma once
 
 #include "Macros.h"
-#include <vulkan/vulkan.hpp>
 
 #include "Device.h"
-#include "VulkanImage.h"
 #include "VulkanBuffer.h"
+#include "VulkanImage.h"
 
 namespace PixelWeave
 {
@@ -23,7 +22,7 @@ public:
 
     // Memory handling
     vk::DeviceMemory AllocateMemory(const vk::MemoryPropertyFlags& memoryFlags, const vk::MemoryRequirements memoryRequirements);
-    
+
     VulkanBuffer* CreateBuffer(
         const vk::DeviceSize& size,
         const vk::BufferUsageFlags& usageFlags,

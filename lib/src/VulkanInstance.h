@@ -2,11 +2,9 @@
 
 #include <memory>
 
-#include "Macros.h"
-#include <vulkan/vulkan.hpp>
-
 #include "Device.h"
 #include "Result.h"
+#include "VulkanBase.h"
 
 namespace PixelWeave
 {

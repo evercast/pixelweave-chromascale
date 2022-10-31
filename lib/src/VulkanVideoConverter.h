@@ -2,10 +2,8 @@
 
 #include <optional>
 
-#include "Macros.h"
-#include <vulkan/vulkan.hpp>
-
 #include "VideoConverter.h"
+#include "VulkanBase.h"
 #include "VulkanDevice.h"
 
 namespace PixelWeave

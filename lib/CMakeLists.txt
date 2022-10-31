@@ -29,6 +29,7 @@ set(SOURCE
     src/VulkanImage.cpp
     src/VulkanBuffer.h
     src/VulkanBuffer.cpp
+    src/VulkanBase.h
 )
 
 if (WIN32)

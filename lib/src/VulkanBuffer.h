@@ -1,9 +1,7 @@
 #pragma once
 
-#include "Macros.h"
-#include <vulkan/vulkan.hpp>
-
 #include "RefCountPtr.h"
+#include "VulkanBase.h"
 
 namespace PixelWeave
 {
