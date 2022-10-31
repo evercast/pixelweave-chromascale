@@ -39,7 +39,7 @@
 #endif
 
 #ifdef PW_PLATFORM_MACOS
-#define PW_LOG(message)
+#define PW_LOG(message) PW_UNUSED(message)
 #define PW_ASSERT_MSG(condition, message) PW_UNUSED(condition)
 #endif
 
