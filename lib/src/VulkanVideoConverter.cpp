@@ -85,7 +85,8 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
         const uint32_t blockCountX = ((dst.width + (blockSizeX - 1)) / blockSizeX);
         const uint32_t blockCountY = ((dst.height + (blockSizeY - 1)) / blockSizeY);
 
-        // Add additional execution blocks if dimensions aren't divisible by dispatchSize. The shader will handle graceful reading/writing for now. 
+        // Add additional execution blocks if dimensions aren't divisible by dispatchSize. The shader will handle graceful reading/writing
+        // for now.
         const uint32_t groupCountX = (blockCountX / dispatchSizeX) + (dispatchSizeX - (blockCountX % dispatchSizeX));
         const uint32_t groupCountY = (blockCountY / dispatchSizeY) + (dispatchSizeY - (blockCountY % dispatchSizeY));
         mCommand.dispatch(groupCountX, groupCountY, 1);
@@ -117,12 +118,17 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
 
 void VulkanVideoConverter::Cleanup()
 {
-    mDevice->DestroyCommand(mCommand);
-    mDevice->DestroyComputePipeline(mPipelineResources);
-    mSrcLocalBuffer->Release();
-    mSrcDeviceBuffer->Release();
-    mDstDeviceBuffer->Release();
-    mDstLocalBuffer->Release();
+    const bool wasInitialized = mPrevSourceFrame.has_value() && mPrevDstFrame.has_value();
+    if (wasInitialized) {
+        mDevice->DestroyCommand(mCommand);
+        mDevice->DestroyComputePipeline(mPipelineResources);
+        mSrcLocalBuffer->Release();
+        mSrcDeviceBuffer->Release();
+        mDstDeviceBuffer->Release();
+        mDstLocalBuffer->Release();
+        mPrevSourceFrame = std::optional<VideoFrameWrapper>();
+        mPrevDstFrame = std::optional<VideoFrameWrapper>();
+    }
 }
 
 struct Timer {

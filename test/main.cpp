@@ -96,12 +96,12 @@ int main()
 {
     auto [result, device] = PixelWeave::Device::Create();
     if (result == PixelWeave::Result::Success) {
-        constexpr uint32_t srcWidth = 32;
-        constexpr uint32_t srcHeight = 32;
+        constexpr uint32_t srcWidth = 1920;
+        constexpr uint32_t srcHeight = 1080;
         VideoFrameWrapper srcFrame = GetPlanarNV12Frame(srcWidth, srcHeight);
-        constexpr uint32_t dstWidth = 32;
-        constexpr uint32_t dstHeight = 32;
-        VideoFrameWrapper dstFrame = GetPlanar422Frame(dstWidth, dstHeight);
+        constexpr uint32_t dstWidth = 1920;
+        constexpr uint32_t dstHeight = 1080;
+        VideoFrameWrapper dstFrame = GetPlanar420Frame(dstWidth, dstHeight);
 
         const auto videoConverter = device->CreateVideoConverter();
         for (int i = 0; i < 10; ++i) {

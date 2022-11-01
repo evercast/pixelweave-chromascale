@@ -9,11 +9,11 @@ namespace PixelWeave
 
 struct PIXEL_WEAVE_LIB_CLASS VideoFrameWrapper
 {
-    uint8_t* buffer;
-    uint32_t stride;
-    uint32_t width;
-    uint32_t height;
-    PixelFormat pixelFormat;
+    uint8_t* buffer = nullptr;
+    uint32_t stride = 0;
+    uint32_t width = 0;
+    uint32_t height = 0;
+    PixelFormat pixelFormat = PixelFormat::Interleaved8BitRGBA;
 
     uint64_t GetBufferSize() const;
     uint32_t GetChromaWidth() const;
