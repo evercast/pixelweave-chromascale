@@ -138,6 +138,9 @@ VulkanDevice::ComputePipelineResources VulkanDevice::CreateComputePipeline(
         uint32_t srcPictureChromaStride;
         uint32_t srcPictureFormat;
         uint32_t srcPictureSubsampleType;
+        uint32_t srcPictureUOffset;
+        uint32_t srcPictureVOffset;
+
         uint32_t dstPictureWidth;
         uint32_t dstPictureHeight;
         uint32_t dstPictureStride;
@@ -146,6 +149,8 @@ VulkanDevice::ComputePipelineResources VulkanDevice::CreateComputePipeline(
         uint32_t dstPictureChromaStride;
         uint32_t dstPictureFormat;
         uint32_t dstPictureSubsampleType;
+        uint32_t dstPictureUOffset;
+        uint32_t dstPictureVOffset;
     };
 
     SpecializationEntries specializationEntries{
@@ -157,6 +162,8 @@ VulkanDevice::ComputePipelineResources VulkanDevice::CreateComputePipeline(
         src.GetChromaStride(),
         static_cast<uint32_t>(src.pixelFormat),
         static_cast<uint32_t>(src.GetSubsampleType()),
+        src.height * src.stride,
+        src.height * src.stride + src.GetChromaHeight() * src.GetChromaStride(),
         dst.width,
         dst.height,
         dst.stride,
@@ -165,9 +172,11 @@ VulkanDevice::ComputePipelineResources VulkanDevice::CreateComputePipeline(
         dst.GetChromaStride(),
         static_cast<uint32_t>(dst.pixelFormat),
         static_cast<uint32_t>(dst.GetSubsampleType()),
+        dst.height * dst.stride,
+        dst.height * dst.stride + dst.GetChromaHeight() * dst.GetChromaStride(),
     };
 
-    std::array<vk::SpecializationMapEntry, 16> specializationMap{
+    std::array<vk::SpecializationMapEntry, 20> specializationMap{
         vk::SpecializationMapEntry(0, offsetof(SpecializationEntries, srcPictureWidth), sizeof(uint32_t)),
         vk::SpecializationMapEntry(1, offsetof(SpecializationEntries, srcPictureHeight), sizeof(uint32_t)),
         vk::SpecializationMapEntry(2, offsetof(SpecializationEntries, srcPictureStride), sizeof(uint32_t)),
@@ -176,14 +185,19 @@ VulkanDevice::ComputePipelineResources VulkanDevice::CreateComputePipeline(
         vk::SpecializationMapEntry(5, offsetof(SpecializationEntries, srcPictureChromaStride), sizeof(uint32_t)),
         vk::SpecializationMapEntry(6, offsetof(SpecializationEntries, srcPictureFormat), sizeof(uint32_t)),
         vk::SpecializationMapEntry(7, offsetof(SpecializationEntries, srcPictureSubsampleType), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(8, offsetof(SpecializationEntries, dstPictureWidth), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(9, offsetof(SpecializationEntries, dstPictureHeight), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(10, offsetof(SpecializationEntries, dstPictureStride), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(11, offsetof(SpecializationEntries, dstPictureChromaWidth), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(12, offsetof(SpecializationEntries, dstPictureChromaHeight), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(13, offsetof(SpecializationEntries, dstPictureChromaStride), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(14, offsetof(SpecializationEntries, dstPictureFormat), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(15, offsetof(SpecializationEntries, dstPictureSubsampleType), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(8, offsetof(SpecializationEntries, srcPictureUOffset), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(9, offsetof(SpecializationEntries, srcPictureVOffset), sizeof(uint32_t)),
+
+        vk::SpecializationMapEntry(10, offsetof(SpecializationEntries, dstPictureWidth), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(11, offsetof(SpecializationEntries, dstPictureHeight), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(12, offsetof(SpecializationEntries, dstPictureStride), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(13, offsetof(SpecializationEntries, dstPictureChromaWidth), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(14, offsetof(SpecializationEntries, dstPictureChromaHeight), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(15, offsetof(SpecializationEntries, dstPictureChromaStride), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(16, offsetof(SpecializationEntries, dstPictureFormat), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(17, offsetof(SpecializationEntries, dstPictureSubsampleType), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(18, offsetof(SpecializationEntries, dstPictureUOffset), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(19, offsetof(SpecializationEntries, dstPictureVOffset), sizeof(uint32_t)),
     };
 
     const vk::SpecializationInfo specializationInfo = vk::SpecializationInfo()
