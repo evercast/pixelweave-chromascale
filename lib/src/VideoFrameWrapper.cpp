@@ -11,7 +11,7 @@ uint64_t VideoFrameWrapper::GetBufferSize() const
             return static_cast<uint64_t>(stride) * height;
         }
         case PixelFormat::Interleaved8BitRGBA:
-        case PixelFormat::Interleved8BitBGRA: {
+        case PixelFormat::Interleaved8BitBGRA: {
             return static_cast<uint64_t>(width) * height * 4;
         }
         case PixelFormat::Planar8Bit420:
@@ -74,7 +74,7 @@ SubsampleType VideoFrameWrapper::GetSubsampleType() const
 {
     static_assert(AllPixelFormats.size() == 8);
     switch (pixelFormat) {
-        case PixelFormat::Interleved8BitBGRA:
+        case PixelFormat::Interleaved8BitBGRA:
         case PixelFormat::Interleaved8BitRGBA:
             return SubsampleType::RGB;
         case PixelFormat::Planar8Bit420:

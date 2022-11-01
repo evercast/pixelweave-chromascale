@@ -10,7 +10,7 @@ namespace PixelWeave
 
 enum class PixelFormat : uint32_t {
     Interleaved8BitUYVY = 0,
-    Interleved8BitBGRA = 1,
+    Interleaved8BitBGRA = 1,
     Interleaved8BitRGBA = 2,
     Planar8Bit420 = 3,
     Planar8Bit422 = 4,
@@ -21,7 +21,7 @@ enum class PixelFormat : uint32_t {
 
 constexpr std::array<PixelFormat, 8> AllPixelFormats{
     PixelFormat::Interleaved8BitUYVY,
-    PixelFormat::Interleved8BitBGRA,
+    PixelFormat::Interleaved8BitBGRA,
     PixelFormat::Interleaved8BitRGBA,
     PixelFormat::Planar8Bit420,
     PixelFormat::Planar8Bit422,

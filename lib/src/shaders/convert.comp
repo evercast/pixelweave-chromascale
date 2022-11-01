@@ -12,7 +12,7 @@
 
 // See PixelFormat.h
 const uint PixelFormatInterleaved8BitUYVY = 0;
-const uint PixelFormatInterleved8BitBGRA = 1;
+const uint PixelFormatInterleaved8BitBGRA = 1;
 const uint PixelFormatInterleaved8BitRGBA = 2;
 const uint PixelFormatPlanar8Bit420 = 3;
 const uint PixelFormatPlanar8Bit422 = 4;
@@ -239,7 +239,7 @@ YUV422Block read422SampleFrom422Buffer(const uvec2 blockCoords) {
 
 YUV444Block read444SampleFrom444Buffer(const uvec2 blockCoords) {
     YUV444Block resultBlock;
-    if (SRC_PICTURE_FORMAT == PixelFormatInterleved8BitBGRA) {
+    if (SRC_PICTURE_FORMAT == PixelFormatInterleaved8BitBGRA) {
         RGBBlock rgbBlock;
         [[unroll]]
         for (int i = 0; i < 2; i += 1) {
