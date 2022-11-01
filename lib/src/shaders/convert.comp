@@ -5,6 +5,7 @@
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_8bit_storage : require
 #extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_control_flow_attributes : require
 
 #define LOCAL_WORKGROUP_SIZE_X 16
 #define LOCAL_WORKGROUP_SIZE_Y 16
@@ -17,7 +18,7 @@ const uint PixelFormatPlanar8Bit420 = 3;
 const uint PixelFormatPlanar8Bit422 = 4;
 const uint PixelFormatPlanar8Bit444 = 5;
 const uint PixelFormatPlanar8Bit420YV12 = 6;
-const uint PixelFormatPlanar8Bit422NV12 = 7;
+const uint PixelFormatPlanar8Bit420NV12 = 7;
 
 const uint SUBSAMPLE_TYPE_RGB = 0;
 const uint SUBSAMPLE_TYPE_YUV420 = 1;
@@ -68,16 +69,135 @@ layout(scalar, set = 0, binding = 1) buffer DstPicture
 }
 dstPicture;
 
+struct YUV420Block {
+    uint32_t[4] ySamples; // Top left, top right, bottom left, bottom right
+    uint32_t uSample;
+    uint32_t vSample;
+};
+
 struct YUV422Block {
     uint32_t[4] ySamples; // Top left, top right, bottom left, bottom right
     uint32_t[2] uSamples; // Top, bottom
     uint32_t[2] vSamples; // Top, bottom
 };
 
+struct YUV444Block {
+    uint32_t[4] ySamples; // Top left, top right, bottom left, bottom right
+    uint32_t[4] uSamples; // Top left, top right, bottom left, bottom right
+    uint32_t[4] vSamples; // Top left, top right, bottom left, bottom right
+};
+
+// Block conversion helpers
+YUV420Block convert422To420(in YUV422Block source) {
+    YUV420Block result;
+    [[unroll]]
+    for (uint i = 0; i < 4; i += 1) {
+        result.ySamples[i] = source.ySamples[i];
+    }
+    result.uSample = (source.uSamples[0] + source.uSamples[1]) / 2;
+    result.vSample = (source.vSamples[0] + source.vSamples[1]) / 2;
+    return result;
+}
+
+YUV420Block convert444To420(in YUV444Block source) {
+    YUV420Block result;
+    [[unroll]]
+    for (uint i = 0; i < 4; i += 1) {
+        result.ySamples[i] = source.ySamples[i];
+    }
+    result.uSample = (source.uSamples[0] + source.uSamples[1] + source.uSamples[2] + source.uSamples[3]) / 4;
+    result.vSample = (source.vSamples[0] + source.vSamples[1] + source.vSamples[2] + source.vSamples[3]) / 4;
+    return result;
+}
+
+YUV422Block convert420To422(in YUV420Block source) {
+    YUV422Block result;
+    [[unroll]]
+    for (uint i = 0; i < 4; i += 1) {
+        result.ySamples[i] = source.ySamples[i];
+    }
+    [[unroll]]
+    for (uint i = 0; i < 2; i += 1) {
+        result.uSamples[i] = source.uSample;
+        result.vSamples[i] = source.vSample;
+    }
+    return result;
+}
+
+YUV422Block convert444To422(in YUV444Block source) {
+    YUV422Block result;
+    [[unroll]]
+    for (uint i = 0; i < 4; i += 1) {
+        result.ySamples[i] = source.ySamples[i];
+    }
+    result.uSamples[0] = (source.uSamples[0] + source.uSamples[1]) / 2;
+    result.uSamples[1] = (source.uSamples[2] + source.uSamples[3]) / 2;
+    result.vSamples[0] = (source.vSamples[0] + source.vSamples[1]) / 2;
+    result.vSamples[1] = (source.vSamples[2] + source.vSamples[3]) / 2;
+    return result;
+}
+
+YUV444Block convert420To444(in YUV420Block source) {
+    YUV444Block result;
+    [[unroll]]
+    for (uint i = 0; i < 4; i += 1) {
+        result.ySamples[i] = source.ySamples[i];
+        result.uSamples[i] = source.uSample;
+        result.vSamples[i] = source.vSample;
+    }
+    return result;
+}
+
+YUV444Block convert422To444(in YUV422Block source) {
+    YUV444Block result;
+    [[unroll]]
+    for (uint i = 0; i < 4; i += 1) {
+        result.ySamples[i] = source.ySamples[i];
+        result.uSamples[i] = source.uSamples[i/2];
+        result.vSamples[i] = source.vSamples[i/2];
+    }
+    return result;
+}
+
 // Read functions, to retrieve and convert samples
+
+YUV420Block read420SampleFrom420Buffer(const uvec2 blockCoords) {
+    YUV420Block resultBlock;
+    // Read Y block (2 samples up, 2 samples down)
+    if (SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit420 || SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit420YV12 || SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit420NV12) {
+        [[unroll]]
+        for (uint y = 0; y < 2; y += 1) {
+            uvec2 lumaCoords = uvec2(blockCoords.x * 2, blockCoords.y * 2 + y);
+            lumaCoords = clamp(lumaCoords, uvec2(0), uvec2(SRC_PICTURE_WIDTH - 1, SRC_PICTURE_HEIGHT - 1));
+            const uint srcBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x;
+            resultBlock.ySamples[y * 2] = srcPicture.pBuffer[srcBufferIndex];
+            resultBlock.ySamples[y * 2 + 1] = srcPicture.pBuffer[srcBufferIndex + 1];
+        }
+    }
+    
+    // Read UV values
+    const uvec2 chromaCoords = clamp(blockCoords, uvec2(0), uvec2(SRC_PICTURE_CHROMA_WIDTH - 1, SRC_PICTURE_CHROMA_HEIGHT - 1));
+    if (SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit420 || SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit420YV12) {
+        // Read U value for the block
+        const uint srcBufferUIndex = SRC_PICTURE_U_OFFSET + chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE + chromaCoords.x;
+        resultBlock.uSample = srcPicture.pBuffer[srcBufferUIndex];
+        // Read V value for the block
+        const uint srcBufferVIndex = SRC_PICTURE_V_OFFSET + chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE + chromaCoords.x;
+        resultBlock.vSample = srcPicture.pBuffer[srcBufferVIndex];
+    } else if (SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit420NV12) {
+        // U offset is UV offset for this format
+        const uint actualChromaStride = SRC_PICTURE_CHROMA_STRIDE * 2;
+        const uint srcBufferUVIndex = SRC_PICTURE_U_OFFSET + chromaCoords.y * actualChromaStride + chromaCoords.x * 2;
+        resultBlock.uSample = srcPicture.pBuffer[srcBufferUVIndex];
+        resultBlock.vSample = srcPicture.pBuffer[srcBufferUVIndex + 1];
+    }
+    return resultBlock;
+}
+
 YUV422Block read422SampleFrom422Buffer(const uvec2 blockCoords) {
     YUV422Block resultBlock;
     if (SRC_PICTURE_FORMAT == PixelFormatInterleaved8BitUYVY) {
+        [[unroll]]
         for (uint y = 0; y < 2; y += 1) {
             uvec2 lumaCoords = uvec2(blockCoords.x * 2, blockCoords.y * 2 + y);
             lumaCoords = clamp(lumaCoords, uvec2(0), uvec2(SRC_PICTURE_WIDTH - 1, SRC_PICTURE_HEIGHT - 1));
@@ -92,30 +212,83 @@ YUV422Block read422SampleFrom422Buffer(const uvec2 blockCoords) {
     return resultBlock;
 }
 
+YUV444Block read444SampleFrom444Buffer(const uvec2 blockCoords) {
+    YUV444Block resultBlock;
+    return resultBlock;
+}
+
+YUV420Block read420Sample(const uvec2 blockCoords) {
+    YUV420Block resultBlock;
+    if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB) {
+        // TODO
+    } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV420) {
+        resultBlock = read420SampleFrom420Buffer(blockCoords);
+    } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV422) {
+        YUV422Block source = read422SampleFrom422Buffer(blockCoords);
+        resultBlock = convert422To420(source);
+    } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV444) {
+        YUV444Block source = read444SampleFrom444Buffer(blockCoords);
+        resultBlock = convert444To420(source);
+    }
+    return resultBlock;
+}
+
 YUV422Block read422Sample(const uvec2 blockCoords) {
     YUV422Block resultBlock;
     if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB) {
         // TODO
     } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV420) {
-        // TODO
+        YUV420Block source = read420SampleFrom420Buffer(blockCoords);
+        resultBlock = convert420To422(source);
     } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV422) {
-        return read422SampleFrom422Buffer(blockCoords);
+        resultBlock = read422SampleFrom422Buffer(blockCoords);
     } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV444) {
-        // TODO
+        YUV444Block source = read444SampleFrom444Buffer(blockCoords);
+        resultBlock = convert444To422(source);
     }
     return resultBlock;
 }
 
-YUV422Block read422SampleNearest(const vec2 normalizedBlockCoords) {
+YUV444Block read444Sample(const uvec2 blockCoords) {
+    YUV444Block resultBlock;
+    if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB) {
+        // TODO
+    } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV420) {
+        YUV420Block source = read420SampleFrom420Buffer(blockCoords);
+        resultBlock = convert420To444(source);
+    } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV422) {
+        YUV422Block source = read422SampleFrom422Buffer(blockCoords);
+        resultBlock = convert422To444(source);
+    } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV444) {
+        resultBlock = read444SampleFrom444Buffer(blockCoords);
+    }
+    return resultBlock;
+}
+
+uvec2 getNearestBlockCoords(const vec2 normalizedBlockCoords) {
     vec2 srcChromaBlockCount = vec2(float(SRC_PICTURE_BLOCK_COUNT_X), float(SRC_PICTURE_BLOCK_COUNT_Y));
     vec2 readBlockCoords = floor(normalizedBlockCoords * srcChromaBlockCount + vec2(0.5));
     readBlockCoords = clamp(readBlockCoords, vec2(0.0,0.0), srcChromaBlockCount - vec2(1.0));
-    return read422Sample(uvec2(readBlockCoords));
+    return uvec2(readBlockCoords);
+}
+
+YUV420Block read420SampleNearest(const vec2 normalizedBlockCoords) {
+    return read420Sample(getNearestBlockCoords(normalizedBlockCoords));
+}
+
+YUV422Block read422SampleNearest(const vec2 normalizedBlockCoords) {
+    return read422Sample(getNearestBlockCoords(normalizedBlockCoords));
+}
+
+YUV444Block read444SampleNearest(const vec2 normalizedBlockCoords) {
+    return read444Sample(getNearestBlockCoords(normalizedBlockCoords));
 }
 
 // Write functions, to store into the result buffer
-void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
-    // Only planar format for now
+// For now, exclusively writes to YUV planar buffers
+
+void write420Sample(const uvec2 blockCoords, in YUV420Block resultBlock) {
+    [[unroll]]
     for (uint y = 0; y < 2; y += 1) {
         const uvec2 lumaCoords = uvec2(blockCoords.x * 2, blockCoords.y * 2 + y);
         if (lumaCoords.x < DST_PICTURE_WIDTH && lumaCoords.y < DST_PICTURE_HEIGHT) {
@@ -125,20 +298,42 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
         }
     }
 
-    const uint baseUIndex = DST_PICTURE_U_OFFSET;
+    const uvec2 chromaCoords = uvec2(blockCoords.x, blockCoords.y);
+    if (chromaCoords.x < DST_PICTURE_CHROMA_WIDTH && chromaCoords.y < DST_PICTURE_CHROMA_HEIGHT) {
+        const uint dstUBufferIndex = DST_PICTURE_U_OFFSET + chromaCoords.y * DST_PICTURE_CHROMA_STRIDE + chromaCoords.x;
+        dstPicture.pBuffer[dstUBufferIndex] = uint8_t(resultBlock.uSample);
+
+        const uint dstVBufferIndex = DST_PICTURE_V_OFFSET + chromaCoords.y * DST_PICTURE_CHROMA_STRIDE + chromaCoords.x;
+        dstPicture.pBuffer[dstVBufferIndex] = uint8_t(resultBlock.vSample);
+    }
+}
+
+void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
+    // Only planar format for now
+    [[unroll]]
+    for (uint y = 0; y < 2; y += 1) {
+        const uvec2 lumaCoords = uvec2(blockCoords.x * 2, blockCoords.y * 2 + y);
+        if (lumaCoords.x < DST_PICTURE_WIDTH && lumaCoords.y < DST_PICTURE_HEIGHT) {
+            const uint dstYBufferIndex = lumaCoords.y * DST_PICTURE_STRIDE + lumaCoords.x;
+            dstPicture.pBuffer[dstYBufferIndex] = uint8_t(resultBlock.ySamples[y * 2]);
+            dstPicture.pBuffer[dstYBufferIndex + 1] = uint8_t(resultBlock.ySamples[y * 2 + 1]);
+        }
+    }
+
+    [[unroll]]
     for (uint y = 0; y < 2; y += 1) {
         const uvec2 chromaCoords = uvec2(blockCoords.x, blockCoords.y * 2 + y);
         if (chromaCoords.x < DST_PICTURE_CHROMA_WIDTH && chromaCoords.y < DST_PICTURE_CHROMA_HEIGHT) {
-            const uint dstUBufferIndex = baseUIndex + chromaCoords.y * DST_PICTURE_CHROMA_STRIDE + chromaCoords.x;
+            const uint dstUBufferIndex = DST_PICTURE_U_OFFSET + chromaCoords.y * DST_PICTURE_CHROMA_STRIDE + chromaCoords.x;
             dstPicture.pBuffer[dstUBufferIndex] = uint8_t(resultBlock.uSamples[y]);
         }
     }
 
-    const uint baseVIndex = DST_PICTURE_V_OFFSET;
+    [[unroll]]
     for (uint y = 0; y < 2; y += 1) {
         const uvec2 chromaCoords = uvec2(blockCoords.x, blockCoords.y * 2 + y);
         if (chromaCoords.x < DST_PICTURE_CHROMA_WIDTH && chromaCoords.y < DST_PICTURE_CHROMA_HEIGHT) {
-            const uint dstVBufferIndex = baseVIndex + chromaCoords.y * DST_PICTURE_CHROMA_STRIDE + chromaCoords.x;
+            const uint dstVBufferIndex = DST_PICTURE_V_OFFSET + chromaCoords.y * DST_PICTURE_CHROMA_STRIDE + chromaCoords.x;
             dstPicture.pBuffer[dstVBufferIndex] = uint8_t(resultBlock.vSamples[y]);
         }
     }
@@ -156,12 +351,12 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
         -> The shader will now write into the dst buffer depending on its format (see write420Sample, write422Sample, etc)
 
         Examples:
-            No subsampling conversion:
+            - No subsampling conversion:
                 read422SampleNearest()
                     read422Sample()
                         read422SampleFrom422Buffer() 
                 write422Sample()
-            From 420 buffer to 422 buffer:
+            - From 420 buffer to 422 buffer:
                 read422SampleNearest()
                     read422Sample()
                         read420SampleFrom420Buffer()
@@ -174,7 +369,14 @@ void main() {
     if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB) {
         // TODO
     } else if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV420) {
-        // TODO
+        YUV420Block resultBlock;
+        if (needsScaling) {
+            vec2 normalizedBlockCoords = vec2(float(blockCoords.x) / float(DST_PICTURE_BLOCK_COUNT_X), float(blockCoords.y) / float(DST_PICTURE_BLOCK_COUNT_Y));
+            resultBlock = read420SampleNearest(normalizedBlockCoords);
+        } else {
+            resultBlock = read420Sample(blockCoords);
+        }
+        write420Sample(blockCoords, resultBlock);
     } else if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV422) {
         YUV422Block resultBlock;
         if (needsScaling) {

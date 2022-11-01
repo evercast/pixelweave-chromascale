@@ -162,8 +162,8 @@ VulkanDevice::ComputePipelineResources VulkanDevice::CreateComputePipeline(
         src.GetChromaStride(),
         static_cast<uint32_t>(src.pixelFormat),
         static_cast<uint32_t>(src.GetSubsampleType()),
-        src.height * src.stride,
-        src.height * src.stride + src.GetChromaHeight() * src.GetChromaStride(),
+        src.GetUOffset(),
+        src.GetVOffset(),
         dst.width,
         dst.height,
         dst.stride,
@@ -172,8 +172,8 @@ VulkanDevice::ComputePipelineResources VulkanDevice::CreateComputePipeline(
         dst.GetChromaStride(),
         static_cast<uint32_t>(dst.pixelFormat),
         static_cast<uint32_t>(dst.GetSubsampleType()),
-        dst.height * dst.stride,
-        dst.height * dst.stride + dst.GetChromaHeight() * dst.GetChromaStride(),
+        dst.GetUOffset(),
+        dst.GetVOffset(),
     };
 
     std::array<vk::SpecializationMapEntry, 20> specializationMap{
