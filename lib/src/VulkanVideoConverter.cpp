@@ -76,8 +76,17 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
             mPipelineResources.descriptorSet,
             {});
 
-        const uint32_t groupCountX = dst.GetChromaWidth() / 16;
-        const uint32_t groupCountY = dst.GetChromaHeight() / 8;
+        constexpr uint32_t blockSizeX = 2;
+        constexpr uint32_t blockSizeY = 2;
+
+        constexpr uint32_t dispatchSizeX = 16;
+        constexpr uint32_t dispatchSizeY = 16;
+
+        const uint32_t blockCountX = ((dst.width + (blockSizeX - 1)) / blockSizeX);
+        const uint32_t blockCountY = ((dst.height + (blockSizeY - 1)) / blockSizeY);
+
+        const uint32_t groupCountX = blockCountX / dispatchSizeX;
+        const uint32_t groupCountY = blockCountY / dispatchSizeY;
         mCommand.dispatch(groupCountX, groupCountY, 1);
 
         // Wait for compute stage and copy results back to local memory
