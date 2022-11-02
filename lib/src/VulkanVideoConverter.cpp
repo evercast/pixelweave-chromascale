@@ -1,4 +1,4 @@
-﻿#include "VulkanVideoConverter.h"
+#include "VulkanVideoConverter.h"
 
 #include <algorithm>
 #include <chrono>

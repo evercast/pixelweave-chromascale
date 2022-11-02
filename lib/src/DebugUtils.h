@@ -2,6 +2,7 @@
 
 #include <sstream>
 #include <string>
+#include <iostream>
 
 #include "Macros.h"
 #include "VulkanBase.h"
@@ -39,7 +40,13 @@
 #endif
 
 #ifdef PW_PLATFORM_MACOS
-#define PW_LOG(message) PW_UNUSED(message)
+#define PW_LOG(message)                   \
+{                                         \
+    std::ostringstream os_;               \
+    os_ << message << std::endl;          \
+    std::cout << os_.str();               \
+}
+
 #define PW_ASSERT_MSG(condition, message) PW_UNUSED(condition)
 #endif
 
