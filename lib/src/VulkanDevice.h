@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Macros.h"
-
 #include "Device.h"
 #include "VulkanBuffer.h"
 #include "VulkanImage.h"
@@ -31,8 +29,7 @@ public:
     VulkanImage* CreateImage(PixelFormat pixelFormat, uint32_t width, uint32_t height, vk::ImageUsageFlags usage);
 
     // Pipeline handling
-
-    struct ComputePipelineResources {
+    struct VideoConversionPipelineResources {
         vk::DescriptorSetLayout descriptorLayout;
         vk::PipelineLayout pipelineLayout;
         vk::ShaderModule shader;
@@ -40,8 +37,12 @@ public:
         vk::DescriptorPool descriptorPool;
         vk::DescriptorSet descriptorSet;
     };
-    ComputePipelineResources CreateComputePipeline(const VideoFrameWrapper& src, const VulkanBuffer* srcBuffer, const VideoFrameWrapper& dst, const VulkanBuffer* dstBuffer);
-    void DestroyComputePipeline(ComputePipelineResources& pipelineResources);
+    VideoConversionPipelineResources CreateVideoConversionPipeline(
+        const VideoFrameWrapper& src,
+        const VulkanBuffer* srcBuffer,
+        const VideoFrameWrapper& dst,
+        const VulkanBuffer* dstBuffer);
+    void DestroyVideoConversionPipeline(VideoConversionPipelineResources& pipelineResources);
 
     vk::CommandBuffer CreateCommandBuffer();
     void SubmitCommand(const vk::CommandBuffer& commandBuffer, const vk::Fence& fence);

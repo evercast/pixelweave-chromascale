@@ -27,7 +27,7 @@ private:
     VulkanBuffer* mDstLocalBuffer;
     VulkanBuffer* mDstDeviceBuffer;
 
-    VulkanDevice::ComputePipelineResources mPipelineResources;
+    VulkanDevice::VideoConversionPipelineResources mPipelineResources;
     vk::CommandBuffer mCommand;
 
     std::optional<VideoFrameWrapper> mPrevSourceFrame, mPrevDstFrame;

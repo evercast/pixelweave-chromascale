@@ -39,7 +39,7 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
         vk::MemoryPropertyFlagBits::eDeviceLocal);
 
     // Create compute pipeline and bindings
-    mPipelineResources = mDevice->CreateComputePipeline(src, mSrcDeviceBuffer, dst, mDstDeviceBuffer);
+    mPipelineResources = mDevice->CreateVideoConversionPipeline(src, mSrcDeviceBuffer, dst, mDstDeviceBuffer);
     mCommand = mDevice->CreateCommandBuffer();
 
     // Record command buffer
@@ -121,7 +121,7 @@ void VulkanVideoConverter::Cleanup()
     const bool wasInitialized = mPrevSourceFrame.has_value() && mPrevDstFrame.has_value();
     if (wasInitialized) {
         mDevice->DestroyCommand(mCommand);
-        mDevice->DestroyComputePipeline(mPipelineResources);
+        mDevice->DestroyVideoConversionPipeline(mPipelineResources);
         mSrcLocalBuffer->Release();
         mSrcDeviceBuffer->Release();
         mDstDeviceBuffer->Release();

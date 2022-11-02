@@ -91,13 +91,97 @@ VulkanImage* VulkanDevice::CreateImage(PixelFormat pixelFormat, uint32_t width, 
     return VulkanImage::Create(this, pixelFormat, width, height, usage);
 }
 
-VulkanDevice::ComputePipelineResources VulkanDevice::CreateComputePipeline(
+struct SpecializationEntries {
+    uint32_t srcPictureWidth;
+    uint32_t srcPictureHeight;
+    uint32_t srcPictureStride;
+    uint32_t srcPictureChromaWidth;
+    uint32_t srcPictureChromaHeight;
+    uint32_t srcPictureChromaStride;
+    uint32_t srcPictureFormat;
+    uint32_t srcPictureSubsampleType;
+    uint32_t srcPictureUOffset;
+    uint32_t srcPictureVOffset;
+
+    uint32_t dstPictureWidth;
+    uint32_t dstPictureHeight;
+    uint32_t dstPictureStride;
+    uint32_t dstPictureChromaWidth;
+    uint32_t dstPictureChromaHeight;
+    uint32_t dstPictureChromaStride;
+    uint32_t dstPictureFormat;
+    uint32_t dstPictureSubsampleType;
+    uint32_t dstPictureUOffset;
+    uint32_t dstPictureVOffset;
+};
+
+struct SpecializationData {
+    using SpecializationBindings = std::array<vk::SpecializationMapEntry, 20>;
+    SpecializationBindings bindings;
+    SpecializationEntries data;
+};
+
+SpecializationData CreateSpecializationInfo(const VideoFrameWrapper& src, const VideoFrameWrapper& dst)
+{
+    // Load specialization data and write based on current buffer properties
+    SpecializationData specializationInfo;
+    specializationInfo.data = SpecializationEntries{
+        src.width,
+        src.height,
+        src.stride,
+        src.GetChromaWidth(),
+        src.GetChromaHeight(),
+        src.GetChromaStride(),
+        static_cast<uint32_t>(src.pixelFormat),
+        static_cast<uint32_t>(src.GetSubsampleType()),
+        src.GetUOffset(),
+        src.GetVOffset(),
+        dst.width,
+        dst.height,
+        dst.stride,
+        dst.GetChromaWidth(),
+        dst.GetChromaHeight(),
+        dst.GetChromaStride(),
+        static_cast<uint32_t>(dst.pixelFormat),
+        static_cast<uint32_t>(dst.GetSubsampleType()),
+        dst.GetUOffset(),
+        dst.GetVOffset(),
+    };
+
+    specializationInfo.bindings = SpecializationData::SpecializationBindings{
+        vk::SpecializationMapEntry(0, offsetof(SpecializationEntries, srcPictureWidth), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(1, offsetof(SpecializationEntries, srcPictureHeight), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(2, offsetof(SpecializationEntries, srcPictureStride), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(3, offsetof(SpecializationEntries, srcPictureChromaWidth), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(4, offsetof(SpecializationEntries, srcPictureChromaHeight), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(5, offsetof(SpecializationEntries, srcPictureChromaStride), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(6, offsetof(SpecializationEntries, srcPictureFormat), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(7, offsetof(SpecializationEntries, srcPictureSubsampleType), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(8, offsetof(SpecializationEntries, srcPictureUOffset), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(9, offsetof(SpecializationEntries, srcPictureVOffset), sizeof(uint32_t)),
+
+        vk::SpecializationMapEntry(10, offsetof(SpecializationEntries, dstPictureWidth), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(11, offsetof(SpecializationEntries, dstPictureHeight), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(12, offsetof(SpecializationEntries, dstPictureStride), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(13, offsetof(SpecializationEntries, dstPictureChromaWidth), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(14, offsetof(SpecializationEntries, dstPictureChromaHeight), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(15, offsetof(SpecializationEntries, dstPictureChromaStride), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(16, offsetof(SpecializationEntries, dstPictureFormat), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(17, offsetof(SpecializationEntries, dstPictureSubsampleType), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(18, offsetof(SpecializationEntries, dstPictureUOffset), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(19, offsetof(SpecializationEntries, dstPictureVOffset), sizeof(uint32_t)),
+    };
+
+    return specializationInfo;
+}
+
+VulkanDevice::VideoConversionPipelineResources VulkanDevice::CreateVideoConversionPipeline(
     const VideoFrameWrapper& src,
     const VulkanBuffer* srcBuffer,
     const VideoFrameWrapper& dst,
     const VulkanBuffer* dstBuffer)
 {
-    ComputePipelineResources resources;
+    VideoConversionPipelineResources resources;
 
     // Create pipeline layout bindings (one for srcBuffer, one for dstBuffer)
     const std::vector<vk::DescriptorSetLayoutBinding> descriptorLayoutBindings{
@@ -127,84 +211,12 @@ VulkanDevice::ComputePipelineResources VulkanDevice::CreateComputePipeline(
     resources.shader = PW_ASSERT_VK(mLogicalDevice.createShaderModule(shaderCreateInfo));
     ResourceLoader::Cleanup(shaderResource);
 
-    // Load specialization data and write based on current buffer properties
-
-    struct SpecializationEntries {
-        uint32_t srcPictureWidth;
-        uint32_t srcPictureHeight;
-        uint32_t srcPictureStride;
-        uint32_t srcPictureChromaWidth;
-        uint32_t srcPictureChromaHeight;
-        uint32_t srcPictureChromaStride;
-        uint32_t srcPictureFormat;
-        uint32_t srcPictureSubsampleType;
-        uint32_t srcPictureUOffset;
-        uint32_t srcPictureVOffset;
-
-        uint32_t dstPictureWidth;
-        uint32_t dstPictureHeight;
-        uint32_t dstPictureStride;
-        uint32_t dstPictureChromaWidth;
-        uint32_t dstPictureChromaHeight;
-        uint32_t dstPictureChromaStride;
-        uint32_t dstPictureFormat;
-        uint32_t dstPictureSubsampleType;
-        uint32_t dstPictureUOffset;
-        uint32_t dstPictureVOffset;
-    };
-
-    SpecializationEntries specializationEntries{
-        src.width,
-        src.height,
-        src.stride,
-        src.GetChromaWidth(),
-        src.GetChromaHeight(),
-        src.GetChromaStride(),
-        static_cast<uint32_t>(src.pixelFormat),
-        static_cast<uint32_t>(src.GetSubsampleType()),
-        src.GetUOffset(),
-        src.GetVOffset(),
-        dst.width,
-        dst.height,
-        dst.stride,
-        dst.GetChromaWidth(),
-        dst.GetChromaHeight(),
-        dst.GetChromaStride(),
-        static_cast<uint32_t>(dst.pixelFormat),
-        static_cast<uint32_t>(dst.GetSubsampleType()),
-        dst.GetUOffset(),
-        dst.GetVOffset(),
-    };
-
-    std::array<vk::SpecializationMapEntry, 20> specializationMap{
-        vk::SpecializationMapEntry(0, offsetof(SpecializationEntries, srcPictureWidth), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(1, offsetof(SpecializationEntries, srcPictureHeight), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(2, offsetof(SpecializationEntries, srcPictureStride), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(3, offsetof(SpecializationEntries, srcPictureChromaWidth), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(4, offsetof(SpecializationEntries, srcPictureChromaHeight), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(5, offsetof(SpecializationEntries, srcPictureChromaStride), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(6, offsetof(SpecializationEntries, srcPictureFormat), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(7, offsetof(SpecializationEntries, srcPictureSubsampleType), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(8, offsetof(SpecializationEntries, srcPictureUOffset), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(9, offsetof(SpecializationEntries, srcPictureVOffset), sizeof(uint32_t)),
-
-        vk::SpecializationMapEntry(10, offsetof(SpecializationEntries, dstPictureWidth), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(11, offsetof(SpecializationEntries, dstPictureHeight), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(12, offsetof(SpecializationEntries, dstPictureStride), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(13, offsetof(SpecializationEntries, dstPictureChromaWidth), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(14, offsetof(SpecializationEntries, dstPictureChromaHeight), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(15, offsetof(SpecializationEntries, dstPictureChromaStride), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(16, offsetof(SpecializationEntries, dstPictureFormat), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(17, offsetof(SpecializationEntries, dstPictureSubsampleType), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(18, offsetof(SpecializationEntries, dstPictureUOffset), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(19, offsetof(SpecializationEntries, dstPictureVOffset), sizeof(uint32_t)),
-    };
-
+    const SpecializationData specializationData = CreateSpecializationInfo(src, dst);
     const vk::SpecializationInfo specializationInfo = vk::SpecializationInfo()
                                                           .setDataSize(sizeof(SpecializationEntries))
-                                                          .setPData(&specializationEntries)
-                                                          .setMapEntryCount(static_cast<uint32_t>(specializationMap.size()))
-                                                          .setPMapEntries(specializationMap.data());
+                                                          .setPData(&specializationData.data)
+                                                          .setMapEntryCount(static_cast<uint32_t>(specializationData.bindings.size()))
+                                                          .setPMapEntries(specializationData.bindings.data());
 
     const vk::PipelineShaderStageCreateInfo stageCreateInfo = vk::PipelineShaderStageCreateInfo()
                                                                   .setStage(vk::ShaderStageFlagBits::eCompute)
@@ -243,7 +255,7 @@ VulkanDevice::ComputePipelineResources VulkanDevice::CreateComputePipeline(
     return resources;
 }
 
-void VulkanDevice::DestroyComputePipeline(ComputePipelineResources& pipelineResources)
+void VulkanDevice::DestroyVideoConversionPipeline(VideoConversionPipelineResources& pipelineResources)
 {
     mLogicalDevice.freeDescriptorSets(pipelineResources.descriptorPool, pipelineResources.descriptorSet);
     mLogicalDevice.destroyDescriptorPool(pipelineResources.descriptorPool);
