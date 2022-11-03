@@ -53,6 +53,8 @@ const uint SRC_PICTURE_BLOCK_COUNT_Y = (SRC_PICTURE_HEIGHT + 1) / 2;
 const uint DST_PICTURE_BLOCK_COUNT_X = (DST_PICTURE_WIDTH + 1) / 2;
 const uint DST_PICTURE_BLOCK_COUNT_Y = (DST_PICTURE_HEIGHT + 1) / 2;
 
+const uvec2 BlockSize = uvec2(2,2);
+
 const bool needsScaling = SRC_PICTURE_WIDTH != DST_PICTURE_WIDTH || SRC_PICTURE_HEIGHT != DST_PICTURE_HEIGHT;
 
 layout(local_size_x = LOCAL_WORKGROUP_SIZE_X, local_size_y = LOCAL_WORKGROUP_SIZE_Y) in;
@@ -97,7 +99,7 @@ struct RGBBlock {
 YUV420Block convert422To420(in YUV422Block source) {
     YUV420Block result;
     [[unroll]]
-    for (uint i = 0; i < 4; i += 1) {
+    for (uint i = 0; i < BlockSize.x * BlockSize.y; i += 1) {
         result.ySamples[i] = source.ySamples[i];
     }
     result.uSample = (source.uSamples[0] + source.uSamples[1]) / 2;
@@ -108,7 +110,7 @@ YUV420Block convert422To420(in YUV422Block source) {
 YUV420Block convert444To420(in YUV444Block source) {
     YUV420Block result;
     [[unroll]]
-    for (uint i = 0; i < 4; i += 1) {
+    for (uint i = 0; i < BlockSize.x * BlockSize.y; i += 1) {
         result.ySamples[i] = source.ySamples[i];
     }
     result.uSample = (source.uSamples[0] + source.uSamples[1] + source.uSamples[2] + source.uSamples[3]) / 4;
@@ -119,7 +121,7 @@ YUV420Block convert444To420(in YUV444Block source) {
 YUV422Block convert420To422(in YUV420Block source) {
     YUV422Block result;
     [[unroll]]
-    for (uint i = 0; i < 4; i += 1) {
+    for (uint i = 0; i < BlockSize.x * BlockSize.y; i += 1) {
         result.ySamples[i] = source.ySamples[i];
     }
     [[unroll]]
@@ -133,7 +135,7 @@ YUV422Block convert420To422(in YUV420Block source) {
 YUV422Block convert444To422(in YUV444Block source) {
     YUV422Block result;
     [[unroll]]
-    for (uint i = 0; i < 4; i += 1) {
+    for (uint i = 0; i < BlockSize.x * BlockSize.y; i += 1) {
         result.ySamples[i] = source.ySamples[i];
     }
     result.uSamples[0] = (source.uSamples[0] + source.uSamples[1]) / 2;
@@ -146,7 +148,7 @@ YUV422Block convert444To422(in YUV444Block source) {
 YUV444Block convert420To444(in YUV420Block source) {
     YUV444Block result;
     [[unroll]]
-    for (uint i = 0; i < 4; i += 1) {
+    for (uint i = 0; i < BlockSize.x * BlockSize.y; i += 1) {
         result.ySamples[i] = source.ySamples[i];
         result.uSamples[i] = source.uSample;
         result.vSamples[i] = source.vSample;
@@ -157,7 +159,7 @@ YUV444Block convert420To444(in YUV420Block source) {
 YUV444Block convert422To444(in YUV422Block source) {
     YUV444Block result;
     [[unroll]]
-    for (uint i = 0; i < 4; i += 1) {
+    for (uint i = 0; i < BlockSize.x * BlockSize.y; i += 1) {
         result.ySamples[i] = source.ySamples[i];
         result.uSamples[i] = source.uSamples[i/2];
         result.vSamples[i] = source.vSamples[i/2];
@@ -169,7 +171,7 @@ YUV444Block convert422To444(in YUV422Block source) {
 YUV444Block convertRGBTo444(in RGBBlock source) {
     YUV444Block result;
     [[unroll]]
-    for (uint i = 0; i < 4; i += 1) {
+    for (uint i = 0; i < BlockSize.x * BlockSize.y; i += 1) {
         const int32_t r = int32_t(source.rSamples[i]);
         const int32_t g = int32_t(source.gSamples[i]);
         const int32_t b = int32_t(source.bSamples[i]);
@@ -242,8 +244,8 @@ YUV444Block read444SampleFrom444Buffer(const uvec2 blockCoords) {
     if (SRC_PICTURE_FORMAT == PixelFormatInterleaved8BitBGRA) {
         RGBBlock rgbBlock;
         [[unroll]]
-        for (int i = 0; i < 2; i += 1) {
-            for (int j = 0; j < 2; j += 1) {
+        for (int i = 0; i < BlockSize.x; i += 1) {
+            for (int j = 0; j < BlockSize.y; j += 1) {
                 uvec2 lumaCoords = uvec2(blockCoords.x * 2 + i, blockCoords.y * 2 + j);
                 lumaCoords = clamp(lumaCoords, uvec2(0), uvec2(SRC_PICTURE_WIDTH - 1, SRC_PICTURE_HEIGHT - 1));
                 const uint32_t pixelIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x * 4;
@@ -257,8 +259,8 @@ YUV444Block read444SampleFrom444Buffer(const uvec2 blockCoords) {
     } else if (SRC_PICTURE_FORMAT == PixelFormatInterleaved8BitRGBA) {
         RGBBlock rgbBlock;
         [[unroll]]
-        for (int i = 0; i < 2; i += 1) {
-            for (int j = 0; j < 2; j += 1) {
+        for (int i = 0; i < BlockSize.x; i += 1) {
+            for (int j = 0; j < BlockSize.y; j += 1) {
                 uvec2 lumaCoords = uvec2(blockCoords.x * 2 + i, blockCoords.y * 2 + j);
                 lumaCoords = clamp(lumaCoords, uvec2(0), uvec2(SRC_PICTURE_WIDTH - 1, SRC_PICTURE_HEIGHT - 1));
                 const uint32_t pixelIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x * 4;
@@ -323,6 +325,8 @@ YUV444Block read444Sample(const uvec2 blockCoords) {
     return resultBlock;
 }
 
+// Nearest sampling
+
 uvec2 getNearestBlockCoords(const vec2 normalizedBlockCoords) {
     vec2 srcChromaBlockCount = vec2(float(SRC_PICTURE_BLOCK_COUNT_X), float(SRC_PICTURE_BLOCK_COUNT_Y));
     vec2 readBlockCoords = floor(normalizedBlockCoords * srcChromaBlockCount + vec2(0.5));
@@ -340,6 +344,78 @@ YUV422Block read422SampleNearest(const vec2 normalizedBlockCoords) {
 
 YUV444Block read444SampleNearest(const vec2 normalizedBlockCoords) {
     return read444Sample(getNearestBlockCoords(normalizedBlockCoords));
+}
+
+// Bilinear sampling
+
+YUV444Block read444Bilinear(const vec2 normalizedBlockCoords) {
+    YUV444Block result;
+    [[unroll]]
+    for (int i = 0; i < BlockSize.x; i += 1) {
+        [[unroll]]
+        for (int j = 0; j < BlockSize.y; j += 1) {
+            const vec2 imageSize = vec2(SRC_PICTURE_WIDTH, SRC_PICTURE_HEIGHT);
+            const vec2 pixelSize = vec2(1.0) / imageSize;
+            const vec2 normalizedLumaCoords = normalizedBlockCoords + (pixelSize * vec2(i, j));
+            const vec2 pixelDistance = fract(normalizedBlockCoords * imageSize);
+            const vec2 lumaCoord = normalizedLumaCoords * imageSize;
+
+            const vec2 topLeftCoord = lumaCoord;
+            const vec2 topRightCoord = lumaCoord + vec2(pixelSize.x, 0.0);
+            const vec2 bottomLeftCoord = lumaCoord + vec2(0.0, pixelSize.y);
+            const vec2 bottomRightCoord = lumaCoord + pixelSize;
+
+            YUV444Block topLeftBlock = read444Sample(uvec2(round(topLeftCoord / vec2(BlockSize))));
+            YUV444Block topRightBlock = read444Sample(uvec2(round(topRightCoord / vec2(BlockSize))));
+            YUV444Block bottomLeftBlock = read444Sample(uvec2(round(bottomLeftCoord / vec2(BlockSize))));
+            YUV444Block bottomRightBlock = read444Sample(uvec2(round(bottomRightCoord / vec2(BlockSize))));
+
+            uvec2 topLeftPixelLocalCoord = uvec2(round(topLeftCoord)) % BlockSize;
+            uvec2 topRightPixelLocalCoord = uvec2(round(topRightCoord)) % BlockSize;
+            uvec2 bottomLeftPixelLocalCoord = uvec2(round(bottomLeftCoord)) % BlockSize;
+            uvec2 bottomRightPixelLocalCoord = uvec2(round(bottomRightCoord)) % BlockSize;
+            
+            // Interpolate and write Y sample
+            {
+                vec4 ySamples = vec4(
+                    float(topLeftBlock.ySamples[topLeftPixelLocalCoord.y * BlockSize.y + topLeftPixelLocalCoord.x]),
+                    float(topLeftBlock.ySamples[topRightPixelLocalCoord.y * BlockSize.y + topRightPixelLocalCoord.x]),
+                    float(topLeftBlock.ySamples[bottomLeftPixelLocalCoord.y * BlockSize.y + bottomLeftPixelLocalCoord.x]),
+                    float(topLeftBlock.ySamples[bottomRightPixelLocalCoord.y * BlockSize.y + bottomRightPixelLocalCoord.x])
+                );
+                const float topXInterp = mix(ySamples.x, ySamples.y, pixelDistance.x);
+                const float bottomXInterp = mix(ySamples.z, ySamples.w, pixelDistance.x);
+                result.ySamples[j * BlockSize.y + i] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
+            }
+
+            // Interpolate and write U sample
+            {
+                vec4 uSamples = vec4(
+                    float(topLeftBlock.uSamples[topLeftPixelLocalCoord.y * BlockSize.y + topLeftPixelLocalCoord.x]),
+                    float(topLeftBlock.uSamples[topRightPixelLocalCoord.y * BlockSize.y + topRightPixelLocalCoord.x]),
+                    float(topLeftBlock.uSamples[bottomLeftPixelLocalCoord.y * BlockSize.y + bottomLeftPixelLocalCoord.x]),
+                    float(topLeftBlock.uSamples[bottomRightPixelLocalCoord.y * BlockSize.y + bottomRightPixelLocalCoord.x])
+                );
+                const float topXInterp = mix(uSamples.x, uSamples.y, pixelDistance.x);
+                const float bottomXInterp = mix(uSamples.z, uSamples.w, pixelDistance.x);
+                result.uSamples[j * BlockSize.y + i] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
+            }
+
+            // Interpolate and write V sample
+            {
+                vec4 vSamples = vec4(
+                    float(topLeftBlock.vSamples[topLeftPixelLocalCoord.y * BlockSize.y + topLeftPixelLocalCoord.x]),
+                    float(topLeftBlock.vSamples[topRightPixelLocalCoord.y * BlockSize.y + topRightPixelLocalCoord.x]),
+                    float(topLeftBlock.vSamples[bottomLeftPixelLocalCoord.y * BlockSize.y + bottomLeftPixelLocalCoord.x]),
+                    float(topLeftBlock.vSamples[bottomRightPixelLocalCoord.y * BlockSize.y + bottomRightPixelLocalCoord.x])
+                );
+                const float topXInterp = mix(vSamples.x, vSamples.y, pixelDistance.x);
+                const float bottomXInterp = mix(vSamples.z, vSamples.w, pixelDistance.x);
+                result.vSamples[j * BlockSize.y + i] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
+            }
+        }
+    }
+    return result;
 }
 
 // Write functions, to store into the result buffer
@@ -485,7 +561,7 @@ void main() {
     } else if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV444) {
         YUV444Block resultBlock;
         if (needsScaling) {
-            resultBlock = read444SampleNearest(normalizedBlockCoords);
+            resultBlock = read444Bilinear(normalizedBlockCoords);
         } else {
             resultBlock = read444Sample(blockCoords);
         }

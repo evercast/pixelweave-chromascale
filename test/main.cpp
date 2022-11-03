@@ -54,6 +54,17 @@ PixelWeave::VideoFrameWrapper GetPlanar422Frame(uint32_t width, uint32_t height)
     return VideoFrameWrapper{buffer, stride, width, height, PixelWeave::PixelFormat::Planar8Bit422};
 }
 
+PixelWeave::VideoFrameWrapper GetPlanar444Frame(uint32_t width, uint32_t height)
+{
+    const uint32_t stride = width;
+    const uint32_t bufferSize = height * stride * 3;
+    uint8_t* buffer = new uint8_t[bufferSize];
+    for (uint32_t bufferIndex = 0; bufferIndex < bufferSize; ++bufferIndex) {
+        buffer[bufferIndex] = 0;
+    }
+    return VideoFrameWrapper{buffer, stride, width, height, PixelWeave::PixelFormat::Planar8Bit444};
+}
+
 PixelWeave::VideoFrameWrapper GetPlanarYV12Frame(uint32_t width, uint32_t height)
 {
     const uint32_t chromaWidth = (width + 1) / 2;
@@ -96,12 +107,12 @@ int main()
 {
     auto [result, device] = PixelWeave::Device::Create();
     if (result == PixelWeave::Result::Success) {
-        constexpr uint32_t srcWidth = 1920;
-        constexpr uint32_t srcHeight = 1080;
+        constexpr uint32_t srcWidth = 128;
+        constexpr uint32_t srcHeight = 128;
         VideoFrameWrapper srcFrame = GetPlanarNV12Frame(srcWidth, srcHeight);
-        constexpr uint32_t dstWidth = 1920;
-        constexpr uint32_t dstHeight = 1080;
-        VideoFrameWrapper dstFrame = GetPlanar420Frame(dstWidth, dstHeight);
+        constexpr uint32_t dstWidth = 32;
+        constexpr uint32_t dstHeight = 32;
+        VideoFrameWrapper dstFrame = GetPlanar444Frame(dstWidth, dstHeight);
 
         const auto videoConverter = device->CreateVideoConverter();
         for (int i = 0; i < 10; ++i) {
