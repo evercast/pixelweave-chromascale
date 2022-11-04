@@ -334,19 +334,166 @@ uvec2 getNearestBlockCoords(const vec2 normalizedBlockCoords) {
     return uvec2(readBlockCoords);
 }
 
-YUV420Block read420SampleNearest(const vec2 normalizedBlockCoords) {
+YUV420Block read420SampleNearest(const uvec2 blockCoords) {
+    const vec2 normalizedBlockCoords = vec2(float(blockCoords.x) / float(DST_PICTURE_BLOCK_COUNT_X), float(blockCoords.y) / float(DST_PICTURE_BLOCK_COUNT_Y));
     return read420Sample(getNearestBlockCoords(normalizedBlockCoords));
 }
 
-YUV422Block read422SampleNearest(const vec2 normalizedBlockCoords) {
+YUV422Block read422SampleNearest(const uvec2 blockCoords) {
+    const vec2 normalizedBlockCoords = vec2(float(blockCoords.x) / float(DST_PICTURE_BLOCK_COUNT_X), float(blockCoords.y) / float(DST_PICTURE_BLOCK_COUNT_Y));
     return read422Sample(getNearestBlockCoords(normalizedBlockCoords));
 }
 
-YUV444Block read444SampleNearest(const vec2 normalizedBlockCoords) {
+YUV444Block read444SampleNearest(const uvec2 blockCoords) {
+    const vec2 normalizedBlockCoords = vec2(float(blockCoords.x) / float(DST_PICTURE_BLOCK_COUNT_X), float(blockCoords.y) / float(DST_PICTURE_BLOCK_COUNT_Y));
     return read444Sample(getNearestBlockCoords(normalizedBlockCoords));
 }
 
 // Bilinear sampling
+
+YUV420Block read420Bilinear(const uvec2 blockCoords) {
+    YUV420Block result;
+    const uvec2 srcImageSize = uvec2(SRC_PICTURE_WIDTH, SRC_PICTURE_HEIGHT);
+    const uvec2 dstImageSize = uvec2(DST_PICTURE_WIDTH, DST_PICTURE_HEIGHT);
+    [[unroll]]
+    for (int i = 0; i < BlockSize.x; i += 1) {
+        [[unroll]]
+        for (int j = 0; j < BlockSize.y; j += 1) {
+            const uvec2 dstLumaCoords = blockCoords * BlockSize + uvec2(i,j);
+            const vec2 pixelSize = vec2(1.0) / vec2(dstImageSize);
+            const vec2 normalizedLumaCoords = dstLumaCoords / vec2(dstImageSize);
+            const vec2 srcLumaCoords = normalizedLumaCoords * vec2(srcImageSize);
+            const vec2 pixelDistance = fract(normalizedLumaCoords * srcImageSize);
+
+            const vec2 topLeftCoord = srcLumaCoords;
+            const vec2 topRightCoord = srcLumaCoords + vec2(pixelSize.x, 0.0);
+            const vec2 bottomLeftCoord = srcLumaCoords + vec2(0.0, pixelSize.y);
+            const vec2 bottomRightCoord = srcLumaCoords + pixelSize;
+
+            YUV420Block topLeftBlock = read420Sample(uvec2(topLeftCoord / vec2(BlockSize)));
+            YUV420Block topRightBlock = read420Sample(uvec2(topRightCoord / vec2(BlockSize)));
+            YUV420Block bottomLeftBlock = read420Sample(uvec2(bottomLeftCoord / vec2(BlockSize)));
+            YUV420Block bottomRightBlock = read420Sample(uvec2(bottomRightCoord / vec2(BlockSize)));
+
+            uvec2 topLeftPixelLocalCoord = uvec2(topLeftCoord) % BlockSize;
+            uvec2 topRightPixelLocalCoord = uvec2(topRightCoord) % BlockSize;
+            uvec2 bottomLeftPixelLocalCoord = uvec2(bottomLeftCoord) % BlockSize;
+            uvec2 bottomRightPixelLocalCoord = uvec2(bottomRightCoord) % BlockSize;
+            
+            // Interpolate and write Y sample
+            {
+                vec4 ySamples = vec4(
+                    float(topLeftBlock.ySamples[topLeftPixelLocalCoord.y * BlockSize.y + topLeftPixelLocalCoord.x]),
+                    float(topRightBlock.ySamples[topRightPixelLocalCoord.y * BlockSize.y + topRightPixelLocalCoord.x]),
+                    float(bottomLeftBlock.ySamples[bottomLeftPixelLocalCoord.y * BlockSize.y + bottomLeftPixelLocalCoord.x]),
+                    float(bottomRightBlock.ySamples[bottomRightPixelLocalCoord.y * BlockSize.y + bottomRightPixelLocalCoord.x])
+                );
+                const float topXInterp = mix(ySamples.x, ySamples.y, pixelDistance.x);
+                const float bottomXInterp = mix(ySamples.z, ySamples.w, pixelDistance.x);
+                result.ySamples[j * BlockSize.y + i] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
+            }
+
+            // Interpolate and write U sample
+            if (i == 0 && j == 0) {
+                vec4 uSamples = vec4(
+                    float(topLeftBlock.uSample),
+                    float(topRightBlock.uSample),
+                    float(bottomLeftBlock.uSample),
+                    float(bottomRightBlock.uSample)
+                );
+                const float topXInterp = mix(uSamples.x, uSamples.y, pixelDistance.x);
+                const float bottomXInterp = mix(uSamples.z, uSamples.w, pixelDistance.x);
+                result.uSample = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
+            }
+
+            // Interpolate and write V sample
+            if (i == 0 && j == 0) {
+                vec4 vSamples = vec4(
+                    float(topLeftBlock.vSample),
+                    float(topRightBlock.vSample),
+                    float(bottomLeftBlock.vSample),
+                    float(bottomRightBlock.vSample)
+                );
+                const float topXInterp = mix(vSamples.x, vSamples.y, pixelDistance.x);
+                const float bottomXInterp = mix(vSamples.z, vSamples.w, pixelDistance.x);
+                result.vSample = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
+            }
+        }
+    }
+    return result;
+}
+
+YUV422Block read422Bilinear(const uvec2 blockCoords) {
+    YUV422Block result;
+    const uvec2 srcImageSize = uvec2(SRC_PICTURE_WIDTH, SRC_PICTURE_HEIGHT);
+    const uvec2 dstImageSize = uvec2(DST_PICTURE_WIDTH, DST_PICTURE_HEIGHT);
+    [[unroll]]
+    for (int i = 0; i < BlockSize.x; i += 1) {
+        [[unroll]]
+        for (int j = 0; j < BlockSize.y; j += 1) {
+            const uvec2 dstLumaCoords = blockCoords * BlockSize + uvec2(i,j);
+            const vec2 pixelSize = vec2(1.0) / vec2(dstImageSize);
+            const vec2 normalizedLumaCoords = dstLumaCoords / vec2(dstImageSize);
+            const vec2 srcLumaCoords = normalizedLumaCoords * vec2(srcImageSize);
+            const vec2 pixelDistance = fract(normalizedLumaCoords * srcImageSize);
+
+            const vec2 topLeftCoord = srcLumaCoords;
+            const vec2 topRightCoord = srcLumaCoords + vec2(pixelSize.x, 0.0);
+            const vec2 bottomLeftCoord = srcLumaCoords + vec2(0.0, pixelSize.y);
+            const vec2 bottomRightCoord = srcLumaCoords + pixelSize;
+
+            YUV422Block topLeftBlock = read422Sample(uvec2(topLeftCoord / vec2(BlockSize)));
+            YUV422Block topRightBlock = read422Sample(uvec2(topRightCoord / vec2(BlockSize)));
+            YUV422Block bottomLeftBlock = read422Sample(uvec2(bottomLeftCoord / vec2(BlockSize)));
+            YUV422Block bottomRightBlock = read422Sample(uvec2(bottomRightCoord / vec2(BlockSize)));
+
+            uvec2 topLeftPixelLocalCoord = uvec2(topLeftCoord) % BlockSize;
+            uvec2 topRightPixelLocalCoord = uvec2(topRightCoord) % BlockSize;
+            uvec2 bottomLeftPixelLocalCoord = uvec2(bottomLeftCoord) % BlockSize;
+            uvec2 bottomRightPixelLocalCoord = uvec2(bottomRightCoord) % BlockSize;
+            
+            // Interpolate and write Y sample
+            {
+                vec4 ySamples = vec4(
+                    float(topLeftBlock.ySamples[topLeftPixelLocalCoord.y * BlockSize.y + topLeftPixelLocalCoord.x]),
+                    float(topRightBlock.ySamples[topRightPixelLocalCoord.y * BlockSize.y + topRightPixelLocalCoord.x]),
+                    float(bottomLeftBlock.ySamples[bottomLeftPixelLocalCoord.y * BlockSize.y + bottomLeftPixelLocalCoord.x]),
+                    float(bottomRightBlock.ySamples[bottomRightPixelLocalCoord.y * BlockSize.y + bottomRightPixelLocalCoord.x])
+                );
+                const float topXInterp = mix(ySamples.x, ySamples.y, pixelDistance.x);
+                const float bottomXInterp = mix(ySamples.z, ySamples.w, pixelDistance.x);
+                result.ySamples[j * BlockSize.y + i] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
+            }
+
+            // Interpolate and write U sample
+            if (i == 0) {
+                vec4 uSamples = vec4(
+                    float(topLeftBlock.uSamples[topLeftPixelLocalCoord.y]),
+                    float(topRightBlock.uSamples[topRightPixelLocalCoord.y]),
+                    float(bottomLeftBlock.uSamples[bottomLeftPixelLocalCoord.y]),
+                    float(bottomRightBlock.uSamples[bottomRightPixelLocalCoord.y])
+                );
+                const float topXInterp = mix(uSamples.x, uSamples.y, pixelDistance.x);
+                const float bottomXInterp = mix(uSamples.z, uSamples.w, pixelDistance.x);
+                result.uSamples[j] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
+            }
+
+            // Interpolate and write V sample
+            if (i == 0) {
+                vec4 vSamples = vec4(
+                    float(topLeftBlock.vSamples[topLeftPixelLocalCoord.y]),
+                    float(topRightBlock.vSamples[topRightPixelLocalCoord.y]),
+                    float(bottomLeftBlock.vSamples[bottomLeftPixelLocalCoord.y]),
+                    float(bottomRightBlock.vSamples[bottomRightPixelLocalCoord.y])
+                );
+                const float topXInterp = mix(vSamples.x, vSamples.y, pixelDistance.x);
+                const float bottomXInterp = mix(vSamples.z, vSamples.w, pixelDistance.x);
+                result.vSamples[j] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
+            }
+        }
+    }
+    return result;
+}
 
 YUV444Block read444Bilinear(const uvec2 blockCoords) {
     YUV444Block result;
@@ -381,9 +528,9 @@ YUV444Block read444Bilinear(const uvec2 blockCoords) {
             {
                 vec4 ySamples = vec4(
                     float(topLeftBlock.ySamples[topLeftPixelLocalCoord.y * BlockSize.y + topLeftPixelLocalCoord.x]),
-                    float(topLeftBlock.ySamples[topRightPixelLocalCoord.y * BlockSize.y + topRightPixelLocalCoord.x]),
-                    float(topLeftBlock.ySamples[bottomLeftPixelLocalCoord.y * BlockSize.y + bottomLeftPixelLocalCoord.x]),
-                    float(topLeftBlock.ySamples[bottomRightPixelLocalCoord.y * BlockSize.y + bottomRightPixelLocalCoord.x])
+                    float(topRightBlock.ySamples[topRightPixelLocalCoord.y * BlockSize.y + topRightPixelLocalCoord.x]),
+                    float(bottomLeftBlock.ySamples[bottomLeftPixelLocalCoord.y * BlockSize.y + bottomLeftPixelLocalCoord.x]),
+                    float(bottomRightBlock.ySamples[bottomRightPixelLocalCoord.y * BlockSize.y + bottomRightPixelLocalCoord.x])
                 );
                 const float topXInterp = mix(ySamples.x, ySamples.y, pixelDistance.x);
                 const float bottomXInterp = mix(ySamples.z, ySamples.w, pixelDistance.x);
@@ -394,9 +541,9 @@ YUV444Block read444Bilinear(const uvec2 blockCoords) {
             {
                 vec4 uSamples = vec4(
                     float(topLeftBlock.uSamples[topLeftPixelLocalCoord.y * BlockSize.y + topLeftPixelLocalCoord.x]),
-                    float(topLeftBlock.uSamples[topRightPixelLocalCoord.y * BlockSize.y + topRightPixelLocalCoord.x]),
-                    float(topLeftBlock.uSamples[bottomLeftPixelLocalCoord.y * BlockSize.y + bottomLeftPixelLocalCoord.x]),
-                    float(topLeftBlock.uSamples[bottomRightPixelLocalCoord.y * BlockSize.y + bottomRightPixelLocalCoord.x])
+                    float(topRightBlock.uSamples[topRightPixelLocalCoord.y * BlockSize.y + topRightPixelLocalCoord.x]),
+                    float(bottomLeftBlock.uSamples[bottomLeftPixelLocalCoord.y * BlockSize.y + bottomLeftPixelLocalCoord.x]),
+                    float(bottomRightBlock.uSamples[bottomRightPixelLocalCoord.y * BlockSize.y + bottomRightPixelLocalCoord.x])
                 );
                 const float topXInterp = mix(uSamples.x, uSamples.y, pixelDistance.x);
                 const float bottomXInterp = mix(uSamples.z, uSamples.w, pixelDistance.x);
@@ -407,9 +554,9 @@ YUV444Block read444Bilinear(const uvec2 blockCoords) {
             {
                 vec4 vSamples = vec4(
                     float(topLeftBlock.vSamples[topLeftPixelLocalCoord.y * BlockSize.y + topLeftPixelLocalCoord.x]),
-                    float(topLeftBlock.vSamples[topRightPixelLocalCoord.y * BlockSize.y + topRightPixelLocalCoord.x]),
-                    float(topLeftBlock.vSamples[bottomLeftPixelLocalCoord.y * BlockSize.y + bottomLeftPixelLocalCoord.x]),
-                    float(topLeftBlock.vSamples[bottomRightPixelLocalCoord.y * BlockSize.y + bottomRightPixelLocalCoord.x])
+                    float(topRightBlock.vSamples[topRightPixelLocalCoord.y * BlockSize.y + topRightPixelLocalCoord.x]),
+                    float(bottomLeftBlock.vSamples[bottomLeftPixelLocalCoord.y * BlockSize.y + bottomLeftPixelLocalCoord.x]),
+                    float(bottomRightBlock.vSamples[bottomRightPixelLocalCoord.y * BlockSize.y + bottomRightPixelLocalCoord.x])
                 );
                 const float topXInterp = mix(vSamples.x, vSamples.y, pixelDistance.x);
                 const float bottomXInterp = mix(vSamples.z, vSamples.w, pixelDistance.x);
@@ -540,13 +687,12 @@ void write444Sample(const uvec2 blockCoords, in YUV444Block resultBlock) {
 */
 void main() {
     const uvec2 blockCoords = gl_GlobalInvocationID.xy;
-    const vec2 normalizedBlockCoords = vec2(float(blockCoords.x) / float(DST_PICTURE_BLOCK_COUNT_X), float(blockCoords.y) / float(DST_PICTURE_BLOCK_COUNT_Y));
     if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB) {
         // TODO
     } else if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV420) {
         YUV420Block resultBlock;
         if (needsScaling) {
-            resultBlock = read420SampleNearest(normalizedBlockCoords);
+            resultBlock = read420Bilinear(blockCoords);
         } else {
             resultBlock = read420Sample(blockCoords);
         }
@@ -554,7 +700,7 @@ void main() {
     } else if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV422) {
         YUV422Block resultBlock;
         if (needsScaling) {
-            resultBlock = read422SampleNearest(normalizedBlockCoords);
+           resultBlock = read422Bilinear(blockCoords);
         } else {
             resultBlock = read422Sample(blockCoords);
         }
