@@ -348,32 +348,34 @@ YUV444Block read444SampleNearest(const vec2 normalizedBlockCoords) {
 
 // Bilinear sampling
 
-YUV444Block read444Bilinear(const vec2 normalizedBlockCoords) {
+YUV444Block read444Bilinear(const uvec2 blockCoords) {
     YUV444Block result;
+    const uvec2 srcImageSize = uvec2(SRC_PICTURE_WIDTH, SRC_PICTURE_HEIGHT);
+    const uvec2 dstImageSize = uvec2(DST_PICTURE_WIDTH, DST_PICTURE_HEIGHT);
     [[unroll]]
     for (int i = 0; i < BlockSize.x; i += 1) {
         [[unroll]]
         for (int j = 0; j < BlockSize.y; j += 1) {
-            const vec2 imageSize = vec2(SRC_PICTURE_WIDTH, SRC_PICTURE_HEIGHT);
-            const vec2 pixelSize = vec2(1.0) / imageSize;
-            const vec2 normalizedLumaCoords = normalizedBlockCoords + (pixelSize * vec2(i, j));
-            const vec2 pixelDistance = fract(normalizedBlockCoords * imageSize);
-            const vec2 lumaCoord = normalizedLumaCoords * imageSize;
+            const uvec2 dstLumaCoords = blockCoords * BlockSize + uvec2(i,j);
+            const vec2 pixelSize = vec2(1.0) / vec2(dstImageSize);
+            const vec2 normalizedLumaCoords = dstLumaCoords / vec2(dstImageSize);
+            const vec2 srcLumaCoords = normalizedLumaCoords * vec2(srcImageSize);
+            const vec2 pixelDistance = fract(normalizedLumaCoords * srcImageSize);
 
-            const vec2 topLeftCoord = lumaCoord;
-            const vec2 topRightCoord = lumaCoord + vec2(pixelSize.x, 0.0);
-            const vec2 bottomLeftCoord = lumaCoord + vec2(0.0, pixelSize.y);
-            const vec2 bottomRightCoord = lumaCoord + pixelSize;
+            const vec2 topLeftCoord = srcLumaCoords;
+            const vec2 topRightCoord = srcLumaCoords + vec2(pixelSize.x, 0.0);
+            const vec2 bottomLeftCoord = srcLumaCoords + vec2(0.0, pixelSize.y);
+            const vec2 bottomRightCoord = srcLumaCoords + pixelSize;
 
-            YUV444Block topLeftBlock = read444Sample(uvec2(round(topLeftCoord / vec2(BlockSize))));
-            YUV444Block topRightBlock = read444Sample(uvec2(round(topRightCoord / vec2(BlockSize))));
-            YUV444Block bottomLeftBlock = read444Sample(uvec2(round(bottomLeftCoord / vec2(BlockSize))));
-            YUV444Block bottomRightBlock = read444Sample(uvec2(round(bottomRightCoord / vec2(BlockSize))));
+            YUV444Block topLeftBlock = read444Sample(uvec2(topLeftCoord / vec2(BlockSize)));
+            YUV444Block topRightBlock = read444Sample(uvec2(topRightCoord / vec2(BlockSize)));
+            YUV444Block bottomLeftBlock = read444Sample(uvec2(bottomLeftCoord / vec2(BlockSize)));
+            YUV444Block bottomRightBlock = read444Sample(uvec2(bottomRightCoord / vec2(BlockSize)));
 
-            uvec2 topLeftPixelLocalCoord = uvec2(round(topLeftCoord)) % BlockSize;
-            uvec2 topRightPixelLocalCoord = uvec2(round(topRightCoord)) % BlockSize;
-            uvec2 bottomLeftPixelLocalCoord = uvec2(round(bottomLeftCoord)) % BlockSize;
-            uvec2 bottomRightPixelLocalCoord = uvec2(round(bottomRightCoord)) % BlockSize;
+            uvec2 topLeftPixelLocalCoord = uvec2(topLeftCoord) % BlockSize;
+            uvec2 topRightPixelLocalCoord = uvec2(topRightCoord) % BlockSize;
+            uvec2 bottomLeftPixelLocalCoord = uvec2(bottomLeftCoord) % BlockSize;
+            uvec2 bottomRightPixelLocalCoord = uvec2(bottomRightCoord) % BlockSize;
             
             // Interpolate and write Y sample
             {
@@ -538,8 +540,7 @@ void write444Sample(const uvec2 blockCoords, in YUV444Block resultBlock) {
 */
 void main() {
     const uvec2 blockCoords = gl_GlobalInvocationID.xy;
-    vec2 normalizedBlockCoords = vec2(float(blockCoords.x) / float(DST_PICTURE_BLOCK_COUNT_X), float(blockCoords.y) / float(DST_PICTURE_BLOCK_COUNT_Y));
-    // Read UYVY samples from source buffer
+    const vec2 normalizedBlockCoords = vec2(float(blockCoords.x) / float(DST_PICTURE_BLOCK_COUNT_X), float(blockCoords.y) / float(DST_PICTURE_BLOCK_COUNT_Y));
     if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB) {
         // TODO
     } else if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV420) {
@@ -561,7 +562,7 @@ void main() {
     } else if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV444) {
         YUV444Block resultBlock;
         if (needsScaling) {
-            resultBlock = read444Bilinear(normalizedBlockCoords);
+            resultBlock = read444Bilinear(blockCoords);
         } else {
             resultBlock = read444Sample(blockCoords);
         }
