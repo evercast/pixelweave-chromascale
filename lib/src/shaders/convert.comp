@@ -168,6 +168,7 @@ YUV444Block convert422To444(in YUV422Block source) {
     return result;
 }
 
+// https://www.itu.int/rec/R-REC-BT.709/es
 u32vec3 rgbToYUV(in i32vec3 rgb) {
     u32vec3 yuv;
     // Since we're doing math in 2 ^ 16 range
@@ -180,7 +181,6 @@ u32vec3 rgbToYUV(in i32vec3 rgb) {
     return yuv;
 }
 
-// https://www.itu.int/rec/R-REC-BT.709/es
 YUV444Block convertRGBTo444(in RGBBlock source) {
     YUV444Block result;
     [[unroll]]
@@ -232,8 +232,8 @@ YUV420Block read420SampleFrom420Buffer(const uvec2 blockCoords) {
 }
 
 YUV422Block read422SampleFrom422Buffer(const uvec2 blockCoords) {
-    YUV422Block resultBlock;
     if (SRC_PICTURE_FORMAT == PixelFormatInterleaved8BitUYVY) {
+        YUV422Block resultBlock;
         [[unroll]]
         for (uint y = 0; y < 2; y += 1) {
             uvec2 lumaCoords = uvec2(blockCoords.x * 2, blockCoords.y * 2 + y);
@@ -245,12 +245,11 @@ YUV422Block read422SampleFrom422Buffer(const uvec2 blockCoords) {
             resultBlock.vSamples[y] = srcPicture.pBuffer[srcBufferIndex + 2];
             resultBlock.ySamples[y * 2 + 1] = srcPicture.pBuffer[srcBufferIndex + 3];
         }
+        return resultBlock;
     }
-    return resultBlock;
 }
 
 YUV444Block read444SampleFrom444Buffer(const uvec2 blockCoords) {
-    YUV444Block resultBlock;
     if (SRC_PICTURE_FORMAT == PixelFormatInterleaved8BitBGRA) {
         RGBBlock rgbBlock;
         [[unroll]]
@@ -265,7 +264,7 @@ YUV444Block read444SampleFrom444Buffer(const uvec2 blockCoords) {
                 rgbBlock.bSamples[inBlockIndex] = srcPicture.pBuffer[pixelIndex + 0];
             }
         }
-        resultBlock = convertRGBTo444(rgbBlock);
+        return convertRGBTo444(rgbBlock);
     } else if (SRC_PICTURE_FORMAT == PixelFormatInterleaved8BitRGBA) {
         RGBBlock rgbBlock;
         [[unroll]]
@@ -280,59 +279,52 @@ YUV444Block read444SampleFrom444Buffer(const uvec2 blockCoords) {
                 rgbBlock.bSamples[inBlockIndex] = srcPicture.pBuffer[pixelIndex + 2];
             }
         }
-        resultBlock = convertRGBTo444(rgbBlock);
+        return convertRGBTo444(rgbBlock);
     }
-    return resultBlock;
 }
 
 YUV420Block read420Sample(const uvec2 blockCoords) {
-    YUV420Block resultBlock;
     if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB) {
         YUV444Block source = read444SampleFrom444Buffer(blockCoords);
-        resultBlock = convert444To420(source);
+        return convert444To420(source);
     } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV420) {
-        resultBlock = read420SampleFrom420Buffer(blockCoords);
+        return read420SampleFrom420Buffer(blockCoords);
     } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV422) {
         YUV422Block source = read422SampleFrom422Buffer(blockCoords);
-        resultBlock = convert422To420(source);
+        return convert422To420(source);
     } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV444) {
         YUV444Block source = read444SampleFrom444Buffer(blockCoords);
-        resultBlock = convert444To420(source);
+        return convert444To420(source);
     }
-    return resultBlock;
 }
 
 YUV422Block read422Sample(const uvec2 blockCoords) {
-    YUV422Block resultBlock;
     if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB) {
         YUV444Block source = read444SampleFrom444Buffer(blockCoords);
-        resultBlock = convert444To422(source);
+        return convert444To422(source);
     } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV420) {
         YUV420Block source = read420SampleFrom420Buffer(blockCoords);
-        resultBlock = convert420To422(source);
+        return convert420To422(source);
     } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV422) {
-        resultBlock = read422SampleFrom422Buffer(blockCoords);
+        return read422SampleFrom422Buffer(blockCoords);
     } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV444) {
         YUV444Block source = read444SampleFrom444Buffer(blockCoords);
-        resultBlock = convert444To422(source);
+        return convert444To422(source);
     }
-    return resultBlock;
 }
 
 YUV444Block read444Sample(const uvec2 blockCoords) {
-    YUV444Block resultBlock;
     if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB) {
-        resultBlock = read444SampleFrom444Buffer(blockCoords);
+        return read444SampleFrom444Buffer(blockCoords);
     } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV420) {
         YUV420Block source = read420SampleFrom420Buffer(blockCoords);
-        resultBlock = convert420To444(source);
+        return convert420To444(source);
     } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV422) {
         YUV422Block source = read422SampleFrom422Buffer(blockCoords);
-        resultBlock = convert422To444(source);
+        return convert422To444(source);
     } else if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV444) {
-        resultBlock = read444SampleFrom444Buffer(blockCoords);
+        return read444SampleFrom444Buffer(blockCoords);
     }
-    return resultBlock;
 }
 
 // In order to avoid unnecesary reads when using bilinear sampling
@@ -340,15 +332,18 @@ u32vec3 readPixel(uvec2 lumaCoords) {
     lumaCoords = clamp(lumaCoords, uvec2(0), uvec2(SRC_PICTURE_WIDTH - 1, SRC_PICTURE_HEIGHT - 1));
     if (SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit420 || SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit420YV12 || SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit420NV12) {
         u32vec3 result;
+        // Read Y plane, this is the same across all planar and semi-planar formats
         const uint srcYBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x;
         result.x = srcPicture.pBuffer[srcYBufferIndex];
         if (SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit420 || SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit420YV12) {
+            // Fetch U, V samples from U, V planes
             const uvec2 chromaCoords = lumaCoords / BlockSize;
             const uint srcBufferUIndex = SRC_PICTURE_U_OFFSET + chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE + chromaCoords.x;
             result.y = srcPicture.pBuffer[srcBufferUIndex];
             const uint srcBufferVIndex = SRC_PICTURE_V_OFFSET + chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE + chromaCoords.x;
             result.z = srcPicture.pBuffer[srcBufferVIndex];
         } else if (SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit420NV12) {
+            // Fetch UV sample from UV plane
             const uvec2 chromaCoords = lumaCoords / BlockSize;
             const uint actualChromaStride = SRC_PICTURE_CHROMA_STRIDE * 2;
             const uint srcBufferUVIndex = SRC_PICTURE_U_OFFSET + chromaCoords.y * actualChromaStride + chromaCoords.x * 2;
@@ -357,8 +352,11 @@ u32vec3 readPixel(uvec2 lumaCoords) {
         }
         return result;
     } else if (SRC_PICTURE_FORMAT == PixelFormatInterleaved8BitUYVY) {
-        const uint srcYBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE + (lumaCoords.x / 2) * 4 + 1 + (lumaCoords.x % 2) * 2;
-        const uint srcUBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE + (lumaCoords.x / 2) * 4;
+        const uint verticalOffset = lumaCoords.y * SRC_PICTURE_STRIDE;
+        const uint blockOffset = (lumaCoords.x / 2) * 4; // 4 channels per sample of which 2 are Y
+        const uint ySampleOffset = 1 + (lumaCoords.x % 2) * 2; // 1 or 3 cause U Y V Y
+        const uint srcYBufferIndex = verticalOffset + blockOffset + ySampleOffset;
+        const uint srcUBufferIndex = verticalOffset + blockOffset;
         const uint srcVBufferIndex = srcUBufferIndex + 2;
         return u32vec3(srcPicture.pBuffer[srcYBufferIndex], srcPicture.pBuffer[srcUBufferIndex], srcPicture.pBuffer[srcVBufferIndex]);
     } else if (SRC_PICTURE_FORMAT == PixelFormatInterleaved8BitBGRA) {
@@ -376,7 +374,7 @@ u32vec3 readPixel(uvec2 lumaCoords) {
 
 uvec2 getNearestBlockCoords(const vec2 normalizedBlockCoords) {
     vec2 srcChromaBlockCount = vec2(float(SRC_PICTURE_BLOCK_COUNT_X), float(SRC_PICTURE_BLOCK_COUNT_Y));
-    vec2 readBlockCoords = floor(normalizedBlockCoords * srcChromaBlockCount + vec2(0.5));
+    vec2 readBlockCoords = round(normalizedBlockCoords * srcChromaBlockCount);
     readBlockCoords = clamp(readBlockCoords, vec2(0.0,0.0), srcChromaBlockCount - vec2(1.0));
     return uvec2(readBlockCoords);
 }
@@ -735,6 +733,7 @@ void write444Sample(const uvec2 blockCoords, in YUV444Block resultBlock) {
                 -> It will rely on read422From422 and friends to get the values out of the buffer using the actual source type
                 -> When the subsample method doesn't match it will convert it (example: going from RGB to 444 by converting via YUV matrix)
             -> Some filtering may be used by calling read422SampleNearest and friends, if necessary
+                -> When using bilinear filtering, custom read methods will be used (see the readPixel function)
         -> After everything is read, the shader will now have a block of samples in the same subsampling method as the dest. buffer
         -> The shader will now write into the dst buffer depending on its format (see write420Sample, write422Sample, etc)
 
@@ -745,10 +744,9 @@ void write444Sample(const uvec2 blockCoords, in YUV444Block resultBlock) {
                         read422SampleFrom422Buffer() 
                 write422Sample()
             - From 420 buffer to 422 buffer:
-                read422SampleNearest()
-                    read422Sample()
-                        read420SampleFrom420Buffer()
-                        convert420SampleTo422Sample()
+                read422SampleBilinear()
+                    readPixel() <- x16 times
+                    pixels are interpolated
                 write422Sample()
 */
 void main() {
