@@ -1,3 +1,4 @@
+#include <chrono>
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -5,6 +6,19 @@
 #include "Device.h"
 
 using namespace PixelWeave;
+
+struct Timer {
+    void Start() { beginTime = std::chrono::steady_clock::now(); }
+    template <typename M>
+    uint64_t Elapsed()
+    {
+        return std::chrono::duration_cast<M>(std::chrono::steady_clock::now() - beginTime).count();
+    }
+    uint64_t ElapsedMillis() { return Elapsed<std::chrono::milliseconds>(); }
+    uint64_t ElapsedMicros() { return Elapsed<std::chrono::microseconds>(); }
+
+    std::chrono::steady_clock::time_point beginTime;
+};
 
 PixelWeave::VideoFrameWrapper GetUYVYFrame(uint32_t width, uint32_t height)
 {
@@ -103,20 +117,37 @@ PixelWeave::VideoFrameWrapper GetPlanarNV12Frame(uint32_t width, uint32_t height
     return VideoFrameWrapper{buffer, width, width, height, PixelWeave::PixelFormat::Planar8Bit420NV12};
 }
 
+PixelWeave::VideoFrameWrapper GetRGBAFrame(uint32_t width, uint32_t height)
+{
+    const uint32_t bufferSize = (height * width) * 4;
+    uint8_t* buffer = new uint8_t[bufferSize];
+    for (uint32_t sampleIndex = 0; sampleIndex < width * height; ++sampleIndex) {
+        buffer[sampleIndex * 4] = 0xA0;
+        buffer[sampleIndex * 4 + 1] = 0xB0;
+        buffer[sampleIndex * 4 + 2] = 0xC0;
+        buffer[sampleIndex * 4 + 3] = 0x00;
+    }
+    return VideoFrameWrapper{buffer, width, width, height, PixelWeave::PixelFormat::Interleaved8BitRGBA};
+}
+
 int main()
 {
     auto [result, device] = PixelWeave::Device::Create();
     if (result == PixelWeave::Result::Success) {
-        constexpr uint32_t srcWidth = 1920;
-        constexpr uint32_t srcHeight = 1080;
-        VideoFrameWrapper srcFrame = GetUYVYFrame(srcWidth, srcHeight);
-        constexpr uint32_t dstWidth = 1920;
-        constexpr uint32_t dstHeight = 1080;
-        VideoFrameWrapper dstFrame = GetPlanar422Frame(dstWidth, dstHeight);
+        constexpr uint32_t srcWidth = 3840;
+        constexpr uint32_t srcHeight = 2160;
+        VideoFrameWrapper srcFrame = GetRGBAFrame(srcWidth, srcHeight);
+        constexpr uint32_t dstWidth = 3840;
+        constexpr uint32_t dstHeight = 2160;
+        VideoFrameWrapper dstFrame = GetPlanar444Frame(dstWidth, dstHeight);
 
         const auto videoConverter = device->CreateVideoConverter();
         for (int i = 0; i < 10; ++i) {
+            Timer timer;
+            timer.Start();
             videoConverter->Convert(srcFrame, dstFrame);
+            std::cout << "Processing frame " << i << " took " << timer.ElapsedMillis() << "ms (" << timer.ElapsedMicros() << " us)"
+                      << std::endl;
         }
         videoConverter->Release();
         device->Release();

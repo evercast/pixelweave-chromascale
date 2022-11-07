@@ -1,8 +1,6 @@
 #include "VulkanVideoConverter.h"
 
 #include <algorithm>
-#include <chrono>
-#include <iostream>
 
 #include "DebugUtils.h"
 
@@ -131,19 +129,6 @@ void VulkanVideoConverter::Cleanup()
     }
 }
 
-struct Timer {
-    void Start() { beginTime = std::chrono::steady_clock::now(); }
-    template <typename M>
-    uint64_t Elapsed()
-    {
-        return std::chrono::duration_cast<M>(std::chrono::steady_clock::now() - beginTime).count();
-    }
-    uint64_t ElapsedMillis() { return Elapsed<std::chrono::milliseconds>(); }
-    uint64_t ElapsedMicros() { return Elapsed<std::chrono::microseconds>(); }
-
-    std::chrono::steady_clock::time_point beginTime;
-};
-
 bool AreFramePropertiesEqual(const VideoFrameWrapper& frameA, const VideoFrameWrapper& frameB)
 {
     return frameA.stride == frameB.stride && frameA.width == frameB.width && frameA.height == frameB.height &&
@@ -152,9 +137,6 @@ bool AreFramePropertiesEqual(const VideoFrameWrapper& frameA, const VideoFrameWr
 
 void VulkanVideoConverter::Convert(const VideoFrameWrapper& src, VideoFrameWrapper& dst)
 {
-    Timer timer;
-    timer.Start();
-
     const bool wasInitialized = mPrevSourceFrame.has_value() && mPrevDstFrame.has_value();
     if (!wasInitialized || !AreFramePropertiesEqual(mPrevSourceFrame.value(), src) ||
         !AreFramePropertiesEqual(mPrevDstFrame.value(), dst)) {
@@ -167,31 +149,22 @@ void VulkanVideoConverter::Convert(const VideoFrameWrapper& src, VideoFrameWrapp
     }
 
     // Copy src buffer into GPU readable buffer
-    Timer stageTimer;
-    stageTimer.Start();
     const vk::DeviceSize srcBufferSize = src.GetBufferSize();
     uint8_t* mappedSrcBuffer = mSrcLocalBuffer->MapBuffer();
     std::copy_n(src.buffer, srcBufferSize, mappedSrcBuffer);
     mSrcLocalBuffer->UnmapBuffer();
-    PW_LOG("Copying src buffer took " << stageTimer.ElapsedMicros() << " us");
 
     // Dispatch command in compute queue
-    stageTimer.Start();
     vk::Fence computeFence = mDevice->CreateFence();
     mDevice->SubmitCommand(mCommand, computeFence);
     mDevice->WaitForFence(computeFence);
     mDevice->DestroyFence(computeFence);
-    PW_LOG("Compute took " << stageTimer.ElapsedMicros() << " us");
 
     // Copy contents into CPU buffer
-    stageTimer.Start();
     const vk::DeviceSize dstBufferSize = dst.GetBufferSize();
     uint8_t* mappedDstBuffer = mDstLocalBuffer->MapBuffer();
     std::copy_n(mappedDstBuffer, dstBufferSize, dst.buffer);
     mDstLocalBuffer->UnmapBuffer();
-    PW_LOG("Copy back took " << stageTimer.ElapsedMicros() << " us");
-
-    PW_LOG("Total frame processing time: " << timer.ElapsedMillis() << " ms" << std::endl);
 }
 
 VulkanVideoConverter::~VulkanVideoConverter()
