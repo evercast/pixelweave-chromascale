@@ -402,6 +402,7 @@ YUV420Block read420Bilinear(const uvec2 blockCoords) {
     YUV420Block result;
     const uvec2 srcImageSize = uvec2(SRC_PICTURE_WIDTH, SRC_PICTURE_HEIGHT);
     const uvec2 dstImageSize = uvec2(DST_PICTURE_WIDTH, DST_PICTURE_HEIGHT);
+    u32vec3[4 * 4] sampledPixels;
     [[unroll]]
     for (int i = 0; i < BlockSize.x; i += 1) {
         [[unroll]]
@@ -417,12 +418,17 @@ YUV420Block read420Bilinear(const uvec2 blockCoords) {
             const vec2 bottomLeftCoord = srcLumaCoords + vec2(0.0, pixelSize.y);
             const vec2 bottomRightCoord = srcLumaCoords + pixelSize;
 
-            u32vec3 topLeftPixel = readPixel(uvec2(topLeftCoord));
-            u32vec3 topRightPixel = readPixel(uvec2(topRightCoord));
-            u32vec3 bottomLeftPixel = readPixel(uvec2(bottomLeftCoord));
-            u32vec3 bottomRightPixel = readPixel(uvec2(bottomRightCoord));
-            
+            const uint blockIndex = 4 * ((j * BlockSize.y) + i);
+            sampledPixels[blockIndex] = readPixel(uvec2(topLeftCoord));
+            sampledPixels[blockIndex + 1] = readPixel(uvec2(topRightCoord));
+            sampledPixels[blockIndex + 2] = readPixel(uvec2(bottomLeftCoord));
+            sampledPixels[blockIndex + 3] = readPixel(uvec2(bottomRightCoord));
+
             // Interpolate and write Y sample
+            const u32vec3 topLeftPixel = sampledPixels[blockIndex];
+            const u32vec3 topRightPixel = sampledPixels[blockIndex + 1];
+            const u32vec3 bottomLeftPixel = sampledPixels[blockIndex + 2];
+            const u32vec3 bottomRightPixel = sampledPixels[blockIndex + 3];
             {
                 vec4 ySamples = vec4(
                     float(topLeftPixel.x),
@@ -434,34 +440,44 @@ YUV420Block read420Bilinear(const uvec2 blockCoords) {
                 const float bottomXInterp = mix(ySamples.z, ySamples.w, pixelDistance.x);
                 result.ySamples[j * BlockSize.y + i] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
             }
-
-            // Interpolate and write U sample
-            if (i == 0 && j == 0) {
-                vec4 uSamples = vec4(
-                    float(topLeftPixel.y),
-                    float(topRightPixel.y),
-                    float(bottomLeftPixel.y),
-                    float(bottomRightPixel.y)
-                );
-                const float topXInterp = mix(uSamples.x, uSamples.y, pixelDistance.x);
-                const float bottomXInterp = mix(uSamples.z, uSamples.w, pixelDistance.x);
-                result.uSample = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
-            }
-
-            // Interpolate and write V sample
-            if (i == 0 && j == 0) {
-                vec4 vSamples = vec4(
-                    float(topLeftPixel.z),
-                    float(topRightPixel.z),
-                    float(bottomLeftPixel.z),
-                    float(bottomRightPixel.z)
-                );
-                const float topXInterp = mix(vSamples.x, vSamples.y, pixelDistance.x);
-                const float bottomXInterp = mix(vSamples.z, vSamples.w, pixelDistance.x);
-                result.vSample = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
-            }
         }
     }
+
+    // Interpolate chroma samples
+    const u32vec3 topLeftPixel = sampledPixels[0];
+    const u32vec3 topRightPixel = sampledPixels[1];
+    const u32vec3 bottomLeftPixel = sampledPixels[2];
+    const u32vec3 bottomRightPixel = sampledPixels[3];
+
+    const uvec2 dstLumaCoords = blockCoords * BlockSize;
+    const vec2 normalizedLumaCoords = dstLumaCoords / vec2(dstImageSize);
+    const vec2 pixelDistance = fract(normalizedLumaCoords * srcImageSize);
+    // Interpolate and write U sample
+    {
+        vec4 uSamples = vec4(
+            float(topLeftPixel.y),
+            float(topRightPixel.y),
+            float(bottomLeftPixel.y),
+            float(bottomRightPixel.y)
+        );
+        const float topXInterp = mix(uSamples.x, uSamples.y, pixelDistance.x);
+        const float bottomXInterp = mix(uSamples.z, uSamples.w, pixelDistance.x);
+        result.uSample = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
+    }
+
+    // Interpolate and write V sample
+    {
+        vec4 vSamples = vec4(
+            float(topLeftPixel.z),
+            float(topRightPixel.z),
+            float(bottomLeftPixel.z),
+            float(bottomRightPixel.z)
+        );
+        const float topXInterp = mix(vSamples.x, vSamples.y, pixelDistance.x);
+        const float bottomXInterp = mix(vSamples.z, vSamples.w, pixelDistance.x);
+        result.vSample = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
+    }
+
     return result;
 }
 
@@ -469,6 +485,7 @@ YUV422Block read422Bilinear(const uvec2 blockCoords) {
     YUV422Block result;
     const uvec2 srcImageSize = uvec2(SRC_PICTURE_WIDTH, SRC_PICTURE_HEIGHT);
     const uvec2 dstImageSize = uvec2(DST_PICTURE_WIDTH, DST_PICTURE_HEIGHT);
+    u32vec3[4 * 4] sampledPixels;
     [[unroll]]
     for (int i = 0; i < BlockSize.x; i += 1) {
         [[unroll]]
@@ -484,11 +501,16 @@ YUV422Block read422Bilinear(const uvec2 blockCoords) {
             const vec2 bottomLeftCoord = srcLumaCoords + vec2(0.0, pixelSize.y);
             const vec2 bottomRightCoord = srcLumaCoords + pixelSize;
 
-            u32vec3 topLeftPixel = readPixel(uvec2(topLeftCoord));
-            u32vec3 topRightPixel = readPixel(uvec2(topRightCoord));
-            u32vec3 bottomLeftPixel = readPixel(uvec2(bottomLeftCoord));
-            u32vec3 bottomRightPixel = readPixel(uvec2(bottomRightCoord));
-            
+            const uint blockIndex = 4 * ((j * BlockSize.y) + i);
+            sampledPixels[blockIndex] = readPixel(uvec2(topLeftCoord));
+            sampledPixels[blockIndex + 1] = readPixel(uvec2(topRightCoord));
+            sampledPixels[blockIndex + 2] = readPixel(uvec2(bottomLeftCoord));
+            sampledPixels[blockIndex + 3] = readPixel(uvec2(bottomRightCoord));
+
+            const u32vec3 topLeftPixel = sampledPixels[blockIndex];
+            const u32vec3 topRightPixel = sampledPixels[blockIndex + 1];
+            const u32vec3 bottomLeftPixel = sampledPixels[blockIndex + 2];
+            const u32vec3 bottomRightPixel = sampledPixels[blockIndex + 3];
             // Interpolate and write Y sample
             {
                 vec4 ySamples = vec4(
@@ -501,32 +523,44 @@ YUV422Block read422Bilinear(const uvec2 blockCoords) {
                 const float bottomXInterp = mix(ySamples.z, ySamples.w, pixelDistance.x);
                 result.ySamples[j * BlockSize.y + i] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
             }
+        }
+    }
 
-            // Interpolate and write U sample
-            if (i == 0) {
-                vec4 uSamples = vec4(
-                    float(topLeftPixel.y),
-                    float(topRightPixel.y),
-                    float(bottomLeftPixel.y),
-                    float(bottomRightPixel.y)
-                );
-                const float topXInterp = mix(uSamples.x, uSamples.y, pixelDistance.x);
-                const float bottomXInterp = mix(uSamples.z, uSamples.w, pixelDistance.x);
-                result.uSamples[j] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
-            }
+    [[unroll]]
+    for (int j = 0; j < BlockSize.y; j += 1) {
+        const uvec2 dstLumaCoords = blockCoords * BlockSize + uvec2(0,j);
+        const vec2 normalizedLumaCoords = dstLumaCoords / vec2(dstImageSize);
+        const vec2 pixelDistance = fract(normalizedLumaCoords * srcImageSize);
 
-            // Interpolate and write V sample
-            if (i == 0) {
-                vec4 vSamples = vec4(
-                    float(topLeftPixel.z),
-                    float(topRightPixel.z),
-                    float(bottomLeftPixel.z),
-                    float(bottomRightPixel.z)
-                );
-                const float topXInterp = mix(vSamples.x, vSamples.y, pixelDistance.x);
-                const float bottomXInterp = mix(vSamples.z, vSamples.w, pixelDistance.x);
-                result.vSamples[j] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
-            }
+        const uint blockIndex = 4 * (j * BlockSize.y);
+        const u32vec3 topLeftPixel = sampledPixels[blockIndex];
+        const u32vec3 topRightPixel = sampledPixels[blockIndex + 1];
+        const u32vec3 bottomLeftPixel = sampledPixels[blockIndex + 2];
+        const u32vec3 bottomRightPixel = sampledPixels[blockIndex + 3];
+        // Interpolate and write U sample
+        {
+            vec4 uSamples = vec4(
+                float(topLeftPixel.y),
+                float(topRightPixel.y),
+                float(bottomLeftPixel.y),
+                float(bottomRightPixel.y)
+            );
+            const float topXInterp = mix(uSamples.x, uSamples.y, pixelDistance.x);
+            const float bottomXInterp = mix(uSamples.z, uSamples.w, pixelDistance.x);
+            result.uSamples[j] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
+        }
+
+        // Interpolate and write V sample
+        {
+            vec4 vSamples = vec4(
+                float(topLeftPixel.z),
+                float(topRightPixel.z),
+                float(bottomLeftPixel.z),
+                float(bottomRightPixel.z)
+            );
+            const float topXInterp = mix(vSamples.x, vSamples.y, pixelDistance.x);
+            const float bottomXInterp = mix(vSamples.z, vSamples.w, pixelDistance.x);
+            result.vSamples[j] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
         }
     }
     return result;
