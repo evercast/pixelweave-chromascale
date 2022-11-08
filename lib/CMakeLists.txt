@@ -25,8 +25,6 @@ set(SOURCE
     src/VulkanVideoConverter.cpp
     src/RefCountPtr.cpp
     src/VideoFrameWrapper.cpp
-    src/VulkanImage.h
-    src/VulkanImage.cpp
     src/VulkanBuffer.h
     src/VulkanBuffer.cpp
     src/VulkanBase.h
@@ -39,8 +37,10 @@ if(WIN32)
     )
 endif()
 
+set(SHADER src/shaders/convert.comp)
+
 if(APPLE)
-    set(RESOURCE_FILES src/shaders/convert.comp.spv)
+    set(RESOURCE_FILES "${SHADER}.spv")
 endif()
 
 add_library(${SUBPROJECT_NAME} SHARED

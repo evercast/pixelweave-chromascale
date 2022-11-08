@@ -134,9 +134,6 @@ ResultValue<vk::PhysicalDevice> VulkanInstance::FindSuitablePhysicalDevice()
             vk::PhysicalDeviceFeatures2 physicalDeviceFeatures = vk::PhysicalDeviceFeatures2().setPNext(&physicalDeviceFeatures1_1);
             physicalDevice.getFeatures2(&physicalDeviceFeatures);
 
-            if (!physicalDeviceFeatures1_1.samplerYcbcrConversion) {
-                currentDeviceScore = 0;
-            }
             if (!physicalDeviceFeatures1_2.uniformAndStorageBuffer8BitAccess) {
                 currentDeviceScore = 0;
             }

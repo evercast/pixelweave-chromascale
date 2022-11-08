@@ -86,11 +86,6 @@ VulkanBuffer* VulkanDevice::CreateBuffer(
     return VulkanBuffer::Create(this, size, usageFlags, memoryFlags);
 }
 
-VulkanImage* VulkanDevice::CreateImage(PixelFormat pixelFormat, uint32_t width, uint32_t height, vk::ImageUsageFlags usage)
-{
-    return VulkanImage::Create(this, pixelFormat, width, height, usage);
-}
-
 struct SpecializationEntries {
     uint32_t srcPictureWidth;
     uint32_t srcPictureHeight;

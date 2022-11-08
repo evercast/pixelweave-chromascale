@@ -2,7 +2,6 @@
 
 #include "Device.h"
 #include "VulkanBuffer.h"
-#include "VulkanImage.h"
 
 namespace PixelWeave
 {
@@ -25,8 +24,6 @@ public:
         const vk::DeviceSize& size,
         const vk::BufferUsageFlags& usageFlags,
         const vk::MemoryPropertyFlags& memoryFlags);
-
-    VulkanImage* CreateImage(PixelFormat pixelFormat, uint32_t width, uint32_t height, vk::ImageUsageFlags usage);
 
     // Pipeline handling
     struct VideoConversionPipelineResources {

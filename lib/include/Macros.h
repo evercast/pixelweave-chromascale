@@ -17,7 +17,11 @@
 #endif
 
 #ifdef PW_PLATFORM_WINDOWS
-#define PW_DEBUG _DEBUG
+#ifdef _DEBUG
+#define PW_DEBUG
+#endif
 #else
-#define PW_DEBUG DEBUG
+#ifdef DEBUG
+#define PW_DEBUG
+#endif
 #endif
