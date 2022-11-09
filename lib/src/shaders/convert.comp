@@ -168,27 +168,26 @@ YUV444Block convert422To444(in YUV422Block source) {
     return result;
 }
 
-// https://www.itu.int/rec/R-REC-BT.709/es
-u32vec3 rgbToYUV(in i32vec3 rgb) {
-    u32vec3 yuv;
-    // Since we're doing math in 2 ^ 16 range
-    const int32_t blackOffset = int32_t((16.0 / 255.0) * float(1 << 16));
-    const int32_t chromaOffset = int32_t((128.0 / 255.0) * float(1 << 16));
-    // In BT709, limited range (16-235)
-    yuv.x = clamp((47 * rgb.r + 157 * rgb.g + 16 * rgb.b + blackOffset) >> 8, 0, 255);
-    yuv.y = clamp((-22 * rgb.r - 74 * rgb.g + 95 * rgb.b  + chromaOffset) >> 8, 0, 255);
-    yuv.z = clamp((135 * rgb.r - 122 * rgb.g - 12 * rgb.b + chromaOffset) >> 8, 0, 255);
-    return yuv;
+// https://en.wikipedia.org/wiki/YCbCr
+u32vec3 rgbToYUV(in u32vec3 rgb) {
+    const mat3 rgbToYUVMatrix = mat3( 
+        0.2126, -0.11457210605, 0.500000,
+        0.7152, -0.38542789394, -0.4541529083,
+        0.0722, 0.500000, -0.04584709169
+    );
+    const float rangeScale = (235.0 - 16.0) / (255.0 - 0.0);
+    const vec3 yuv = (rgbToYUVMatrix * vec3(rgb)) * vec3(rangeScale, 1.0, 1.0) + vec3(16.0, 128.0, 128.0);
+    return u32vec3(clamp(round(yuv), vec3(0.0), vec3(255.0)));
 }
 
 YUV444Block convertRGBTo444(in RGBBlock source) {
     YUV444Block result;
     [[unroll]]
     for (uint i = 0; i < BlockSize.x * BlockSize.y; i += 1) {
-        const int32_t r = int32_t(source.rSamples[i]);
-        const int32_t g = int32_t(source.gSamples[i]);
-        const int32_t b = int32_t(source.bSamples[i]);
-        const u32vec3 yuv = rgbToYUV(i32vec3(r,g,b));
+        const uint32_t r = uint32_t(source.rSamples[i]);
+        const uint32_t g = uint32_t(source.gSamples[i]);
+        const uint32_t b = uint32_t(source.bSamples[i]);
+        const u32vec3 yuv = rgbToYUV(u32vec3(r,g,b));
         result.ySamples[i] = yuv.x;
         result.uSamples[i] = yuv.y;
         result.vSamples[i] = yuv.z;
