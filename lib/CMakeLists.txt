@@ -52,7 +52,7 @@ add_library(${SUBPROJECT_NAME} SHARED
 
 include_directories(include)
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/../CMakeCXXUtils.txt)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../CXXUtils.cmake)
 pw_configure_cxx(${SUBPROJECT_NAME})
 
 # Setup DLL export macro

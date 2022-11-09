@@ -1,3 +1,10 @@
-/.vs
-/build
+# Build output
+build*/
+cmake-build*/
+
+# IDEs
+.idea/
+.vs/
+
+# OS metadata
 .DS_Store
