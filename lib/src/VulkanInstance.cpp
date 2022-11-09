@@ -5,6 +5,7 @@
 
 namespace PixelWeave
 {
+
 #if defined(PW_DEBUG)
 static VKAPI_ATTR VkBool32 VKAPI_CALL vkDebugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -36,7 +37,8 @@ ResultValue<std::shared_ptr<VulkanInstance>> VulkanInstance::Create()
 #endif
     };
 
-    std::vector<const char*> extensionsToEnable{
+    std::vector<const char*> extensionsToEnable
+    {
 #if defined(PW_PLATFORM_MACOS)
         VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME
 #endif
@@ -64,12 +66,12 @@ ResultValue<std::shared_ptr<VulkanInstance>> VulkanInstance::Create()
     if (!allExtensionsSupported) {
         return {Result::Error, nullptr};
     }
-    
+
     vk::InstanceCreateFlags createFlags;
 #ifdef PW_PLATFORM_MACOS
     createFlags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
 #endif
-    
+
     const vk::InstanceCreateInfo instanceInfo = vk::InstanceCreateInfo()
                                                     .setFlags(createFlags)
                                                     .setPApplicationInfo(&appInfo)
@@ -164,4 +166,5 @@ VulkanInstance::~VulkanInstance()
 #endif
     mInstanceHandle.destroy();
 }
+
 }  // namespace PixelWeave

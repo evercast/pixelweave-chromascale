@@ -35,12 +35,13 @@ uint32_t VideoFrameWrapper::GetChromaWidth() const
         case PixelFormat::Planar8Bit420:
         case PixelFormat::Planar8Bit422:
         case PixelFormat::Planar8Bit420YV12:
-        case PixelFormat::Planar8Bit420NV12: {
+        case PixelFormat::Planar8Bit420NV12:
             return (width + 1) / 2;
-        }
-        case PixelFormat::Planar8Bit444: {
+        case PixelFormat::Planar8Bit444:
             return width;
-        }
+        case PixelFormat::Interleaved8BitBGRA:
+        case PixelFormat::Interleaved8BitRGBA:
+            break;
     }
     return 0;
 }
@@ -50,17 +51,17 @@ uint32_t VideoFrameWrapper::GetChromaHeight() const
     static_assert(AllPixelFormats.size() == 8);
     switch (pixelFormat) {
         case PixelFormat::Interleaved8BitUYVY:
-        case PixelFormat::Planar8Bit422: {
+        case PixelFormat::Planar8Bit422:
             return height;
-        }
         case PixelFormat::Planar8Bit420:
         case PixelFormat::Planar8Bit420YV12:
-        case PixelFormat::Planar8Bit420NV12: {
+        case PixelFormat::Planar8Bit420NV12:
             return (height + 1) / 2;
-        }
-        case PixelFormat::Planar8Bit444: {
+        case PixelFormat::Planar8Bit444:
             return height;
-        }
+        case PixelFormat::Interleaved8BitBGRA:
+        case PixelFormat::Interleaved8BitRGBA:
+            break;
     }
     return 0;
 }
@@ -101,6 +102,10 @@ uint32_t VideoFrameWrapper::GetUOffset() const
             return height * stride;
         case PixelFormat::Planar8Bit420YV12:
             return GetVOffset() + GetChromaHeight() * GetChromaStride();
+        case PixelFormat::Interleaved8BitBGRA:
+        case PixelFormat::Interleaved8BitRGBA:
+        case PixelFormat::Interleaved8BitUYVY:
+            break;
     }
     return 0;
 }
@@ -116,6 +121,10 @@ uint32_t VideoFrameWrapper::GetVOffset() const
             return GetUOffset() + GetChromaHeight() * GetChromaStride();
         case PixelFormat::Planar8Bit420YV12:
             return height * stride;
+        case PixelFormat::Interleaved8BitBGRA:
+        case PixelFormat::Interleaved8BitRGBA:
+        case PixelFormat::Interleaved8BitUYVY:
+            break;
     }
     return 0;
 }
