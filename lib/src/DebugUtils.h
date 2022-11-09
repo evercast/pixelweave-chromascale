@@ -20,7 +20,7 @@
         OutputDebugStringW(os_.str().c_str()); \
     }
 
-#if PW_DEBUG
+#ifdef PW_DEBUG
 
 #define PW_ASSERT_MSG(condition, message)                                                             \
     {                                                                                                 \

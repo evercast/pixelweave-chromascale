@@ -2,9 +2,9 @@
 
 #include "Macros.h"
 
-#if PW_DEBUG
+#ifdef PW_DEBUG
 #define VULKAN_HPP_ASSERT(condition) PW_UNUSED(condition)
 #else
-#define VULKAN_HPP_ASSERT(condition) 
+#define VULKAN_HPP_ASSERT(condition) PW_UNUSED(condition)
 #endif
 #include <vulkan/vulkan.hpp>

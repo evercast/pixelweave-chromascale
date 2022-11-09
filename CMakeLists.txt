@@ -16,3 +16,6 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib)
 
 # Add test subproject
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/test)
+
+# Configure 'Tests' as startup project
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT 'Tests')

@@ -37,7 +37,7 @@ if(WIN32)
     )
 endif()
 
-set(SHADER src/shaders/convert.comp)
+set(SHADER ${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/convert.comp)
 
 if(APPLE)
     set(RESOURCE_FILES "${SHADER}.spv")
@@ -64,6 +64,23 @@ find_package(Vulkan REQUIRED)
 target_link_libraries(${SUBPROJECT_NAME} ${Vulkan_LIBRARIES})
 include_directories(${Vulkan_INCLUDE_DIRS})
 
+# Add shader compilation build step
+if (WIN32)
+set(SHADER_COMPILER_PATH "$ENV{VULKAN_SDK}/Bin/glslc.exe")
+elseif(APPLE)
+endif()
+
+set(COMPILED_SHADER "${SHADER}.spv")
+add_custom_command(
+    OUTPUT ${COMPILED_SHADER}
+    COMMAND ${SHADER_COMPILER_PATH} ${SHADER} -o ${COMPILED_SHADER}
+    DEPENDS ${SHADER}
+)
+set(SHADER_DEPENDENCIES "${SUBPROJECT_NAME}Shaders")
+add_custom_target(${SHADER_DEPENDENCIES} DEPENDS ${COMPILED_SHADER})
+add_dependencies(${SUBPROJECT_NAME} ${SHADER_DEPENDENCIES})
+
+# Setup Mac framework
 if(APPLE)
     set(PW_BUNDLE_ID us.evercast.pixelweave)
     set_target_properties(${SUBPROJECT_NAME} PROPERTIES
