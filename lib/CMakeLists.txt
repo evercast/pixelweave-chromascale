@@ -68,6 +68,7 @@ include_directories(${Vulkan_INCLUDE_DIRS})
 if (WIN32)
 set(SHADER_COMPILER_PATH "$ENV{VULKAN_SDK}/Bin/glslc.exe")
 elseif(APPLE)
+set(SHADER_COMPILER_PATH "$ENV{VULKAN_SDK}/bin/glslc")
 endif()
 
 set(COMPILED_SHADER "${SHADER}.spv")
