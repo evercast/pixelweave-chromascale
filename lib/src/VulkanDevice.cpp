@@ -11,6 +11,7 @@
 
 namespace PixelWeave
 {
+
 ResultValue<Device*> VulkanDevice::Create()
 {
     const auto instanceResult = VulkanInstance::Create();

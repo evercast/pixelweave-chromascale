@@ -60,4 +60,5 @@ private:
     vk::Queue mComputeQueue;
     vk::CommandPool mCommandPool;
 };
+
 }  // namespace PixelWeave

@@ -2,6 +2,10 @@
 build*/
 cmake-build*/
 
+# Environment
+.env
+.envrc
+
 # IDEs
 .idea/
 .vs/

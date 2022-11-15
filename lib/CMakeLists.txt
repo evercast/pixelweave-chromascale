@@ -55,20 +55,20 @@ include_directories(include)
 include(${CMAKE_CURRENT_SOURCE_DIR}/../CXXUtils.cmake)
 pw_configure_cxx(${SUBPROJECT_NAME})
 
-# Setup DLL export macro
+# Set up DLL export macro
 add_compile_definitions(PW_IS_LIB)
 
 # Find Vulkan SDK
 add_compile_definitions(VULKAN_HPP_NO_EXCEPTIONS)
 find_package(Vulkan REQUIRED)
-target_link_libraries(${SUBPROJECT_NAME} ${Vulkan_LIBRARIES})
+target_link_libraries(${SUBPROJECT_NAME} Vulkan::Vulkan)
 include_directories(${Vulkan_INCLUDE_DIRS})
 
 # Add shader compilation build step
-if (WIN32)
-set(SHADER_COMPILER_PATH "$ENV{VULKAN_SDK}/Bin/glslc.exe")
+if(WIN32)
+    set(SHADER_COMPILER_PATH "$ENV{VULKAN_SDK}/Bin/glslc.exe")
 elseif(APPLE)
-set(SHADER_COMPILER_PATH "$ENV{VULKAN_SDK}/bin/glslc")
+    set(SHADER_COMPILER_PATH "$ENV{VULKAN_SDK}/bin/glslc")
 endif()
 
 set(COMPILED_SHADER "${SHADER}.spv")
@@ -81,7 +81,7 @@ set(SHADER_DEPENDENCIES "${SUBPROJECT_NAME}Shaders")
 add_custom_target(${SHADER_DEPENDENCIES} DEPENDS ${COMPILED_SHADER})
 add_dependencies(${SUBPROJECT_NAME} ${SHADER_DEPENDENCIES})
 
-# Setup Mac framework
+# Set up macOS framework
 if(APPLE)
     set(PW_BUNDLE_ID us.evercast.pixelweave)
     set_target_properties(${SUBPROJECT_NAME} PROPERTIES

@@ -30,6 +30,7 @@ ResultValue<std::shared_ptr<VulkanInstance>> VulkanInstance::Create()
                                             .setPEngineName("PixelWeave")
                                             .setEngineVersion(VK_MAKE_VERSION(0, 0, 1))
                                             .setApiVersion(VK_API_VERSION_1_2);
+
     std::vector<const char*> layersToEnable
     {
 #if defined(PW_DEBUG)
@@ -43,12 +44,14 @@ ResultValue<std::shared_ptr<VulkanInstance>> VulkanInstance::Create()
         VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME
 #endif
     };
+
 #if defined(PW_DEBUG)
     {
         const std::vector<const char*> debugExtensions{VK_EXT_DEBUG_REPORT_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME};
         extensionsToEnable.insert(extensionsToEnable.end(), debugExtensions.begin(), debugExtensions.end());
     }
 #endif
+
     std::vector<vk::ExtensionProperties> supportedExtensions = PW_ASSERT_VK(vk::enumerateInstanceExtensionProperties());
 
     auto supportedLayers = PW_ASSERT_VK(vk::enumerateInstanceLayerProperties());
