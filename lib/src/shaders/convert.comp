@@ -170,14 +170,24 @@ YUV444Block convert422To444(in YUV422Block source) {
 
 // https://en.wikipedia.org/wiki/YCbCr
 u32vec3 rgbToYUV(in u32vec3 rgb) {
+    /*
+        Inverse of the matrix below, which converts YUV legal -> RGB full
+        doing the appropiate scaling. No need to scale with (235-16)/255.
+        I have no idea of how the matrix below is derived, but somehow 
+        it's everywhere. Hint? 1.1644 is 1.0 * (235-16)/255, but the others?
+        Keep in mind glsl matrices are column-major
+        
+        [1.1644, 0.0, 1.7927],
+        [1.1644, -0.2132, -0.5329],
+        [1.1644, 2.1124, 0.0]
+    */
     const mat3 rgbToYUVMatrix = mat3( 
-        0.2126, -0.11457210605, 0.500000,
-        0.7152, -0.38542789394, -0.4541529083,
-        0.0722, 0.500000, -0.04584709169
+        0.1825870759, -0.1006458962, 0.4392232994,
+        0.6142312835, -0.3385774032, -0.3989573863,
+        0.0619930457, 0.4392232994, -0.0402659131
     );
-    const float rangeScale = (235.0 - 16.0) / (255.0 - 0.0);
-    const vec3 yuv = (rgbToYUVMatrix * vec3(rgb)) * vec3(rangeScale, 1.0, 1.0) + vec3(16.0, 128.0, 128.0);
-    return u32vec3(clamp(round(yuv), vec3(0.0), vec3(255.0)));
+    const vec3 yuvLegal = rgbToYUVMatrix * vec3(rgb) + vec3(16.0, 128.0, 128.0);
+    return u32vec3(clamp(round(yuvLegal), vec3(0.0), vec3(255.0)));
 }
 
 YUV444Block convertRGBTo444(in RGBBlock source) {
