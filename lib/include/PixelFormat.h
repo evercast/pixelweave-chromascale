@@ -3,8 +3,6 @@
 #include <array>
 #include <cstdint>
 
-#include "Macros.h"
-
 namespace PixelWeave
 {
 
@@ -15,11 +13,17 @@ enum class PixelFormat : uint32_t {
     Planar8Bit420 = 3,
     Planar8Bit422 = 4,
     Planar8Bit444 = 5,
-    Planar8Bit420YV12 = 6,  // YVU, 3 planes
-    Planar8Bit420NV12 = 7,  // A Y plane followed by a UV plane
+    Planar8Bit420YV12 = 6,     // YVU, 3 planes
+    Planar8Bit420NV12 = 7,     // A Y plane followed by a UV plane
+    Interleaved10BitUYVY = 8,  // UYVY in 32 bits (2 bits unused) - Blackmagic
+    Interleaved10BitRGB = 9,   // RGB in 32 bits (2 bits unused) - Blackmagic
+    Interleaved12BitRGB = 10,  // Blocks of 8 pixels (see bmdFormat12BitRGB)
+    Planar10Bit420 = 11,
+    Planar10Bit422 = 12,
+    Planar10Bit444 = 13,
 };
 
-constexpr std::array<PixelFormat, 8> AllPixelFormats{
+constexpr std::array<PixelFormat, 14> AllPixelFormats{
     PixelFormat::Interleaved8BitUYVY,
     PixelFormat::Interleaved8BitBGRA,
     PixelFormat::Interleaved8BitRGBA,
@@ -28,6 +32,12 @@ constexpr std::array<PixelFormat, 8> AllPixelFormats{
     PixelFormat::Planar8Bit444,
     PixelFormat::Planar8Bit420YV12,
     PixelFormat::Planar8Bit420NV12,
+    PixelFormat::Interleaved10BitUYVY,
+    PixelFormat::Interleaved10BitRGB,
+    PixelFormat::Interleaved12BitRGB,
+    PixelFormat::Planar10Bit420,
+    PixelFormat::Planar10Bit422,
+    PixelFormat::Planar10Bit444,
 };
 
 enum class SubsampleType : uint32_t { RGB = 0, YUV420 = 1, YUV422 = 2, YUV444 = 3 };

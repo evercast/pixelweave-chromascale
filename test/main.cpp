@@ -134,21 +134,26 @@ int main()
 {
     auto [result, device] = PixelWeave::Device::Create();
     if (result == PixelWeave::Result::Success) {
-        constexpr uint32_t srcWidth = 32;
-        constexpr uint32_t srcHeight = 32;
+        constexpr uint32_t srcWidth = 1920;
+        constexpr uint32_t srcHeight = 1080;
         VideoFrameWrapper srcFrame = GetRGBAFrame(srcWidth, srcHeight);
-        constexpr uint32_t dstWidth = 32;
-        constexpr uint32_t dstHeight = 32;
+        constexpr uint32_t dstWidth = 1920;
+        constexpr uint32_t dstHeight = 1080;
         VideoFrameWrapper dstFrame = GetPlanar444Frame(dstWidth, dstHeight);
 
         const auto videoConverter = device->CreateVideoConverter();
-        for (int i = 0; i < 10; ++i) {
+        uint64_t totalTime = 0;
+        const int totalFrames = 100;
+        for (int i = 0; i < totalFrames; ++i) {
             Timer timer;
             timer.Start();
             videoConverter->Convert(srcFrame, dstFrame);
+            totalTime += timer.ElapsedMicros();
             std::cout << "Processing frame " << i << " took " << timer.ElapsedMillis() << "ms (" << timer.ElapsedMicros() << " us)"
                       << std::endl;
         }
+        std::cout << "Average time: " << static_cast<double>(totalTime) / (1000.0 * static_cast<double>(totalFrames)) << " ms" << std::endl;
+
         videoConverter->Release();
         device->Release();
 

@@ -12,6 +12,25 @@ VulkanVideoConverter::VulkanVideoConverter(VulkanDevice* device) : mDevice(nullp
     mDevice = device;
 }
 
+Result VulkanVideoConverter::ValidateInput(const VideoFrameWrapper& src, const VideoFrameWrapper& dst)
+{
+    if (src.width == 0 || src.height == 0) {
+        return Result::InvalidInputResolutionError;
+    }
+    if (dst.width == 0 || dst.height == 0) {
+        return Result::InvalidInputResolutionError;
+    }
+    std::vector<PixelFormat> validOutputFormats{PixelFormat::Planar8Bit420, PixelFormat::Planar8Bit422, PixelFormat::Planar8Bit444};
+    const bool isOutputFormatSupported =
+        std::any_of(validOutputFormats.begin(), validOutputFormats.end(), [&dst](const PixelFormat& format) {
+            return dst.pixelFormat == format;
+        });
+    if (!isOutputFormatSupported) {
+        return Result::InvalidOutputFormatError;
+    }
+    return Result::Success;
+}
+
 void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFrameWrapper& dst)
 {
     // Create source buffer and copy CPU memory into it
@@ -135,8 +154,15 @@ bool AreFramePropertiesEqual(const VideoFrameWrapper& frameA, const VideoFrameWr
            frameA.pixelFormat == frameB.pixelFormat;
 }
 
-void VulkanVideoConverter::Convert(const VideoFrameWrapper& src, VideoFrameWrapper& dst)
+Result VulkanVideoConverter::Convert(const VideoFrameWrapper& src, VideoFrameWrapper& dst)
 {
+    // Validate input, return nothing on failure
+    const Result validationResult = ValidateInput(src, dst);
+    if (validationResult != Result::Success) {
+        return validationResult;
+    }
+
+    // Initialize resources and cache shaders, buffers, etc
     const bool wasInitialized = mPrevSourceFrame.has_value() && mPrevDstFrame.has_value();
     if (!wasInitialized || !AreFramePropertiesEqual(mPrevSourceFrame.value(), src) ||
         !AreFramePropertiesEqual(mPrevDstFrame.value(), dst)) {
@@ -165,6 +191,8 @@ void VulkanVideoConverter::Convert(const VideoFrameWrapper& src, VideoFrameWrapp
     uint8_t* mappedDstBuffer = mDstLocalBuffer->MapBuffer();
     std::copy_n(mappedDstBuffer, dstBufferSize, dst.buffer);
     mDstLocalBuffer->UnmapBuffer();
+
+    return Result::Success;
 }
 
 VulkanVideoConverter::~VulkanVideoConverter()

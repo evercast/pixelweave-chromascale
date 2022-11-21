@@ -67,7 +67,7 @@ ResultValue<std::shared_ptr<VulkanInstance>> VulkanInstance::Create()
         allExtensionsSupported = allExtensionsSupported && isExtensionSupported;
     }
     if (!allExtensionsSupported) {
-        return {Result::Error, nullptr};
+        return {Result::DriverNotFoundError, nullptr};
     }
 
     vk::InstanceCreateFlags createFlags;
@@ -85,7 +85,7 @@ ResultValue<std::shared_ptr<VulkanInstance>> VulkanInstance::Create()
     if (instanceResult == vk::Result::eSuccess) {
         return {Result::Success, std::make_shared<VulkanInstance>(instanceHandle)};
     }
-    return {Result::Error, nullptr};
+    return {Result::DriverNotFoundError, nullptr};
 }
 
 VulkanInstance::VulkanInstance(const vk::Instance& instance) : mInstanceHandle(instance)
@@ -114,7 +114,7 @@ ResultValue<Device*> VulkanInstance::CreateDevice(const std::shared_ptr<VulkanIn
     if (result == Result::Success) {
         return {Result::Success, new VulkanDevice(instance, physicalDevice)};
     }
-    return {Result::Error, nullptr};
+    return {Result::InvalidDeviceError, nullptr};
 }
 
 ResultValue<vk::PhysicalDevice> VulkanInstance::FindSuitablePhysicalDevice()
@@ -159,7 +159,7 @@ ResultValue<vk::PhysicalDevice> VulkanInstance::FindSuitablePhysicalDevice()
             chosenDeviceScore = currentDeviceScore;
         }
     }
-    return {chosenDeviceScore > 0 ? Result::Success : Result::Error, chosenDevice};
+    return {chosenDeviceScore > 0 ? Result::Success : Result::NoSuitableDeviceError, chosenDevice};
 }
 
 VulkanInstance::~VulkanInstance()

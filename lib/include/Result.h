@@ -5,7 +5,17 @@
 namespace PixelWeave
 {
 
-enum class Result { Success, Error };
+enum class Result {
+    Success,
+    InvalidInputFormatError,
+    InvalidOutputFormatError,
+    InvalidInputResolutionError,
+    InvalidOutputResolutionError,
+    DriverNotFoundError,
+    InvalidDeviceError,
+    NoSuitableDeviceError,
+    UnknownError
+};
 
 template <typename T>
 struct ResultValue {
