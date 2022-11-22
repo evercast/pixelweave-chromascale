@@ -14,13 +14,43 @@ VulkanVideoConverter::VulkanVideoConverter(VulkanDevice* device) : mDevice(nullp
 
 Result VulkanVideoConverter::ValidateInput(const VideoFrameWrapper& src, const VideoFrameWrapper& dst)
 {
+    // Validate resolution
     if (src.width == 0 || src.height == 0) {
         return Result::InvalidInputResolutionError;
     }
+
     if (dst.width == 0 || dst.height == 0) {
         return Result::InvalidInputResolutionError;
     }
-    std::vector<PixelFormat> validOutputFormats{PixelFormat::Planar8Bit420, PixelFormat::Planar8Bit422, PixelFormat::Planar8Bit444};
+
+    // Validate input format
+    std::vector<PixelFormat> validInputFormats{
+        PixelFormat::Interleaved8BitUYVY,
+        PixelFormat::Interleaved8BitBGRA,
+        PixelFormat::Interleaved8BitRGBA,
+        PixelFormat::Planar8Bit420,
+        PixelFormat::Planar8Bit420YV12,
+        PixelFormat::Planar8Bit420NV12,
+        PixelFormat::Interleaved10BitUYVY,
+        PixelFormat::Interleaved10BitRGB,
+        PixelFormat::Interleaved12BitRGB,
+    };
+    const bool isInputFormatSupported = std::any_of(validInputFormats.begin(), validInputFormats.end(), [&src](const PixelFormat& format) {
+        return src.pixelFormat == format;
+    });
+    if (!isInputFormatSupported) {
+        return Result::InvalidInputFormatError;
+    }
+
+    // Validate output format
+    std::vector<PixelFormat> validOutputFormats{
+        PixelFormat::Planar8Bit420,
+        PixelFormat::Planar8Bit422,
+        PixelFormat::Planar8Bit444,
+        PixelFormat::Planar10Bit420,
+        PixelFormat::Planar10Bit422,
+        PixelFormat::Planar10Bit444,
+    };
     const bool isOutputFormatSupported =
         std::any_of(validOutputFormats.begin(), validOutputFormats.end(), [&dst](const PixelFormat& format) {
             return dst.pixelFormat == format;
