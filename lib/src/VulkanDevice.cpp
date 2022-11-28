@@ -98,6 +98,8 @@ struct SpecializationEntries {
     uint32_t srcPictureSubsampleType;
     uint32_t srcPictureUOffset;
     uint32_t srcPictureVOffset;
+    uint32_t srcPictureBitDepth;
+    uint32_t srcPictureByteDepth;
 
     uint32_t dstPictureWidth;
     uint32_t dstPictureHeight;
@@ -109,10 +111,12 @@ struct SpecializationEntries {
     uint32_t dstPictureSubsampleType;
     uint32_t dstPictureUOffset;
     uint32_t dstPictureVOffset;
+    uint32_t dstPictureBitDepth;
+    uint32_t dstPictureByteDepth;
 };
 
 struct SpecializationData {
-    using SpecializationBindings = std::array<vk::SpecializationMapEntry, 20>;
+    using SpecializationBindings = std::array<vk::SpecializationMapEntry, 24>;
     SpecializationBindings bindings;
     SpecializationEntries data;
 };
@@ -132,6 +136,9 @@ SpecializationData CreateSpecializationInfo(const VideoFrameWrapper& src, const 
         static_cast<uint32_t>(src.GetSubsampleType()),
         src.GetUOffset(),
         src.GetVOffset(),
+        src.GetBitDepth(),
+        src.GetByteDepth(),
+
         dst.width,
         dst.height,
         dst.stride,
@@ -142,6 +149,8 @@ SpecializationData CreateSpecializationInfo(const VideoFrameWrapper& src, const 
         static_cast<uint32_t>(dst.GetSubsampleType()),
         dst.GetUOffset(),
         dst.GetVOffset(),
+        dst.GetBitDepth(),
+        dst.GetByteDepth(),
     };
 
     specializationInfo.bindings = SpecializationData::SpecializationBindings{
@@ -155,17 +164,21 @@ SpecializationData CreateSpecializationInfo(const VideoFrameWrapper& src, const 
         vk::SpecializationMapEntry(7, offsetof(SpecializationEntries, srcPictureSubsampleType), sizeof(uint32_t)),
         vk::SpecializationMapEntry(8, offsetof(SpecializationEntries, srcPictureUOffset), sizeof(uint32_t)),
         vk::SpecializationMapEntry(9, offsetof(SpecializationEntries, srcPictureVOffset), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(10, offsetof(SpecializationEntries, srcPictureBitDepth), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(11, offsetof(SpecializationEntries, srcPictureByteDepth), sizeof(uint32_t)),
 
-        vk::SpecializationMapEntry(10, offsetof(SpecializationEntries, dstPictureWidth), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(11, offsetof(SpecializationEntries, dstPictureHeight), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(12, offsetof(SpecializationEntries, dstPictureStride), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(13, offsetof(SpecializationEntries, dstPictureChromaWidth), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(14, offsetof(SpecializationEntries, dstPictureChromaHeight), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(15, offsetof(SpecializationEntries, dstPictureChromaStride), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(16, offsetof(SpecializationEntries, dstPictureFormat), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(17, offsetof(SpecializationEntries, dstPictureSubsampleType), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(18, offsetof(SpecializationEntries, dstPictureUOffset), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(19, offsetof(SpecializationEntries, dstPictureVOffset), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(12, offsetof(SpecializationEntries, dstPictureWidth), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(13, offsetof(SpecializationEntries, dstPictureHeight), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(14, offsetof(SpecializationEntries, dstPictureStride), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(15, offsetof(SpecializationEntries, dstPictureChromaWidth), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(16, offsetof(SpecializationEntries, dstPictureChromaHeight), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(17, offsetof(SpecializationEntries, dstPictureChromaStride), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(18, offsetof(SpecializationEntries, dstPictureFormat), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(19, offsetof(SpecializationEntries, dstPictureSubsampleType), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(20, offsetof(SpecializationEntries, dstPictureUOffset), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(21, offsetof(SpecializationEntries, dstPictureVOffset), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(22, offsetof(SpecializationEntries, dstPictureBitDepth), sizeof(uint32_t)),
+        vk::SpecializationMapEntry(23, offsetof(SpecializationEntries, dstPictureByteDepth), sizeof(uint32_t)),
     };
 
     return specializationInfo;

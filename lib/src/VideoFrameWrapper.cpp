@@ -1,5 +1,7 @@
 #include "VideoFrameWrapper.h"
 
+#include <cmath>
+
 namespace PixelWeave
 {
 
@@ -18,10 +20,13 @@ uint64_t VideoFrameWrapper::GetBufferSize() const
         case PixelFormat::Planar8Bit422:
         case PixelFormat::Planar8Bit444:
         case PixelFormat::Planar8Bit420YV12:
-        case PixelFormat::Planar8Bit420NV12: {
+        case PixelFormat::Planar8Bit420NV12:
+        case PixelFormat::Planar10Bit420:
+        case PixelFormat::Planar10Bit422:
+        case PixelFormat::Planar10Bit444: {
             const uint64_t lumaSize = static_cast<uint64_t>(stride) * height;
             const uint64_t chromaSize = static_cast<uint64_t>(GetChromaWidth()) * GetChromaHeight();
-            return lumaSize + chromaSize * 2;
+            return GetByteDepth() * (lumaSize + chromaSize * 2);
         }
         case PixelFormat::Interleaved10BitUYVY: {
             return ((width + 47) / 48) * 128 * height;
@@ -31,13 +36,6 @@ uint64_t VideoFrameWrapper::GetBufferSize() const
         }
         case PixelFormat::Interleaved12BitRGB: {
             return ((width * 36) / 8) * height;
-        }
-        case PixelFormat::Planar10Bit420:
-        case PixelFormat::Planar10Bit422:
-        case PixelFormat::Planar10Bit444: {
-            const uint64_t lumaSize = static_cast<uint64_t>(stride) * height * 2;
-            const uint64_t chromaSize = static_cast<uint64_t>(GetChromaWidth()) * GetChromaHeight() * 2;
-            return lumaSize + chromaSize * 2;
         }
     }
     return 0;
@@ -86,7 +84,7 @@ uint32_t VideoFrameWrapper::GetChromaHeight() const
 
 uint32_t VideoFrameWrapper::GetChromaStride() const
 {
-    return GetChromaWidth();
+    return GetChromaWidth() * GetByteDepth();
 }
 
 SubsampleType VideoFrameWrapper::GetSubsampleType() const
@@ -153,6 +151,38 @@ uint32_t VideoFrameWrapper::GetVOffset() const
         default:
             return 0;
     }
+}
+
+uint32_t VideoFrameWrapper::GetBitDepth() const {
+    static_assert(AllPixelFormats.size() == 14);
+    switch (pixelFormat) {
+        case PixelFormat::Interleaved8BitUYVY:
+        case PixelFormat::Interleaved8BitBGRA:
+        case PixelFormat::Interleaved8BitRGBA:
+        case PixelFormat::Planar8Bit420:
+        case PixelFormat::Planar8Bit422:
+        case PixelFormat::Planar8Bit444:
+        case PixelFormat::Planar8Bit420YV12:
+        case PixelFormat::Planar8Bit420NV12:
+            return 8;
+        case PixelFormat::Interleaved10BitUYVY:
+        case PixelFormat::Interleaved10BitRGB:
+            return 10;
+        case PixelFormat::Interleaved12BitRGB:
+            return 12;
+        case PixelFormat::Planar10Bit420:
+        case PixelFormat::Planar10Bit422:
+        case PixelFormat::Planar10Bit444:
+            return 10;
+        default:
+            return 0;
+    }
+}
+
+uint32_t VideoFrameWrapper::GetByteDepth() const
+{
+    const float bitDepth = static_cast<float>(GetBitDepth());
+    return static_cast<uint32_t>(ceilf(bitDepth / 8.0f));
 }
 
 }  // namespace PixelWeave

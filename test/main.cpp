@@ -49,10 +49,10 @@ PixelWeave::VideoFrameWrapper GetPlanar420Frame(uint32_t width, uint32_t height)
     const uint32_t uSampleOffset = width * height;
     const uint32_t vSampleOffset = uSampleOffset + chromaWidth * chromaHeight;
     for (uint32_t uSampleIndex = 0; uSampleIndex < chromaWidth * chromaHeight; ++uSampleIndex) {
-        buffer[uSampleOffset + uSampleIndex] = 0xB0;
+        buffer[uSampleOffset + uSampleIndex] = 0xFF;
     }
     for (uint32_t vSampleIndex = 0; vSampleIndex < chromaWidth * chromaHeight; ++vSampleIndex) {
-        buffer[vSampleOffset + vSampleIndex] = 0xC0;
+        buffer[vSampleOffset + vSampleIndex] = 0xFF;
     }
     return VideoFrameWrapper{buffer, width, width, height, PixelWeave::PixelFormat::Planar8Bit420};
 }
@@ -137,17 +137,17 @@ PixelWeave::VideoFrameWrapper GetPlanar42010BitFrame(uint32_t width, uint32_t he
     const uint32_t bufferSize = 2 * ((height * width) + chromaWidth * chromaHeight * 2);
     uint16_t* buffer = new uint16_t[bufferSize];
     for (uint32_t ySampleIndex = 0; ySampleIndex < width * height; ++ySampleIndex) {
-        buffer[ySampleIndex] = 0x3FF;
+        buffer[ySampleIndex] = 0;
     }
     const uint32_t uSampleOffset = width * height;
     const uint32_t vSampleOffset = uSampleOffset + chromaWidth * chromaHeight;
     for (uint32_t uSampleIndex = 0; uSampleIndex < chromaWidth * chromaHeight; ++uSampleIndex) {
-        buffer[uSampleOffset + uSampleIndex] = 0x3B0;
+        buffer[uSampleOffset + uSampleIndex] = 0;
     }
     for (uint32_t vSampleIndex = 0; vSampleIndex < chromaWidth * chromaHeight; ++vSampleIndex) {
-        buffer[vSampleOffset + vSampleIndex] = 0x3C0;
+        buffer[vSampleOffset + vSampleIndex] = 0;
     }
-    return VideoFrameWrapper{reinterpret_cast<uint8_t*>(buffer), width, width, height, PixelWeave::PixelFormat::Planar8Bit420};
+    return VideoFrameWrapper{reinterpret_cast<uint8_t*>(buffer), width, width, height, PixelWeave::PixelFormat::Planar10Bit420};
 }
 
 PixelWeave::VideoFrameWrapper GetInterleavedUYVY10BitFrame(uint32_t width, uint32_t height)
@@ -166,12 +166,12 @@ int main()
 {
     auto [result, device] = PixelWeave::Device::Create();
     if (result == PixelWeave::Result::Success) {
-        constexpr uint32_t srcWidth = 1920;
-        constexpr uint32_t srcHeight = 1080;
-        VideoFrameWrapper srcFrame = GetRGBAFrame(srcWidth, srcHeight);
-        constexpr uint32_t dstWidth = 1920;
-        constexpr uint32_t dstHeight = 1080;
-        VideoFrameWrapper dstFrame = GetPlanar444Frame(dstWidth, dstHeight);
+        constexpr uint32_t srcWidth = 32;
+        constexpr uint32_t srcHeight = 32;
+        VideoFrameWrapper srcFrame = GetInterleavedUYVY10BitFrame(srcWidth, srcHeight);
+        constexpr uint32_t dstWidth = 32;
+        constexpr uint32_t dstHeight = 32;
+        VideoFrameWrapper dstFrame = GetPlanar42010BitFrame(dstWidth, dstHeight);
 
         const auto videoConverter = device->CreateVideoConverter();
         uint64_t totalTime = 0;

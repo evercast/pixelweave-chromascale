@@ -23,6 +23,8 @@ struct PIXEL_WEAVE_LIB_CLASS VideoFrameWrapper
     SubsampleType GetSubsampleType() const;
     uint32_t GetUOffset() const;
     uint32_t GetVOffset() const;
+    uint32_t GetBitDepth() const;
+    uint32_t GetByteDepth() const;
 };
 
 struct PictureInfo {

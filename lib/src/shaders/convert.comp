@@ -43,17 +43,21 @@ layout (constant_id = 6) const uint SRC_PICTURE_FORMAT = 0;
 layout (constant_id = 7) const uint SRC_PICTURE_SUBSAMPLE_TYPE = 0;
 layout (constant_id = 8) const uint SRC_PICTURE_U_OFFSET = 0;
 layout (constant_id = 9) const uint SRC_PICTURE_V_OFFSET = 0;
+layout (constant_id = 10) const uint SRC_PICTURE_BIT_DEPTH = 0;
+layout (constant_id = 11) const uint SRC_PICTURE_BYTE_DEPTH = 0;
 
-layout (constant_id = 10) const uint DST_PICTURE_WIDTH = 0;
-layout (constant_id = 11) const uint DST_PICTURE_HEIGHT = 0;
-layout (constant_id = 12) const uint DST_PICTURE_STRIDE = 0; // Luma stride in planar formats
-layout (constant_id = 13) const uint DST_PICTURE_CHROMA_WIDTH = 0;
-layout (constant_id = 14) const uint DST_PICTURE_CHROMA_HEIGHT = 0;
-layout (constant_id = 15) const uint DST_PICTURE_CHROMA_STRIDE = 0;
-layout (constant_id = 16) const uint DST_PICTURE_FORMAT = 0;
-layout (constant_id = 17) const uint DST_PICTURE_SUBSAMPLE_TYPE = 0;
-layout (constant_id = 18) const uint DST_PICTURE_U_OFFSET = 0;
-layout (constant_id = 19) const uint DST_PICTURE_V_OFFSET = 0;
+layout (constant_id = 12) const uint DST_PICTURE_WIDTH = 0;
+layout (constant_id = 13) const uint DST_PICTURE_HEIGHT = 0;
+layout (constant_id = 14) const uint DST_PICTURE_STRIDE = 0; // Luma stride in planar formats
+layout (constant_id = 15) const uint DST_PICTURE_CHROMA_WIDTH = 0;
+layout (constant_id = 16) const uint DST_PICTURE_CHROMA_HEIGHT = 0;
+layout (constant_id = 17) const uint DST_PICTURE_CHROMA_STRIDE = 0;
+layout (constant_id = 18) const uint DST_PICTURE_FORMAT = 0;
+layout (constant_id = 19) const uint DST_PICTURE_SUBSAMPLE_TYPE = 0;
+layout (constant_id = 20) const uint DST_PICTURE_U_OFFSET = 0;
+layout (constant_id = 21) const uint DST_PICTURE_V_OFFSET = 0;
+layout (constant_id = 22) const uint DST_PICTURE_BIT_DEPTH = 0;
+layout (constant_id = 23) const uint DST_PICTURE_BYTE_DEPTH = 0;
 
 const uint SRC_PICTURE_BLOCK_COUNT_X = (SRC_PICTURE_WIDTH + 1) / 2;
 const uint SRC_PICTURE_BLOCK_COUNT_Y = (SRC_PICTURE_HEIGHT + 1) / 2;
@@ -61,8 +65,6 @@ const uint DST_PICTURE_BLOCK_COUNT_X = (DST_PICTURE_WIDTH + 1) / 2;
 const uint DST_PICTURE_BLOCK_COUNT_Y = (DST_PICTURE_HEIGHT + 1) / 2;
 
 const uvec2 BlockSize = uvec2(2,2);
-
-const bool isDstPlanar10Bit = DST_PICTURE_FORMAT == PixelFormatPlanar10Bit420 || DST_PICTURE_FORMAT == PixelFormatPlanar10Bit422 || DST_PICTURE_FORMAT == PixelFormatPlanar10Bit444;
 
 layout(local_size_x = LOCAL_WORKGROUP_SIZE_X, local_size_y = LOCAL_WORKGROUP_SIZE_Y) in;
 
@@ -158,14 +160,29 @@ u32vec3 rgbToYUV(in u32vec3 rgb) {
     return u32vec3(clamp(round(yuvLegal), vec3(0.0), vec3(255.0)));
 }
 
+u32vec3 ScaleBitDepth(const u32vec3 pixel) {
+    const float bitDepthDiff = float(DST_PICTURE_BIT_DEPTH) - float(SRC_PICTURE_BIT_DEPTH);
+    const float scale = pow(2.0, bitDepthDiff);
+    return u32vec3(round(vec3(pixel) * scale));
+}
+
+uint16_t SwapEndianess(const uint16_t source) {
+    return (source >> 8) | (source << 8);
+}
+
+uint32_t SwapEndianess(const uint32_t source) {
+    const uint32_t masked = ((source << 8) & uint32_t(0xFF00FF00) ) | ((source >> 8) & uint32_t(0xFF00FF)); 
+    return (masked << 16) | (masked >> 16);
+}
+
 // In order to avoid unnecesary reads when using bilinear sampling
 u32vec3 readPixel(uvec2 lumaCoords) {
     lumaCoords = clamp(lumaCoords, uvec2(0), uvec2(SRC_PICTURE_WIDTH - 1, SRC_PICTURE_HEIGHT - 1));
+    u32vec3 result;
     switch (SRC_PICTURE_FORMAT) {
         case PixelFormatPlanar8Bit420:
         case PixelFormatPlanar8Bit420YV12:
         case PixelFormatPlanar8Bit420NV12: {
-            u32vec3 result;
             // Read Y plane, this is the same across all planar and semi-planar formats
             const uint srcYBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x;
             result.x = SRC_PICTURE_BUFFER[srcYBufferIndex];
@@ -184,8 +201,7 @@ u32vec3 readPixel(uvec2 lumaCoords) {
                 result.y = SRC_PICTURE_BUFFER[srcBufferUVIndex];
                 result.z = SRC_PICTURE_BUFFER[srcBufferUVIndex + 1];
             }
-            return result;
-        }
+        } break;
         case PixelFormatInterleaved8BitUYVY: {
             const uint verticalOffset = lumaCoords.y * SRC_PICTURE_STRIDE;
             const uint blockOffset = (lumaCoords.x / 2) * 4; // 4 channels per sample of which 2 are Y
@@ -193,18 +209,18 @@ u32vec3 readPixel(uvec2 lumaCoords) {
             const uint srcYBufferIndex = verticalOffset + blockOffset + ySampleOffset;
             const uint srcUBufferIndex = verticalOffset + blockOffset;
             const uint srcVBufferIndex = srcUBufferIndex + 2;
-            return u32vec3(SRC_PICTURE_BUFFER[srcYBufferIndex], SRC_PICTURE_BUFFER[srcUBufferIndex], SRC_PICTURE_BUFFER[srcVBufferIndex]);
-        }
+            result = u32vec3(SRC_PICTURE_BUFFER[srcYBufferIndex], SRC_PICTURE_BUFFER[srcUBufferIndex], SRC_PICTURE_BUFFER[srcVBufferIndex]);
+        } break;
         case PixelFormatInterleaved8BitBGRA: {
             const uint32_t pixelIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x * 4;
             i32vec3 rgbSamples = i32vec3(SRC_PICTURE_BUFFER[pixelIndex + 2], SRC_PICTURE_BUFFER[pixelIndex + 1], SRC_PICTURE_BUFFER[pixelIndex + 0]);
-            return rgbToYUV(rgbSamples);
-        }
+            result = rgbToYUV(rgbSamples);
+        } break;
         case PixelFormatInterleaved8BitRGBA: {
             const uint32_t pixelIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x * 4;
             i32vec3 rgbSamples = i32vec3(SRC_PICTURE_BUFFER[pixelIndex + 0], SRC_PICTURE_BUFFER[pixelIndex + 1], SRC_PICTURE_BUFFER[pixelIndex + 2]);
-            return rgbToYUV(rgbSamples);
-        }
+            result = rgbToYUV(rgbSamples);
+        } break;
         case PixelFormatInterleaved10BitUYVY: {
             const uint verticalOffset = lumaCoords.y * SRC_PICTURE_STRIDE / 4; // In words (32 bit)
 
@@ -243,8 +259,8 @@ u32vec3 readPixel(uvec2 lumaCoords) {
             const uint yIndex = lumaCoords.x % 6;
             const uint uvIndex = lumaCoords.x % 3;
 
-            return u32vec3(block.y[yIndex], block.u[uvIndex], block.v[uvIndex]);
-        }
+            result = u32vec3(block.y[yIndex], block.u[uvIndex], block.v[uvIndex]);
+        } break;
         case PixelFormatInterleaved10BitRGB: {
             const uint verticalOffset = lumaCoords.y * SRC_PICTURE_STRIDE / 4; // Each pixel takes 4 bytes
             uint32_t word = SRC_PICTURE_BUFFER32[verticalOffset + lumaCoords.x * 4];
@@ -259,26 +275,18 @@ u32vec3 readPixel(uvec2 lumaCoords) {
             pixel.b = uint32_t( (word & (uint32_t(0xFF) << 24)) >> 24 );
             pixel.b = pixel.b | uint32_t( (word & ( uint32_t(0x03) << 16 )) >> 8 );
 
-            return pixel;
-        }
+            result = pixel;
+        } break;
         case PixelFormatInterleaved12BitRGB: {
             const uint verticalOffset = lumaCoords.y * SRC_PICTURE_STRIDE / 4; // In words (32 bit)
-            const uint subLineIndex = (lumaCoords.x / 9) * 4;
-
-            const uint32_t word0 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex];
-            const uint32_t word1 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 1];
-            const uint32_t word2 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 2];
-            const uint32_t word3 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 3];
-            const uint32_t word4 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 4];
-            const uint32_t word5 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 5];
-            const uint32_t word6 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 6];
-            const uint32_t word7 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 7];
-            const uint32_t word8 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 8];
+            const uint subLineIndex = (lumaCoords.x / 9) * 4;            
 
             const uint pixelSubIndex = lumaCoords.x % 8;
             u32vec3 pixel;
             switch (pixelSubIndex) {
                 case 0: {
+                    const uint32_t word0 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex];
+                    const uint32_t word1 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 1];
                     pixel = u32vec3(
                         ((word0 & (0xFF << 24)) >> 24) | ((word0 & (0x0F << 16)) >> 8),
                         ((word0 & (0xF0 << 16)) >> 12) | ((word0 & (0xFF << 8)) >> 4),
@@ -286,6 +294,8 @@ u32vec3 readPixel(uvec2 lumaCoords) {
                     );
                 } break;
                 case 1: {
+                    const uint32_t word1 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 1];
+                    const uint32_t word2 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 2];
                     pixel = u32vec3(
                         ((word1 & (0xF0 << 24)) >> 28) | ((word1 & (0xFF << 16)) >> 12),
                         ((word1 & (0xFF << 8)) >> 8) | ((word1 & 0x0F) << 8),
@@ -293,6 +303,8 @@ u32vec3 readPixel(uvec2 lumaCoords) {
                     );
                 } break;
                 case 2: {
+                    const uint32_t word2 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 2];
+                    const uint32_t word3 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 3];
                     pixel = u32vec3(
                         ((word2 & (0xFF << 16)) >> 16) | ((word2 & (0x0F << 8)) >> 0),
                         ((word2 & (0xF0 << 8)) >> 12) | ((word2 & (0xFF << 0)) << 4),
@@ -300,6 +312,8 @@ u32vec3 readPixel(uvec2 lumaCoords) {
                     );
                 } break;
                 case 3: {
+                    const uint32_t word3 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 3];
+                    const uint32_t word4 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 4];
                     pixel = u32vec3(
                         ((word3 & (0xF0 << 16)) >> 20) | ((word3 & (0xFF << 8)) >> 4),
                         (word3 & 0xFF) | ((word4 & (0x0F << 24)) >> 16),
@@ -307,6 +321,8 @@ u32vec3 readPixel(uvec2 lumaCoords) {
                     );
                 } break;
                 case 4: {
+                    const uint32_t word4 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 4];
+                    const uint32_t word5 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 5];
                     pixel = u32vec3(
                         ((word4 & (0xFF << 8)) >> 8) | ((word4 & (0x0F << 0)) << 8),
                         ((word4 & 0xF0) >> 4) | ((word5 & (0xFF << 24)) >> 24),
@@ -314,6 +330,8 @@ u32vec3 readPixel(uvec2 lumaCoords) {
                     );
                 } break;
                 case 5: {
+                    const uint32_t word5 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 5];
+                    const uint32_t word6 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 6];
                     pixel = u32vec3(
                         ((word5 & (0xF0 << 8)) >> 12) | ((word5 & 0xFF) << 4),
                         ((word6 & (0xFF << 24)) >> 24) | ((word6 & (0x0F << 16)) >> 8),
@@ -321,6 +339,8 @@ u32vec3 readPixel(uvec2 lumaCoords) {
                     );
                 } break;
                 case 6: {
+                    const uint32_t word6 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 6];
+                    const uint32_t word7 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 7];
                     pixel = u32vec3(
                         (word6 & 0xFF) | ((word7 & (0x0F << 24)) >> 16),
                         ((word7 & (0xFF << 16)) >> 12) | ((word7 & (0xF0 << 24)) >> 28),
@@ -328,6 +348,8 @@ u32vec3 readPixel(uvec2 lumaCoords) {
                     );
                 } break;
                 case 7: {
+                    const uint32_t word7 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 7];
+                    const uint32_t word8 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 8];
                     pixel = u32vec3(
                         ((word8 & (0xFF << 24)) >> 12) | (word7 & 0xF0 >> 4),
                         ((word8 & (0xFF << 16)) >> 16) | (word8 & (0xF0 << 8)),
@@ -335,10 +357,11 @@ u32vec3 readPixel(uvec2 lumaCoords) {
                     );
                 } break;
             }
-
-            return pixel;
-        }
+            result = pixel;
+        } break;
     }
+
+    return ScaleBitDepth(result);
 }
 
 // Bilinear sampling
@@ -588,9 +611,9 @@ void write420Sample(const uvec2 blockCoords, in YUV420Block resultBlock) {
         const uvec2 lumaCoords = uvec2(blockCoords.x * 2, blockCoords.y * 2 + y);
         if (lumaCoords.x < DST_PICTURE_WIDTH && lumaCoords.y < DST_PICTURE_HEIGHT) {
             const uint dstYBufferIndex = lumaCoords.y * DST_PICTURE_STRIDE + lumaCoords.x;
-            if (isDstPlanar10Bit) {
-                DST_PICTURE_BUFFER16[dstYBufferIndex] = uint16_t(resultBlock.ySamples[y * 2]);
-                DST_PICTURE_BUFFER16[dstYBufferIndex + 1] = uint16_t(resultBlock.ySamples[y * 2 + 1]);
+            if (DST_PICTURE_BIT_DEPTH == 10) {
+                DST_PICTURE_BUFFER16[dstYBufferIndex] = SwapEndianess(uint16_t(resultBlock.ySamples[y * 2]));
+                DST_PICTURE_BUFFER16[dstYBufferIndex + 1] = SwapEndianess(uint16_t(resultBlock.ySamples[y * 2 + 1]));
             }
             else {
                 DST_PICTURE_BUFFER[dstYBufferIndex] = uint8_t(resultBlock.ySamples[y * 2]);
@@ -603,14 +626,14 @@ void write420Sample(const uvec2 blockCoords, in YUV420Block resultBlock) {
     if (chromaCoords.x < DST_PICTURE_CHROMA_WIDTH && chromaCoords.y < DST_PICTURE_CHROMA_HEIGHT) {
         const uint dstUBufferIndex = DST_PICTURE_U_OFFSET + chromaCoords.y * DST_PICTURE_CHROMA_STRIDE + chromaCoords.x;
 
-        if (isDstPlanar10Bit) {
+        if (DST_PICTURE_BIT_DEPTH == 10) {
             DST_PICTURE_BUFFER16[dstUBufferIndex] = uint16_t(resultBlock.uSample);
         } else {
             DST_PICTURE_BUFFER[dstUBufferIndex] = uint8_t(resultBlock.uSample);
         }
 
         const uint dstVBufferIndex = DST_PICTURE_V_OFFSET + chromaCoords.y * DST_PICTURE_CHROMA_STRIDE + chromaCoords.x;
-        if (isDstPlanar10Bit) {
+        if (DST_PICTURE_BIT_DEPTH == 10) {
             DST_PICTURE_BUFFER16[dstVBufferIndex] = uint16_t(resultBlock.vSample);
         } else {
             DST_PICTURE_BUFFER[dstVBufferIndex] = uint8_t(resultBlock.vSample);
@@ -625,7 +648,7 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
         const uvec2 lumaCoords = uvec2(blockCoords.x * 2, blockCoords.y * 2 + y);
         if (lumaCoords.x < DST_PICTURE_WIDTH && lumaCoords.y < DST_PICTURE_HEIGHT) {
             const uint dstYBufferIndex = lumaCoords.y * DST_PICTURE_STRIDE + lumaCoords.x;
-            if (isDstPlanar10Bit) {
+            if (DST_PICTURE_BIT_DEPTH == 10) {
                 DST_PICTURE_BUFFER16[dstYBufferIndex] = uint16_t(resultBlock.ySamples[y * 2]);
                 DST_PICTURE_BUFFER16[dstYBufferIndex + 1] = uint16_t(resultBlock.ySamples[y * 2 + 1]);
             } else {
@@ -640,7 +663,7 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
         const uvec2 chromaCoords = uvec2(blockCoords.x, blockCoords.y * 2 + y);
         if (chromaCoords.x < DST_PICTURE_CHROMA_WIDTH && chromaCoords.y < DST_PICTURE_CHROMA_HEIGHT) {
             const uint dstUBufferIndex = DST_PICTURE_U_OFFSET + chromaCoords.y * DST_PICTURE_CHROMA_STRIDE + chromaCoords.x;
-            if (isDstPlanar10Bit) {
+            if (DST_PICTURE_BIT_DEPTH == 10) {
                 DST_PICTURE_BUFFER16[dstUBufferIndex] = uint16_t(resultBlock.uSamples[y]);
             } else {
                 DST_PICTURE_BUFFER[dstUBufferIndex] = uint8_t(resultBlock.uSamples[y]);
@@ -653,7 +676,7 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
         const uvec2 chromaCoords = uvec2(blockCoords.x, blockCoords.y * 2 + y);
         if (chromaCoords.x < DST_PICTURE_CHROMA_WIDTH && chromaCoords.y < DST_PICTURE_CHROMA_HEIGHT) {
             const uint dstVBufferIndex = DST_PICTURE_V_OFFSET + chromaCoords.y * DST_PICTURE_CHROMA_STRIDE + chromaCoords.x;
-            if (isDstPlanar10Bit) {
+            if (DST_PICTURE_BIT_DEPTH == 10) {
                 DST_PICTURE_BUFFER16[dstVBufferIndex] = uint16_t(resultBlock.vSamples[y]);
             } else {
                 DST_PICTURE_BUFFER[dstVBufferIndex] = uint8_t(resultBlock.vSamples[y]);
@@ -670,8 +693,8 @@ void write444Sample(const uvec2 blockCoords, in YUV444Block resultBlock) {
         for (int j = 0; j < 2; j += 1) {
             uvec2 lumaCoords = uvec2(blockCoords.x * 2 + i, blockCoords.y * 2 + j);
             if (lumaCoords.x < DST_PICTURE_WIDTH && lumaCoords.y < DST_PICTURE_HEIGHT) {
-                const uint dstYBufferIndex = lumaCoords.y * DST_PICTURE_STRIDE + lumaCoords.x;
-                if (isDstPlanar10Bit) {
+                const uint dstYBufferIndex = lumaCoords.y * DST_PICTURE_STRIDE / DST_PICTURE_BYTE_DEPTH + lumaCoords.x;
+                if (DST_PICTURE_BIT_DEPTH == 10) {
                     DST_PICTURE_BUFFER16[dstYBufferIndex] = uint16_t(resultBlock.ySamples[j * 2 + i]);
                 } else {
                     DST_PICTURE_BUFFER[dstYBufferIndex] = uint8_t(resultBlock.ySamples[j * 2 + i]);
@@ -686,8 +709,8 @@ void write444Sample(const uvec2 blockCoords, in YUV444Block resultBlock) {
         for (int j = 0; j < 2; j += 1) {
             const uvec2 chromaCoords = uvec2(blockCoords.x * 2 + i, blockCoords.y * 2 + j);
             if (chromaCoords.x < DST_PICTURE_WIDTH && chromaCoords.y < DST_PICTURE_HEIGHT) {
-                const uint dstUBufferIndex = DST_PICTURE_U_OFFSET + chromaCoords.y * DST_PICTURE_CHROMA_STRIDE + chromaCoords.x;
-                if (isDstPlanar10Bit) {
+                const uint dstUBufferIndex = DST_PICTURE_U_OFFSET + chromaCoords.y * DST_PICTURE_CHROMA_STRIDE  / DST_PICTURE_BYTE_DEPTH + chromaCoords.x;
+                if (DST_PICTURE_BIT_DEPTH == 10) {
                     DST_PICTURE_BUFFER16[dstUBufferIndex] = uint16_t(resultBlock.uSamples[j * 2 + i]);
                 } else {
                     DST_PICTURE_BUFFER[dstUBufferIndex] = uint8_t(resultBlock.uSamples[j * 2 + i]);
@@ -702,8 +725,8 @@ void write444Sample(const uvec2 blockCoords, in YUV444Block resultBlock) {
         for (int j = 0; j < 2; j += 1) {
             const uvec2 chromaCoords = uvec2(blockCoords.x * 2 + i, blockCoords.y * 2 + j);
             if (chromaCoords.x < DST_PICTURE_WIDTH && chromaCoords.y < DST_PICTURE_HEIGHT) {
-                const uint dstVBufferIndex = DST_PICTURE_V_OFFSET + chromaCoords.y * DST_PICTURE_CHROMA_STRIDE + chromaCoords.x;
-                if (isDstPlanar10Bit) {
+                const uint dstVBufferIndex = DST_PICTURE_V_OFFSET + chromaCoords.y * DST_PICTURE_CHROMA_STRIDE / DST_PICTURE_BYTE_DEPTH + chromaCoords.x;
+                if (DST_PICTURE_BIT_DEPTH == 10) {
                     DST_PICTURE_BUFFER16[dstVBufferIndex] = uint16_t(resultBlock.vSamples[j * 2 + i]);
                 } else {
                     DST_PICTURE_BUFFER[dstVBufferIndex] = uint8_t(resultBlock.vSamples[j * 2 + i]);
