@@ -345,7 +345,7 @@ u32vec3 readPixelBase(uvec2 lumaCoords) {
                     );
                 } break;
             }
-            result = pixel;
+            result = rgbToYUV(pixel);
         } break;
     }
 
