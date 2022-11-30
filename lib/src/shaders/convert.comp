@@ -236,13 +236,13 @@ u32vec3 readPixelBase(uvec2 lumaCoords) {
             block.y[4] = uint16_t(word3 & mask);
             block.y[5] = uint16_t((word3 >> 20) & mask);
 
-            block.u[0] = uint16_t((word0 >> 20) & mask);
-            block.u[1] = uint16_t(word2 & mask);
-            block.u[2] = uint16_t((word3 >> 10) & mask);
+            block.u[0] = uint16_t(word0 & mask);
+            block.u[1] = uint16_t((word1 >> 10) & mask);
+            block.u[2] = uint16_t((word2 >> 20) & mask);
 
-            block.v[0] = uint16_t(word0 & mask);
-            block.v[1] = uint16_t((word1 >> 10) & mask);
-            block.v[2] = uint16_t((word2 >> 20) & mask);
+            block.v[0] = uint16_t((word0 >> 20) & mask);
+            block.v[1] = uint16_t(word2 & mask);
+            block.v[2] = uint16_t((word3 >> 10) & mask);
 
             const uint yIndex = lumaCoords.x % 6;
             const uint uvIndex = lumaCoords.x % 3;
