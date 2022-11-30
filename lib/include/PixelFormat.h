@@ -21,9 +21,13 @@ enum class PixelFormat : uint32_t {
     Planar10Bit420 = 11,
     Planar10Bit422 = 12,
     Planar10Bit444 = 13,
+    Interleaved8BitARGB = 14,
+    Interleaved12BitRGBLE = 15,
+    Interleaved10BitRGBX = 16,
+    Interleaved10BitRGBXLE = 17
 };
 
-constexpr std::array<PixelFormat, 14> AllPixelFormats{
+constexpr std::array<PixelFormat, 18> AllPixelFormats{
     PixelFormat::Interleaved8BitUYVY,
     PixelFormat::Interleaved8BitBGRA,
     PixelFormat::Interleaved8BitRGBA,
@@ -38,6 +42,10 @@ constexpr std::array<PixelFormat, 14> AllPixelFormats{
     PixelFormat::Planar10Bit420,
     PixelFormat::Planar10Bit422,
     PixelFormat::Planar10Bit444,
+    PixelFormat::Interleaved8BitARGB,
+    PixelFormat::Interleaved12BitRGBLE,
+    PixelFormat::Interleaved10BitRGBX,
+    PixelFormat::Interleaved10BitRGBXLE,
 };
 
 enum class SubsampleType : uint32_t { RGB = 0, YUV420 = 1, YUV422 = 2, YUV444 = 3 };

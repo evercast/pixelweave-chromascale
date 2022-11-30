@@ -195,7 +195,7 @@ PixelWeave::VideoFrameWrapper Get10BitRGBBuffer(uint32_t width, uint32_t height)
     const uint32_t bufferSize = width * height;
     uint32_t* buffer = new uint32_t[bufferSize];
     for (uint32_t bufferIndex = 0; bufferIndex < bufferSize; ++bufferIndex) {
-        buffer[bufferIndex] = 0xFFFFFFFF;
+        buffer[bufferIndex] = 0;
     }
     return VideoFrameWrapper{reinterpret_cast<uint8_t*>(buffer), width * 4, width, height, PixelWeave::PixelFormat::Interleaved10BitRGB};
 }
