@@ -25,8 +25,8 @@ uint64_t VideoFrameWrapper::GetBufferSize() const
         case PixelFormat::Planar10Bit422:
         case PixelFormat::Planar10Bit444: {
             const uint64_t lumaSize = static_cast<uint64_t>(stride) * height;
-            const uint64_t chromaSize = static_cast<uint64_t>(GetChromaWidth()) * GetChromaHeight();
-            return GetByteDepth() * (lumaSize + chromaSize * 2);
+            const uint64_t chromaSize = static_cast<uint64_t>(GetChromaWidth() * GetByteDepth()) * GetChromaHeight();
+            return (lumaSize + chromaSize * 2);
         }
         case PixelFormat::Interleaved10BitUYVY: {
             return ((width + 47) / 48) * 128 * height;
