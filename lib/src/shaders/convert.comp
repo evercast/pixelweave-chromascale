@@ -226,20 +226,20 @@ u32vec3 readPixelBase(uvec2 lumaCoords) {
             UYVYBlock block;
             const uint32_t mask = 0x3FF;
 
-            block.y[0] = uint16_t(word0 & (mask << 10));
+            block.y[0] = uint16_t((word0 >> 10) & mask);
             block.y[1] = uint16_t(word1 & mask);
-            block.y[2] = uint16_t(word1 & (mask << 20));
-            block.y[3] = uint16_t(word2 & (mask << 10));
+            block.y[2] = uint16_t((word1 >> 20) & mask);
+            block.y[3] = uint16_t((word2 >> 10) & mask);
             block.y[4] = uint16_t(word3 & mask);
-            block.y[5] = uint16_t(word3 & (mask << 20));
+            block.y[5] = uint16_t((word3 >> 20) & mask);
 
-            block.u[0] = uint16_t(word0 & (mask << 20));
+            block.u[0] = uint16_t((word0 >> 20) & mask);
             block.u[1] = uint16_t(word2 & mask);
-            block.u[2] = uint16_t(word3 & (mask << 10));
+            block.u[2] = uint16_t((word3 >> 10) & mask);
 
             block.v[0] = uint16_t(word0 & mask);
-            block.v[1] = uint16_t(word1 & (mask << 10));
-            block.v[2] = uint16_t(word2 & (mask << 20));
+            block.v[1] = uint16_t((word1 >> 10) & mask);
+            block.v[2] = uint16_t((word2 >> 20) & mask);
 
             const uint yIndex = lumaCoords.x % 6;
             const uint uvIndex = lumaCoords.x % 3;
@@ -247,8 +247,8 @@ u32vec3 readPixelBase(uvec2 lumaCoords) {
             result = u32vec3(block.y[yIndex], block.u[uvIndex], block.v[uvIndex]);
         } break;
         case PixelFormatInterleaved10BitRGB: {
-            const uint verticalOffset = lumaCoords.y * SRC_PICTURE_STRIDE / 4; // Each pixel takes 4 bytes
-            uint32_t word = SRC_PICTURE_BUFFER32[verticalOffset + lumaCoords.x * 4];
+            const uint verticalOffset = (lumaCoords.y * SRC_PICTURE_STRIDE) / 4; // Each pixel takes 4 bytes
+            uint32_t word = SRC_PICTURE_BUFFER32[verticalOffset + lumaCoords.x];
             u32vec3 pixel;
 
             pixel.r = uint32_t( (word & uint32_t(0x3F)) << 4 );
