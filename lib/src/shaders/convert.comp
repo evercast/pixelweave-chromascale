@@ -156,8 +156,11 @@ u32vec3 rgbToYUV(in u32vec3 rgb) {
         0.6142312835, -0.3385774032, -0.3989573863,
         0.0619930457, 0.4392232994, -0.0402659131
     );
-    const vec3 yuvLegal = rgbToYUVMatrix * vec3(rgb) + vec3(16.0, 128.0, 128.0);
-    return u32vec3(clamp(round(yuvLegal), vec3(0.0), vec3(255.0)));
+    const float blackLevel = float(1 << (SRC_PICTURE_BIT_DEPTH - 4));
+    const float achromacy = float(1 << (SRC_PICTURE_BIT_DEPTH - 1));
+    const float maxValue = float((1 << SRC_PICTURE_BIT_DEPTH) - 1);
+    const vec3 yuvLegal = rgbToYUVMatrix * vec3(rgb) + vec3(blackLevel, achromacy, achromacy);
+    return u32vec3(clamp(round(yuvLegal), vec3(0.0), vec3(maxValue)));
 }
 
 // In order to avoid unnecesary reads when using bilinear sampling
@@ -260,7 +263,7 @@ u32vec3 readPixelBase(uvec2 lumaCoords) {
             pixel.b = uint32_t( (word & (uint32_t(0xFF) << 24)) >> 24 );
             pixel.b = pixel.b | uint32_t( (word & ( uint32_t(0x03) << 16 )) >> 8 );
 
-            result = pixel;
+            result = rgbToYUV(pixel);
         } break;
         case PixelFormatInterleaved12BitRGB: {
             const uint verticalOffset = lumaCoords.y * SRC_PICTURE_STRIDE / 4; // In words (32 bit)
