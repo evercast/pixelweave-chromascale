@@ -12,3 +12,6 @@ cmake-build*/
 
 # OS metadata
 .DS_Store
+
+# Jupyter Notebook temporaries
+research/.ipynb_checkpoints
