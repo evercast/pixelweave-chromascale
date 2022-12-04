@@ -17,7 +17,7 @@ public:
 
 private:
     void InitResources(const VideoFrameWrapper& src, VideoFrameWrapper& dst);
-    void Cleanup();
+    void CleanUp();
 
     VulkanDevice* mDevice;
 

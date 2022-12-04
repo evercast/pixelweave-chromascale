@@ -12,6 +12,14 @@
 #include <CoreFoundation/CFBundle.h>
 #endif
 
+#ifdef PW_PLATFORM_LINUX
+extern "C" {
+#include "incbin/incbin.h"
+}
+
+INCBIN(ComputeShader, "convert.comp.spv");
+#endif
+
 namespace PixelWeave
 {
 
@@ -23,6 +31,8 @@ Resource LoadWindows(const Resource::Id& resourceId)
         case Resource::Id::ComputeShader:
             actualId = PW_RESOURCE_COMPUTE_SHADER;
             break;
+        default:
+            return {nullptr, 0};
     }
     HMODULE module = nullptr;
     GetModuleHandleExA(
@@ -34,16 +44,13 @@ Resource LoadWindows(const Resource::Id& resourceId)
         size_t bufferSize = SizeofResource(module, resource);
         HGLOBAL data = LoadResource(module, resource);
         if (data != nullptr && bufferSize != 0) {
-            uint8_t* buffer = reinterpret_cast<uint8_t*>(LockResource(data));
-
-            Resource result;
-            result.size = bufferSize;
-            result.buffer = new uint8_t[bufferSize];
-            std::copy_n(buffer, bufferSize, result.buffer);
-            return result;
+            auto resourceBuffer = reinterpret_cast<uint8_t*>(LockResource(data));
+            auto buffer = new uint8_t[bufferSize];
+            std::copy_n(resourceBuffer, bufferSize, buffer);
+            return {buffer, bufferSize};
         }
     }
-    return {0, nullptr};
+    return {nullptr, 0};
 }
 #endif
 
@@ -54,32 +61,47 @@ Resource LoadMac(const Resource::Id& resourceId)
         CFStringRef name = CFSTR("");
         CFStringRef extension = CFSTR("");
     };
-    
+
     ResourceName resourceName;
     switch (resourceId) {
         case Resource::Id::ComputeShader:
-        {
-            resourceName = ResourceName { CFSTR("convert.comp"), CFSTR("spv") };
-        }
-        break;
+            resourceName = ResourceName{CFSTR("convert.comp"), CFSTR("spv")};
+            break;
+        default:
+            return {nullptr, 0};
     }
     CFBundleRef libraryBundle = CFBundleGetBundleWithIdentifier(CFSTR(PW_BUNDLE_ID));
     CFURLRef urlRef = CFBundleCopyResourceURL(libraryBundle, resourceName.name, resourceName.extension, NULL);
     CFStringRef urlString = CFURLCopyFileSystemPath(urlRef, kCFURLPOSIXPathStyle);
     std::string path = CFStringGetCStringPtr(urlString, kCFStringEncodingUTF8);
     FILE* file = fopen(path.c_str(), "rb");
-    if (file != nullptr) {
-        fseek(file, 0L, SEEK_END);
-        size_t fileSize = ftell(file);
-        fseek(file, 0L, SEEK_SET);
-        Resource result;
-        result.size = fileSize;
-        result.buffer = new uint8_t[fileSize];
-        fread(result.buffer, fileSize, sizeof(uint8_t), file);
-        fclose(file);
-        return result;
+    if (file == nullptr) {
+        return {nullptr, 0};
     }
-    return {0, nullptr};
+    fseek(file, 0L, SEEK_END);
+    size_t fileSize = ftell(file);
+    fseek(file, 0L, SEEK_SET);
+    auto buffer = new uint8_t[fileSize];
+    fread(buffer, fileSize, sizeof(uint8_t), file);
+    fclose(file);
+    return {buffer, fileSize};
+}
+#endif
+
+#ifdef PW_PLATFORM_LINUX
+Resource LoadLinux(const Resource::Id& resourceId)
+{
+    const uint8_t* data = nullptr;
+    size_t size = 0;
+    switch (resourceId) {
+        case Resource::Id::ComputeShader:
+            data = gComputeShaderData;
+            size = gComputeShaderSize;
+            break;
+        default:
+            return {nullptr, 0};
+    }
+    return {data, size};
 }
 #endif
 
@@ -89,12 +111,16 @@ Resource ResourceLoader::Load(const Resource::Id& resourceId)
     return LoadWindows(resourceId);
 #elif defined(PW_PLATFORM_MACOS)
     return LoadMac(resourceId);
+#elif defined(PW_PLATFORM_LINUX)
+    return LoadLinux(resourceId);
 #endif
 }
 
-void ResourceLoader::Cleanup(Resource& resource)
+void ResourceLoader::CleanUp(Resource& resource)
 {
+#ifndef PW_PLATFORM_LINUX
     delete[] resource.buffer;
+#endif
     resource.buffer = nullptr;
     resource.size = 0;
 }

@@ -205,7 +205,7 @@ VulkanDevice::VideoConversionPipelineResources VulkanDevice::CreateVideoConversi
                                                       .setCodeSize(shaderResource.size * sizeof(uint8_t))
                                                       .setPCode(reinterpret_cast<const uint32_t*>(shaderResource.buffer));
     resources.shader = PW_ASSERT_VK(mLogicalDevice.createShaderModule(shaderCreateInfo));
-    ResourceLoader::Cleanup(shaderResource);
+    ResourceLoader::CleanUp(shaderResource);
 
     const SpecializationData specializationData = CreateSpecializationInfo(src, dst);
     const vk::SpecializationInfo specializationInfo = vk::SpecializationInfo()

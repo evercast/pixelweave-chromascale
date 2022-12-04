@@ -1,6 +1,6 @@
 set(SUBPROJECT_NAME "PixelWeave")
 
-# Attach source files to build
+# Public headers
 set(HEADERS
     include/Device.h
     include/Result.h
@@ -35,12 +35,20 @@ if(WIN32)
         src/ShaderResources.h
         src/ShaderResources.rc
     )
+elseif(LINUX)
+    set(PLATFORM_SPECIFIC_SOURCES
+        src/incbin/incbin.h
+        src/incbin/incbin.c
+    )
 endif()
 
 set(SHADER ${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/convert.comp)
 
 if(APPLE)
     set(RESOURCE_FILES "${SHADER}.spv")
+elseif(LINUX)
+    set(RESOURCE_FILES "${SHADER}.spv")
+    add_compile_options("-Wa,-I${CMAKE_CURRENT_SOURCE_DIR}/src/shaders")
 endif()
 
 add_library(${SUBPROJECT_NAME} SHARED
@@ -49,6 +57,7 @@ add_library(${SUBPROJECT_NAME} SHARED
     ${PLATFORM_SPECIFIC_SOURCES}
     ${RESOURCE_FILES}
 )
+set_target_properties(${SUBPROJECT_NAME} PROPERTIES PUBLIC_HEADER "${HEADERS}")
 
 include_directories(include)
 
@@ -69,6 +78,8 @@ if(WIN32)
     set(SHADER_COMPILER_PATH "$ENV{VULKAN_SDK}/Bin/glslc.exe")
 elseif(APPLE)
     set(SHADER_COMPILER_PATH "$ENV{VULKAN_SDK}/bin/glslc")
+elseif(LINUX)
+    set(SHADER_COMPILER_PATH "/usr/bin/glslc")
 endif()
 
 set(COMPILED_SHADER "${SHADER}.spv")
@@ -111,4 +122,6 @@ if(APPLE)
     )
     target_link_libraries(${SUBPROJECT_NAME} "-framework CoreFoundation")
     add_compile_definitions(PW_BUNDLE_ID="${PW_BUNDLE_ID}")
+elseif(LINUX)
+    install(TARGETS ${SUBPROJECT_NAME} LIBRARY DESTINATION lib PUBLIC_HEADER DESTINATION include/PixelWeave)
 endif()
