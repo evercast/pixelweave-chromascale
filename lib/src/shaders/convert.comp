@@ -426,7 +426,7 @@ mat3 GetYUVMatrix(uint matrixType) {
         } break;
     }
     const float kg = 1 - kr - kb;
-    return  mat3( 
+    return mat3( 
         kr,  -0.5f * (kr / (1.0f - kb)), 0.5f,
         kg,  -0.5f * (kg / (1.0f - kb)), -0.5f * (kg / (1.0f - kr)),
         kb,  0.5f, -0.5f * (kb / (1.0f - kr))
@@ -464,7 +464,9 @@ u32vec3 readPixel(uvec2 lumaCoords) {
     // Convert RGB samples to YUV for consistency
     if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB) {
         const mat3 rgbToYUVMatrix = GetYUVMatrix(SRC_PICTURE_YUV_MATRIX);
-        pixel = rgbToYUVMatrix * vec3(pixel);
+        // Preserve range, conversions are handled later
+        const vec3 offsetFullRange = GetYUVOffset(RangeFull, SRC_PICTURE_BIT_DEPTH);
+        pixel = rgbToYUVMatrix * vec3(pixel) + offsetFullRange;
     }
 
     if (SRC_PICTURE_RANGE != DST_PICTURE_RANGE || SRC_PICTURE_YUV_MATRIX != DST_PICTURE_YUV_MATRIX) {
@@ -474,8 +476,7 @@ u32vec3 readPixel(uvec2 lumaCoords) {
             const mat3 yuvToRGBMatrix = inverse(GetYUVMatrix(SRC_PICTURE_YUV_MATRIX));
             const vec3 yuvScale = GetYUVScale(SRC_PICTURE_RANGE, SRC_PICTURE_BIT_DEPTH);
             const vec3 yuvOffset = GetYUVOffset(SRC_PICTURE_RANGE, SRC_PICTURE_BIT_DEPTH);
-            vec3 rgbFull = (pixel - yuvOffset) / yuvScale;
-            rgbFull = yuvToRGBMatrix * rgbFull;
+            rgbFull = yuvToRGBMatrix * ((pixel - yuvOffset) / yuvScale);
         }
 
         // Convert RGB full to YUV dst
@@ -483,8 +484,7 @@ u32vec3 readPixel(uvec2 lumaCoords) {
             const mat3 rgbToYUVMatrix = GetYUVMatrix(DST_PICTURE_YUV_MATRIX);
             const vec3 yuvScale = GetYUVScale(DST_PICTURE_RANGE, DST_PICTURE_BIT_DEPTH);
             const vec3 yuvOffset = GetYUVOffset(DST_PICTURE_RANGE, DST_PICTURE_BIT_DEPTH);
-            vec3 yuv = (rgbToYUVMatrix * rgbFull) * yuvScale + yuvOffset;
-            pixel = yuv;
+            pixel = (rgbToYUVMatrix * rgbFull) * yuvScale + yuvOffset;
         }
     }
 

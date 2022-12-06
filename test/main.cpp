@@ -54,7 +54,7 @@ PixelWeave::VideoFrameWrapper GetPlanar420Frame(uint32_t width, uint32_t height)
     for (uint32_t vSampleIndex = 0; vSampleIndex < chromaWidth * chromaHeight; ++vSampleIndex) {
         buffer[vSampleOffset + vSampleIndex] = 0xFF;
     }
-    return VideoFrameWrapper{buffer, width, width, height, PixelWeave::PixelFormat::Planar8Bit420};
+    return VideoFrameWrapper{buffer, width, width, height, PixelWeave::PixelFormat::Planar8Bit420, PixelWeave::Range::Limited};
 }
 
 PixelWeave::VideoFrameWrapper GetPlanar422Frame(uint32_t width, uint32_t height)
@@ -122,12 +122,12 @@ PixelWeave::VideoFrameWrapper GetRGBAFrame(uint32_t width, uint32_t height)
     const uint32_t bufferSize = (height * width) * 4;
     uint8_t* buffer = new uint8_t[bufferSize];
     for (uint32_t sampleIndex = 0; sampleIndex < width * height; ++sampleIndex) {
-        buffer[sampleIndex * 4] = 0x10;
-        buffer[sampleIndex * 4 + 1] = 0x10;
-        buffer[sampleIndex * 4 + 2] = 0x10;
-        buffer[sampleIndex * 4 + 3] = 0x00;
+        buffer[sampleIndex * 4] = 0xFF;
+        buffer[sampleIndex * 4 + 1] = 0xFF;
+        buffer[sampleIndex * 4 + 2] = 0xFF;
+        buffer[sampleIndex * 4 + 3] = 0xFF;
     }
-    return VideoFrameWrapper{buffer, width * 4, width, height, PixelWeave::PixelFormat::Interleaved8BitRGBA};
+    return VideoFrameWrapper{buffer, width * 4, width, height, PixelWeave::PixelFormat::Interleaved8BitRGBA, PixelWeave::Range::Full};
 }
 
 PixelWeave::VideoFrameWrapper GetPlanar42010BitFrame(uint32_t width, uint32_t height)
@@ -206,10 +206,10 @@ int main()
     if (result == PixelWeave::Result::Success) {
         constexpr uint32_t srcWidth = 32;
         constexpr uint32_t srcHeight = 32;
-        VideoFrameWrapper srcFrame = Get10BitRGBBuffer(srcWidth, srcHeight);
+        VideoFrameWrapper srcFrame = GetRGBAFrame(srcWidth, srcHeight);
         constexpr uint32_t dstWidth = 32;
         constexpr uint32_t dstHeight = 32;
-        VideoFrameWrapper dstFrame = GetPlanar44410BitFrame(dstWidth, dstHeight);
+        VideoFrameWrapper dstFrame = GetPlanar420Frame(dstWidth, dstHeight);
 
         const auto videoConverter = device->CreateVideoConverter();
         uint64_t totalTime = 0;
@@ -217,7 +217,9 @@ int main()
         for (int i = 0; i < totalFrames; ++i) {
             Timer timer;
             timer.Start();
-            videoConverter->Convert(srcFrame, dstFrame);
+            if (videoConverter->Convert(srcFrame, dstFrame) != PixelWeave::Result::Success) {
+                std::cout << "Conversion failed" << std::endl;
+            }
             totalTime += timer.ElapsedMicros();
             std::cout << "Processing frame " << i << " took " << timer.ElapsedMillis() << "ms (" << timer.ElapsedMicros() << " us)"
                       << std::endl;
