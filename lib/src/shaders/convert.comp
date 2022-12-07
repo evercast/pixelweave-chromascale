@@ -740,14 +740,13 @@ void write420Sample(const uvec2 blockCoords, in YUV420Block resultBlock) {
     for (uint y = 0; y < 2; y += 1) {
         const uvec2 lumaCoords = uvec2(blockCoords.x * 2, blockCoords.y * 2 + y);
         if (lumaCoords.x < DST_PICTURE_WIDTH && lumaCoords.y < DST_PICTURE_HEIGHT) {
-            const uint dstYBufferIndex = lumaCoords.y * DST_PICTURE_STRIDE / DST_PICTURE_BYTE_DEPTH + lumaCoords.x;
+            const uint dstYBufferIndex = lumaCoords.y * (DST_PICTURE_STRIDE / DST_PICTURE_BYTE_DEPTH) + lumaCoords.x;
             const uint32_t firstSample = resultBlock.ySamples[y * 2];
             const uint32_t secondSample = resultBlock.ySamples[y * 2 + 1];
             if (DST_PICTURE_BIT_DEPTH == 10) {
                 DST_PICTURE_BUFFER16[dstYBufferIndex] = uint16_t(firstSample);
                 DST_PICTURE_BUFFER16[dstYBufferIndex + 1] = uint16_t(secondSample);
-            }
-            else {
+            } else {
                 DST_PICTURE_BUFFER[dstYBufferIndex] = uint8_t(firstSample);
                 DST_PICTURE_BUFFER[dstYBufferIndex + 1] = uint8_t(secondSample);
             }

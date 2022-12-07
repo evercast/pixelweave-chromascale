@@ -147,7 +147,13 @@ PixelWeave::VideoFrameWrapper GetPlanar42010BitFrame(uint32_t width, uint32_t he
     for (uint32_t vSampleIndex = 0; vSampleIndex < chromaWidth * chromaHeight; ++vSampleIndex) {
         buffer[vSampleOffset + vSampleIndex] = 0;
     }
-    return VideoFrameWrapper{reinterpret_cast<uint8_t*>(buffer), width * 2, width, height, PixelWeave::PixelFormat::Planar10Bit420};
+    return VideoFrameWrapper{
+        reinterpret_cast<uint8_t*>(buffer),
+        width * 2,
+        width,
+        height,
+        PixelWeave::PixelFormat::Planar10Bit420,
+        PixelWeave::Range::Full};
 }
 
 PixelWeave::VideoFrameWrapper GetPlanar42210BitFrame(uint32_t width, uint32_t height)
@@ -209,7 +215,7 @@ int main()
         VideoFrameWrapper srcFrame = GetRGBAFrame(srcWidth, srcHeight);
         constexpr uint32_t dstWidth = 32;
         constexpr uint32_t dstHeight = 32;
-        VideoFrameWrapper dstFrame = GetPlanar420Frame(dstWidth, dstHeight);
+        VideoFrameWrapper dstFrame = GetPlanar42010BitFrame(dstWidth, dstHeight);
 
         const auto videoConverter = device->CreateVideoConverter();
         uint64_t totalTime = 0;
