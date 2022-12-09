@@ -248,7 +248,7 @@ u32vec3 readPixelBase(uvec2 lumaCoords) {
             block.v[2] = uint16_t((word3 >> 10) & mask);
 
             const uint yIndex = lumaCoords.x % 6;
-            const uint uvIndex = lumaCoords.x % 3;
+            const uint uvIndex = yIndex / 2;
 
             result = u32vec3(block.y[yIndex], block.u[uvIndex], block.v[uvIndex]);
         } break;
