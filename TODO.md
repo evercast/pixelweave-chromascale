@@ -5,9 +5,9 @@
 - Benchmark `readXXXBilinear` and `readXXXSampleFromXXXBuffer`. Remove `readXXXSampleFromXXXBuffer` if no performance benefits are seen.
 - Add `P216` reading. `I010`, `I210`, `I444` writing.
 - Use the [Vulkan Memory Allocator](https://gpuopen.com/vulkan-memory-allocator/) instead of raw allocations.
-- Add range conversion (limited, full).
-- Add yuv matrix conversion (`bt709`, `bt2020`).
 - Add color space conversion.
+- YUV BT. 709 and BT. 2020 matrices and inverses should be baked in the shader for performance.
+- Similar to ^, YUV scale and offset should be baked in the shader. Currently computed at runtime.
 
 ## Nice to have
 - Use macros to template `420`, `422`, `444` functions and remove duplicate code.
