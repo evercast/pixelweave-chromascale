@@ -30,6 +30,8 @@ struct PIXEL_WEAVE_LIB_CLASS VideoFrameWrapper {
     uint32_t GetVOffset() const;
     uint32_t GetBitDepth() const;
     uint32_t GetByteDepth() const;
+
+    bool AreFramePropertiesEqual(const VideoFrameWrapper& other) const;
 };
 
 struct PictureInfo {

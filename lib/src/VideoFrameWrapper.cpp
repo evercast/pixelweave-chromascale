@@ -157,7 +157,8 @@ uint32_t VideoFrameWrapper::GetVOffset() const
     }
 }
 
-uint32_t VideoFrameWrapper::GetBitDepth() const {
+uint32_t VideoFrameWrapper::GetBitDepth() const
+{
     static_assert(AllPixelFormats.size() == 18);
     switch (pixelFormat) {
         case PixelFormat::Interleaved8BitUYVY:
@@ -194,6 +195,12 @@ uint32_t VideoFrameWrapper::GetByteDepth() const
     const uint32_t fullBytes = bitDepth / 8;
     const uint32_t remainingBits = bitDepth % 8;
     return fullBytes + (remainingBits > 0 ? 1 : 0);
+}
+
+bool VideoFrameWrapper::AreFramePropertiesEqual(const VideoFrameWrapper& other) const
+{
+    return stride == other.stride && width == other.width && height == other.height && pixelFormat == other.pixelFormat &&
+           range == other.range && yuvMatrix == other.yuvMatrix;
 }
 
 }  // namespace PixelWeave

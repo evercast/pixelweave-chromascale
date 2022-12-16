@@ -183,12 +183,6 @@ void VulkanVideoConverter::Cleanup()
     }
 }
 
-bool AreFramePropertiesEqual(const VideoFrameWrapper& frameA, const VideoFrameWrapper& frameB)
-{
-    return frameA.stride == frameB.stride && frameA.width == frameB.width && frameA.height == frameB.height &&
-           frameA.pixelFormat == frameB.pixelFormat;
-}
-
 Result VulkanVideoConverter::Convert(const VideoFrameWrapper& src, VideoFrameWrapper& dst)
 {
     // Validate input, return nothing on failure
@@ -199,8 +193,7 @@ Result VulkanVideoConverter::Convert(const VideoFrameWrapper& src, VideoFrameWra
 
     // Initialize resources and cache shaders, buffers, etc
     const bool wasInitialized = mPrevSourceFrame.has_value() && mPrevDstFrame.has_value();
-    if (!wasInitialized || !AreFramePropertiesEqual(mPrevSourceFrame.value(), src) ||
-        !AreFramePropertiesEqual(mPrevDstFrame.value(), dst)) {
+    if (!wasInitialized || !src.AreFramePropertiesEqual(mPrevSourceFrame.value()) || !dst.AreFramePropertiesEqual(mPrevDstFrame.value())) {
         if (wasInitialized) {
             Cleanup();
         }
