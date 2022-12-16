@@ -8,6 +8,7 @@
 - Add color space conversion.
 - YUV BT. 709 and BT. 2020 matrices and inverses should be baked in the shader for performance.
 - Similar to ^, YUV scale and offset should be baked in the shader. Currently computed at runtime.
+- Move YUV matrix and video range conversion to write time instead of doing it in `readPixel`.
 
 ## Nice to have
 - Use macros to template `420`, `422`, `444` functions and remove duplicate code.
