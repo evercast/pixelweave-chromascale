@@ -2,8 +2,7 @@
 
 ## Must
 - Instead of adding control blocks to prevent writing out of bounds in `writeXXXSample`, add padding to frames so that their sizes are multiple of 16 in width and height.
-- Benchmark `readXXXBilinear` and `readXXXSampleFromXXXBuffer`. Remove `readXXXSampleFromXXXBuffer` if no performance benefits are seen.
-- Add `P216` reading. `I010`, `I210`, `I444` writing.
+- Add `P216` reading.
 - Use the [Vulkan Memory Allocator](https://gpuopen.com/vulkan-memory-allocator/) instead of raw allocations.
 - Add color space conversion.
 - YUV BT. 709 and BT. 2020 matrices and inverses should be baked in the shader for performance.
@@ -14,3 +13,4 @@
 - Use macros to template `420`, `422`, `444` functions and remove duplicate code.
 - Split shader into several files and use the `#include` extension when compiling.
 - Add RGB writing support.
+- Add [debug markers](https://www.saschawillems.de/blog/2016/05/28/tutorial-on-using-vulkans-vk_ext_debug_marker-with-renderdoc/) to benchmark and test with tools like RenderDoc, Nvidia Nsight
