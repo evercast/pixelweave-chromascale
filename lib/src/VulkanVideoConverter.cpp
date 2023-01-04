@@ -114,7 +114,7 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
     }
 }
 
-void VulkanVideoConverter::Cleanup()
+void VulkanVideoConverter::CleanUp()
 {
     const bool wasInitialized = mPrevSourceFrame.has_value() && mPrevDstFrame.has_value();
     if (wasInitialized) {
@@ -141,7 +141,7 @@ void VulkanVideoConverter::Convert(const VideoFrameWrapper& src, VideoFrameWrapp
     if (!wasInitialized || !AreFramePropertiesEqual(mPrevSourceFrame.value(), src) ||
         !AreFramePropertiesEqual(mPrevDstFrame.value(), dst)) {
         if (wasInitialized) {
-            Cleanup();
+            CleanUp();
         }
         InitResources(src, dst);
         mPrevSourceFrame = src;
@@ -169,7 +169,7 @@ void VulkanVideoConverter::Convert(const VideoFrameWrapper& src, VideoFrameWrapp
 
 VulkanVideoConverter::~VulkanVideoConverter()
 {
-    Cleanup();
+    CleanUp();
     mDevice->Release();
 }
 

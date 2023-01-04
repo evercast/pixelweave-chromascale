@@ -13,6 +13,6 @@ cmake .. -G "Visual Studio 17 2022" -DCMAKE_CONFIGURATION_TYPES=Release
 devenv PixelWeave.sln /Build
 mkdir pixelweave
 robocopy ../lib/include/ ./pixelweave/include/pixelweave /s /e
-robocopy ./Release ./pixelweave/bin/ PixelWeave.dll PixelWeave.lib
+robocopy ./lib/Release ./pixelweave/bin/ PixelWeave.dll PixelWeave.lib
 explorer.exe .\pixelweave\
 pause

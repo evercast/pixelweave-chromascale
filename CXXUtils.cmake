@@ -25,8 +25,10 @@ function(pw_configure_cxx SUBPROJECT_NAME)
 
     if(MSVC)
         add_compile_definitions(PW_PLATFORM_WINDOWS)
-    else()
+    elseif(APPLE)
         add_compile_definitions(PW_PLATFORM_MACOS)
+    elseif(LINUX)
+        add_compile_definitions(PW_PLATFORM_LINUX)
     endif()
 
 endfunction()

@@ -1,8 +1,8 @@
 #pragma once
 
+#include <iostream>
 #include <sstream>
 #include <string>
-#include <iostream>
 
 #include "Macros.h"
 #include "VulkanBase.h"
@@ -13,6 +13,7 @@
 #endif
 
 #ifdef PW_PLATFORM_WINDOWS
+
 #define PW_LOG(message)                        \
     {                                          \
         std::wostringstream os_;               \
@@ -21,7 +22,6 @@
     }
 
 #ifdef PW_DEBUG
-
 #define PW_ASSERT_MSG(condition, message)                                                             \
     {                                                                                                 \
         if (!(condition)) {                                                                           \
@@ -37,17 +37,19 @@
 #else
 #define PW_ASSERT_MSG(condition, message) PW_UNUSED(condition)
 #endif
+
 #endif
 
-#ifdef PW_PLATFORM_MACOS
-#define PW_LOG(message)                   \
-{                                         \
-    std::ostringstream os_;               \
-    os_ << message << std::endl;          \
-    std::cout << os_.str();               \
-}
+#if defined(PW_PLATFORM_MACOS) || defined(PW_PLATFORM_LINUX)
 
+#define PW_LOG(message)              \
+    {                                \
+        std::ostringstream os_;      \
+        os_ << message << std::endl; \
+        std::cout << os_.str();      \
+    }
 #define PW_ASSERT_MSG(condition, message) PW_UNUSED(condition)
+
 #endif
 
 #define PW_ASSERT(condition) PW_ASSERT_MSG(condition, "")
