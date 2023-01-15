@@ -7,7 +7,7 @@ namespace PixelWeave
 
 uint64_t VideoFrameWrapper::GetBufferSize() const
 {
-    static_assert(AllPixelFormats.size() == 18);
+    static_assert(AllPixelFormats.size() == 19);
     switch (pixelFormat) {
         case PixelFormat::Interleaved8BitUYVY: {
             return static_cast<uint64_t>(stride) * height;
@@ -24,7 +24,8 @@ uint64_t VideoFrameWrapper::GetBufferSize() const
         case PixelFormat::Planar8Bit420NV12:
         case PixelFormat::Planar10Bit420:
         case PixelFormat::Planar10Bit422:
-        case PixelFormat::Planar10Bit444: {
+        case PixelFormat::Planar10Bit444:
+        case PixelFormat::Planar16BitP216: {
             const uint64_t lumaSize = static_cast<uint64_t>(stride) * height;
             const uint64_t chromaSize = static_cast<uint64_t>(GetChromaWidth() * GetByteDepth()) * GetChromaHeight();
             return (lumaSize + chromaSize * 2);
@@ -43,7 +44,7 @@ uint64_t VideoFrameWrapper::GetBufferSize() const
 
 uint32_t VideoFrameWrapper::GetChromaWidth() const
 {
-    static_assert(AllPixelFormats.size() == 18);
+    static_assert(AllPixelFormats.size() == 19);
     switch (pixelFormat) {
         case PixelFormat::Interleaved8BitUYVY:
         case PixelFormat::Planar8Bit420:
@@ -52,6 +53,7 @@ uint32_t VideoFrameWrapper::GetChromaWidth() const
         case PixelFormat::Planar8Bit420NV12:
         case PixelFormat::Planar10Bit420:
         case PixelFormat::Planar10Bit422:
+        case PixelFormat::Planar16BitP216:
             return (width + 1) / 2;
         case PixelFormat::Planar10Bit444:
         case PixelFormat::Planar8Bit444:
@@ -63,11 +65,12 @@ uint32_t VideoFrameWrapper::GetChromaWidth() const
 
 uint32_t VideoFrameWrapper::GetChromaHeight() const
 {
-    static_assert(AllPixelFormats.size() == 18);
+    static_assert(AllPixelFormats.size() == 19);
     switch (pixelFormat) {
         case PixelFormat::Interleaved8BitUYVY:
         case PixelFormat::Planar8Bit422:
         case PixelFormat::Planar10Bit422:
+        case PixelFormat::Planar16BitP216:
             return height;
         case PixelFormat::Planar8Bit420:
         case PixelFormat::Planar8Bit420YV12:
@@ -89,7 +92,7 @@ uint32_t VideoFrameWrapper::GetChromaStride() const
 
 SubsampleType VideoFrameWrapper::GetSubsampleType() const
 {
-    static_assert(AllPixelFormats.size() == 18);
+    static_assert(AllPixelFormats.size() == 19);
     switch (pixelFormat) {
         case PixelFormat::Interleaved8BitBGRA:
         case PixelFormat::Interleaved8BitRGBA:
@@ -103,6 +106,7 @@ SubsampleType VideoFrameWrapper::GetSubsampleType() const
         case PixelFormat::Planar8Bit422:
         case PixelFormat::Interleaved8BitUYVY:
         case PixelFormat::Planar10Bit422:
+        case PixelFormat::Planar16BitP216:
             return SubsampleType::YUV422;
         case PixelFormat::Planar8Bit444:
         case PixelFormat::Planar10Bit444:
@@ -121,7 +125,7 @@ SubsampleType VideoFrameWrapper::GetSubsampleType() const
 
 uint32_t VideoFrameWrapper::GetUOffset() const
 {
-    static_assert(AllPixelFormats.size() == 18);
+    static_assert(AllPixelFormats.size() == 19);
     switch (pixelFormat) {
         case PixelFormat::Planar8Bit420:
         case PixelFormat::Planar8Bit422:
@@ -130,6 +134,7 @@ uint32_t VideoFrameWrapper::GetUOffset() const
         case PixelFormat::Planar10Bit420:
         case PixelFormat::Planar10Bit422:
         case PixelFormat::Planar10Bit444:
+        case PixelFormat::Planar16BitP216:
             return height * stride;
         case PixelFormat::Planar8Bit420YV12:
             return GetVOffset() + GetChromaHeight() * GetChromaStride();
@@ -140,7 +145,7 @@ uint32_t VideoFrameWrapper::GetUOffset() const
 
 uint32_t VideoFrameWrapper::GetVOffset() const
 {
-    static_assert(AllPixelFormats.size() == 18);
+    static_assert(AllPixelFormats.size() == 19);
     switch (pixelFormat) {
         case PixelFormat::Planar8Bit420:
         case PixelFormat::Planar8Bit422:
@@ -159,7 +164,7 @@ uint32_t VideoFrameWrapper::GetVOffset() const
 
 uint32_t VideoFrameWrapper::GetBitDepth() const
 {
-    static_assert(AllPixelFormats.size() == 18);
+    static_assert(AllPixelFormats.size() == 19);
     switch (pixelFormat) {
         case PixelFormat::Interleaved8BitUYVY:
         case PixelFormat::Interleaved8BitBGRA:
@@ -184,6 +189,8 @@ uint32_t VideoFrameWrapper::GetBitDepth() const
         case PixelFormat::Interleaved10BitRGBX:
         case PixelFormat::Interleaved10BitRGBXLE:
             return 10;
+        case PixelFormat::Planar16BitP216:
+            return 16;
         default:
             return 0;
     }

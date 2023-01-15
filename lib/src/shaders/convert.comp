@@ -30,6 +30,7 @@ const uint PixelFormatInterleaved8BitARGB = 14;
 const uint PixelFormatInterleaved12BitRGBLE = 15;
 const uint PixelFormatInterleaved10BitRGBX = 16;
 const uint PixelFormatInterleaved10BitRGBXLE = 17;
+const uint PixelFormatPlanar16BitP216 = 18;
 
 const uint RangeLimited = 0;
 const uint RangeFull = 1;
@@ -407,6 +408,14 @@ u32vec3 readPixelBase(uvec2 lumaCoords) {
             pixel.b = pixel.b | uint32_t((word & (0xFC << 24)) >> 26);
 
             result = pixel;
+        } break;
+        case PixelFormatPlanar16BitP216: {
+            const uint srcYBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE / 2 + lumaCoords.x;
+            result.x = SRC_PICTURE_BUFFER16[srcYBufferIndex];
+            const uvec2 chromaCoords = lumaCoords / BlockSize;
+            const uint srcBufferUVIndex = SRC_PICTURE_U_OFFSET / 2 + chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE + chromaCoords.x * 2;
+            result.y = SRC_PICTURE_BUFFER16[srcBufferUVIndex];
+            result.z = SRC_PICTURE_BUFFER16[srcBufferUVIndex + 1];
         } break;
     }
 
