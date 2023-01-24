@@ -12,10 +12,12 @@ class VulkanVideoConverter : public VideoConverter
 {
 public:
     VulkanVideoConverter(VulkanDevice* device);
-    void Convert(const VideoFrameWrapper& src, VideoFrameWrapper& dst) override;
+    Result Convert(const VideoFrameWrapper& src, VideoFrameWrapper& dst) override;
     ~VulkanVideoConverter() override;
 
 private:
+    Result ValidateInput(const VideoFrameWrapper& src, const VideoFrameWrapper& dst);
+
     void InitResources(const VideoFrameWrapper& src, VideoFrameWrapper& dst);
     void CleanUp();
 

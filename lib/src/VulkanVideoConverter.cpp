@@ -12,6 +12,60 @@ VulkanVideoConverter::VulkanVideoConverter(VulkanDevice* device) : mDevice(nullp
     mDevice = device;
 }
 
+Result VulkanVideoConverter::ValidateInput(const VideoFrameWrapper& src, const VideoFrameWrapper& dst)
+{
+    // Validate resolution
+    if (src.width == 0 || src.height == 0) {
+        return Result::InvalidInputResolutionError;
+    }
+
+    if (dst.width == 0 || dst.height == 0) {
+        return Result::InvalidInputResolutionError;
+    }
+
+    // Validate input format
+    static_assert(AllPixelFormats.size() == 18);
+    std::vector<PixelFormat> validInputFormats{
+        PixelFormat::Interleaved8BitUYVY,
+        PixelFormat::Interleaved8BitBGRA,
+        PixelFormat::Interleaved8BitRGBA,
+        PixelFormat::Planar8Bit420,
+        PixelFormat::Planar8Bit420YV12,
+        PixelFormat::Planar8Bit420NV12,
+        PixelFormat::Interleaved10BitUYVY,
+        PixelFormat::Interleaved10BitRGB,
+        PixelFormat::Interleaved12BitRGB,
+        PixelFormat::Interleaved8BitARGB,
+        PixelFormat::Interleaved12BitRGBLE,
+        PixelFormat::Interleaved10BitRGBX,
+        PixelFormat::Interleaved10BitRGBXLE,
+    };
+    const bool isInputFormatSupported = std::any_of(validInputFormats.begin(), validInputFormats.end(), [&src](const PixelFormat& format) {
+        return src.pixelFormat == format;
+    });
+    if (!isInputFormatSupported) {
+        return Result::InvalidInputFormatError;
+    }
+
+    // Validate output format
+    std::vector<PixelFormat> validOutputFormats{
+        PixelFormat::Planar8Bit420,
+        PixelFormat::Planar8Bit422,
+        PixelFormat::Planar8Bit444,
+        PixelFormat::Planar10Bit420,
+        PixelFormat::Planar10Bit422,
+        PixelFormat::Planar10Bit444,
+    };
+    const bool isOutputFormatSupported =
+        std::any_of(validOutputFormats.begin(), validOutputFormats.end(), [&dst](const PixelFormat& format) {
+            return dst.pixelFormat == format;
+        });
+    if (!isOutputFormatSupported) {
+        return Result::InvalidOutputFormatError;
+    }
+    return Result::Success;
+}
+
 void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFrameWrapper& dst)
 {
     // Create source buffer and copy CPU memory into it
@@ -129,17 +183,17 @@ void VulkanVideoConverter::CleanUp()
     }
 }
 
-bool AreFramePropertiesEqual(const VideoFrameWrapper& frameA, const VideoFrameWrapper& frameB)
+Result VulkanVideoConverter::Convert(const VideoFrameWrapper& src, VideoFrameWrapper& dst)
 {
-    return frameA.stride == frameB.stride && frameA.width == frameB.width && frameA.height == frameB.height &&
-           frameA.pixelFormat == frameB.pixelFormat;
-}
+    // Validate input, return nothing on failure
+    const Result validationResult = ValidateInput(src, dst);
+    if (validationResult != Result::Success) {
+        return validationResult;
+    }
 
-void VulkanVideoConverter::Convert(const VideoFrameWrapper& src, VideoFrameWrapper& dst)
-{
+    // Initialize resources and cache shaders, buffers, etc
     const bool wasInitialized = mPrevSourceFrame.has_value() && mPrevDstFrame.has_value();
-    if (!wasInitialized || !AreFramePropertiesEqual(mPrevSourceFrame.value(), src) ||
-        !AreFramePropertiesEqual(mPrevDstFrame.value(), dst)) {
+    if (!wasInitialized || !src.AreFramePropertiesEqual(mPrevSourceFrame.value()) || !dst.AreFramePropertiesEqual(mPrevDstFrame.value())) {
         if (wasInitialized) {
             CleanUp();
         }
@@ -165,6 +219,8 @@ void VulkanVideoConverter::Convert(const VideoFrameWrapper& src, VideoFrameWrapp
     uint8_t* mappedDstBuffer = mDstLocalBuffer->MapBuffer();
     std::copy_n(mappedDstBuffer, dstBufferSize, dst.buffer);
     mDstLocalBuffer->UnmapBuffer();
+
+    return Result::Success;
 }
 
 VulkanVideoConverter::~VulkanVideoConverter()
