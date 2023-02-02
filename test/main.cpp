@@ -213,13 +213,19 @@ PixelWeave::VideoFrameWrapper GetPlanarP126Frame(uint32_t width, uint32_t height
     const uint32_t bufferSize = height * width + chromaWidth * chromaHeight * 2;
     uint16_t* buffer = new uint16_t[bufferSize];
     for (uint32_t ySampleIndex = 0; ySampleIndex < width * height; ++ySampleIndex) {
-        buffer[ySampleIndex] = 0xFFFF;
+        buffer[ySampleIndex] = 0x00FF;
     }
     const uint32_t uvSampleOffset = width * height;
-    for (uint32_t uvSampleIndex = 0; uvSampleIndex < chromaWidth * chromaHeight * 2; uvSampleIndex += 2) {
-        buffer[uvSampleOffset + uvSampleIndex] = 0xC0C0;
-        buffer[uvSampleOffset + uvSampleIndex + 1] = 0x1010;
+    
+    for (uint32_t lineIndex = 0; lineIndex < chromaHeight; ++lineIndex) {
+        const uint16_t sample = lineIndex % 2 == 1 ? 0 : 0xFFFF;
+        const uint32_t lineOffset = chromaWidth * 2 * lineIndex;
+        for (uint32_t uvSampleIndex = 0; uvSampleIndex < chromaWidth * 2; uvSampleIndex += 2) {
+            buffer[uvSampleOffset + lineOffset + uvSampleIndex] = sample;
+            buffer[uvSampleOffset + lineOffset + uvSampleIndex + 1] = sample;
+        }
     }
+
     return VideoFrameWrapper{reinterpret_cast<uint8_t*>(buffer), width * 2, width, height, PixelWeave::PixelFormat::Planar16BitP216};
 }
 

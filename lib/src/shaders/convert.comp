@@ -412,9 +412,10 @@ u32vec3 readPixelBase(uvec2 lumaCoords) {
         case PixelFormatPlanar16BitP216: {
             const uint srcYBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE / 2 + lumaCoords.x;
             result.x = SRC_PICTURE_BUFFER16[srcYBufferIndex];
-            const uvec2 chromaCoords = lumaCoords / BlockSize;
+            // ChromacCoords are divided by 1 (height) because it's a 422 format
+            const uvec2 chromaCoords = lumaCoords / uvec2(2,1);
             // Account for: Color buffer offset, current video line, horizonal sample offset (uv sample)
-            const uint srcBufferUVIndex = (SRC_PICTURE_U_OFFSET / 2) + (chromaCoords.y * 2 * SRC_PICTURE_CHROMA_STRIDE) + (chromaCoords.x * 2);
+            const uint srcBufferUVIndex = (SRC_PICTURE_U_OFFSET / 2) + (chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE) + (chromaCoords.x * 2);
             result.y = SRC_PICTURE_BUFFER16[srcBufferUVIndex];
             result.z = SRC_PICTURE_BUFFER16[srcBufferUVIndex + 1];
         } break;
