@@ -24,7 +24,7 @@ Result VulkanVideoConverter::ValidateInput(const VideoFrameWrapper& src, const V
     }
 
     // Validate input format
-    static_assert(AllPixelFormats.size() == 18);
+    static_assert(AllPixelFormats.size() == 19);
     std::vector<PixelFormat> validInputFormats{
         PixelFormat::Interleaved8BitUYVY,
         PixelFormat::Interleaved8BitBGRA,
@@ -39,6 +39,7 @@ Result VulkanVideoConverter::ValidateInput(const VideoFrameWrapper& src, const V
         PixelFormat::Interleaved12BitRGBLE,
         PixelFormat::Interleaved10BitRGBX,
         PixelFormat::Interleaved10BitRGBXLE,
+        PixelFormat::Planar16BitP216,
     };
     const bool isInputFormatSupported = std::any_of(validInputFormats.begin(), validInputFormats.end(), [&src](const PixelFormat& format) {
         return src.pixelFormat == format;

@@ -206,16 +206,39 @@ PixelWeave::VideoFrameWrapper Get10BitRGBBuffer(uint32_t width, uint32_t height)
     return VideoFrameWrapper{reinterpret_cast<uint8_t*>(buffer), width * 4, width, height, PixelWeave::PixelFormat::Interleaved10BitRGB};
 }
 
+PixelWeave::VideoFrameWrapper GetPlanarP126Frame(uint32_t width, uint32_t height)
+{
+    const uint32_t chromaWidth = (width + 1) / 2;
+    const uint32_t chromaHeight = height;
+    const uint32_t bufferSize = height * width + chromaWidth * chromaHeight * 2;
+    uint16_t* buffer = new uint16_t[bufferSize];
+    for (uint32_t ySampleIndex = 0; ySampleIndex < width * height; ++ySampleIndex) {
+        buffer[ySampleIndex] = 0x00FF;
+    }
+    const uint32_t uvSampleOffset = width * height;
+    
+    for (uint32_t lineIndex = 0; lineIndex < chromaHeight; ++lineIndex) {
+        const uint16_t sample = lineIndex % 2 == 1 ? 0 : 0xFFFF;
+        const uint32_t lineOffset = chromaWidth * 2 * lineIndex;
+        for (uint32_t uvSampleIndex = 0; uvSampleIndex < chromaWidth * 2; uvSampleIndex += 2) {
+            buffer[uvSampleOffset + lineOffset + uvSampleIndex] = sample;
+            buffer[uvSampleOffset + lineOffset + uvSampleIndex + 1] = sample;
+        }
+    }
+
+    return VideoFrameWrapper{reinterpret_cast<uint8_t*>(buffer), width * 2, width, height, PixelWeave::PixelFormat::Planar16BitP216};
+}
+
 int main()
 {
     auto [result, device] = PixelWeave::Device::Create();
     if (result == PixelWeave::Result::Success) {
-        constexpr uint32_t srcWidth = 1920;
-        constexpr uint32_t srcHeight = 1080;
-        VideoFrameWrapper srcFrame = Get10BitRGBBuffer(srcWidth, srcHeight);
-        constexpr uint32_t dstWidth = 1920;
-        constexpr uint32_t dstHeight = 1080;
-        VideoFrameWrapper dstFrame = GetPlanar42210BitFrame(dstWidth, dstHeight);
+        constexpr uint32_t srcWidth = 32;
+        constexpr uint32_t srcHeight = 32;
+        VideoFrameWrapper srcFrame = GetPlanarP126Frame(srcWidth, srcHeight);
+        constexpr uint32_t dstWidth = 32;
+        constexpr uint32_t dstHeight = 32;
+        VideoFrameWrapper dstFrame = GetPlanar422Frame(dstWidth, dstHeight);
 
         const auto videoConverter = device->CreateVideoConverter();
         uint64_t totalTime = 0;
