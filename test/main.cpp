@@ -63,7 +63,7 @@ PixelWeave::VideoFrameWrapper GetPlanar422Frame(uint32_t width, uint32_t height)
     const uint32_t bufferSize = height * stride * 2;
     uint8_t* buffer = new uint8_t[bufferSize];
     for (uint32_t bufferIndex = 0; bufferIndex < bufferSize; ++bufferIndex) {
-        buffer[bufferIndex] = 0;
+        buffer[bufferIndex] = 0xFF;
     }
     return VideoFrameWrapper{buffer, stride, width, height, PixelWeave::PixelFormat::Planar8Bit422};
 }
@@ -74,7 +74,7 @@ PixelWeave::VideoFrameWrapper GetPlanar444Frame(uint32_t width, uint32_t height)
     const uint32_t bufferSize = height * stride * 3;
     uint8_t* buffer = new uint8_t[bufferSize];
     for (uint32_t bufferIndex = 0; bufferIndex < bufferSize; ++bufferIndex) {
-        buffer[bufferIndex] = 0;
+        buffer[bufferIndex] = 0xFF;
     }
     return VideoFrameWrapper{buffer, stride, width, height, PixelWeave::PixelFormat::Planar8Bit444};
 }
@@ -137,15 +137,15 @@ PixelWeave::VideoFrameWrapper GetPlanar42010BitFrame(uint32_t width, uint32_t he
     const uint32_t bufferSize = 2 * ((height * width) + chromaWidth * chromaHeight * 2);
     uint16_t* buffer = new uint16_t[bufferSize];
     for (uint32_t ySampleIndex = 0; ySampleIndex < width * height; ++ySampleIndex) {
-        buffer[ySampleIndex] = 0;
+        buffer[ySampleIndex] = 0x0000;
     }
     const uint32_t uSampleOffset = width * height;
     const uint32_t vSampleOffset = uSampleOffset + chromaWidth * chromaHeight;
     for (uint32_t uSampleIndex = 0; uSampleIndex < chromaWidth * chromaHeight; ++uSampleIndex) {
-        buffer[uSampleOffset + uSampleIndex] = 0;
+        buffer[uSampleOffset + uSampleIndex] = 0xFFFF;
     }
     for (uint32_t vSampleIndex = 0; vSampleIndex < chromaWidth * chromaHeight; ++vSampleIndex) {
-        buffer[vSampleOffset + vSampleIndex] = 0;
+        buffer[vSampleOffset + vSampleIndex] = 0xFFFF;
     }
     return VideoFrameWrapper{
         reinterpret_cast<uint8_t*>(buffer),
@@ -168,10 +168,10 @@ PixelWeave::VideoFrameWrapper GetPlanar42210BitFrame(uint32_t width, uint32_t he
     const uint32_t uSampleOffset = width * height;
     const uint32_t vSampleOffset = uSampleOffset + chromaWidth * chromaHeight;
     for (uint32_t uSampleIndex = 0; uSampleIndex < chromaWidth * chromaHeight; ++uSampleIndex) {
-        buffer[uSampleOffset + uSampleIndex] = 0;
+        buffer[uSampleOffset + uSampleIndex] = 0x03FF;
     }
     for (uint32_t vSampleIndex = 0; vSampleIndex < chromaWidth * chromaHeight; ++vSampleIndex) {
-        buffer[vSampleOffset + vSampleIndex] = 0;
+        buffer[vSampleOffset + vSampleIndex] = 0x03FF;
     }
     return VideoFrameWrapper{reinterpret_cast<uint8_t*>(buffer), width * 2, width, height, PixelWeave::PixelFormat::Planar10Bit422};
 }
@@ -188,10 +188,10 @@ PixelWeave::VideoFrameWrapper GetPlanar44410BitFrame(uint32_t width, uint32_t he
     const uint32_t uSampleOffset = width * height;
     const uint32_t vSampleOffset = uSampleOffset + chromaWidth * chromaHeight;
     for (uint32_t uSampleIndex = 0; uSampleIndex < chromaWidth * chromaHeight; ++uSampleIndex) {
-        buffer[uSampleOffset + uSampleIndex] = 0;
+        buffer[uSampleOffset + uSampleIndex] = 0x3FF;
     }
     for (uint32_t vSampleIndex = 0; vSampleIndex < chromaWidth * chromaHeight; ++vSampleIndex) {
-        buffer[vSampleOffset + vSampleIndex] = 0;
+        buffer[vSampleOffset + vSampleIndex] = 0x3FF;
     }
     return VideoFrameWrapper{reinterpret_cast<uint8_t*>(buffer), width * 2, width, height, PixelWeave::PixelFormat::Planar10Bit444};
 }
@@ -235,10 +235,10 @@ int main()
     if (result == PixelWeave::Result::Success) {
         constexpr uint32_t srcWidth = 32;
         constexpr uint32_t srcHeight = 32;
-        VideoFrameWrapper srcFrame = GetPlanarP126Frame(srcWidth, srcHeight);
+        VideoFrameWrapper srcFrame = GetPlanar422Frame(srcWidth, srcHeight);
         constexpr uint32_t dstWidth = 32;
         constexpr uint32_t dstHeight = 32;
-        VideoFrameWrapper dstFrame = GetPlanar422Frame(dstWidth, dstHeight);
+        VideoFrameWrapper dstFrame = GetPlanar420Frame(dstWidth, dstHeight);
 
         const auto videoConverter = device->CreateVideoConverter();
         uint64_t totalTime = 0;
