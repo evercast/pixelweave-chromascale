@@ -49,10 +49,10 @@ PixelWeave::VideoFrameWrapper GetPlanar420Frame(uint32_t width, uint32_t height)
     const uint32_t uSampleOffset = width * height;
     const uint32_t vSampleOffset = uSampleOffset + chromaWidth * chromaHeight;
     for (uint32_t uSampleIndex = 0; uSampleIndex < chromaWidth * chromaHeight; ++uSampleIndex) {
-        buffer[uSampleOffset + uSampleIndex] = 0xFF;
+        buffer[uSampleOffset + uSampleIndex] = 0xF0;
     }
     for (uint32_t vSampleIndex = 0; vSampleIndex < chromaWidth * chromaHeight; ++vSampleIndex) {
-        buffer[vSampleOffset + vSampleIndex] = 0xFF;
+        buffer[vSampleOffset + vSampleIndex] = 0x0F;
     }
     return VideoFrameWrapper{buffer, width, width, height, PixelWeave::PixelFormat::Planar8Bit420, PixelWeave::Range::Limited};
 }
@@ -235,10 +235,10 @@ int main()
     if (result == PixelWeave::Result::Success) {
         constexpr uint32_t srcWidth = 32;
         constexpr uint32_t srcHeight = 32;
-        VideoFrameWrapper srcFrame = GetPlanar422Frame(srcWidth, srcHeight);
+        VideoFrameWrapper srcFrame = GetPlanar420Frame(srcWidth, srcHeight);
         constexpr uint32_t dstWidth = 32;
         constexpr uint32_t dstHeight = 32;
-        VideoFrameWrapper dstFrame = GetPlanar420Frame(dstWidth, dstHeight);
+        VideoFrameWrapper dstFrame = GetUYVYFrame(dstWidth, dstHeight);
 
         const auto videoConverter = device->CreateVideoConverter();
         uint64_t totalTime = 0;

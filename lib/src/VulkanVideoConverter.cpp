@@ -61,6 +61,7 @@ Result VulkanVideoConverter::ValidateInput(const VideoFrameWrapper& src, const V
         PixelFormat::Planar10Bit420,
         PixelFormat::Planar10Bit422,
         PixelFormat::Planar10Bit444,
+        PixelFormat::Interleaved8BitUYVY,
     };
     const bool isOutputFormatSupported =
         std::any_of(validOutputFormats.begin(), validOutputFormats.end(), [&dst](const PixelFormat& format) {
