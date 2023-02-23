@@ -15,6 +15,7 @@ enum class YUVMatrix { BT709 = 0, BT2020 = 1 };
 struct PIXEL_WEAVE_LIB_CLASS VideoFrameWrapper {
     uint8_t* buffer = nullptr;
     uint32_t stride = 0;  // Stride in bytes
+    uint32_t chromaStride = 0; // Stride in bytes
     uint32_t width = 0;
     uint32_t height = 0;
     PixelFormat pixelFormat = PixelFormat::Interleaved8BitRGBA;
