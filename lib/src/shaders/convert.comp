@@ -172,7 +172,6 @@ u32vec3 readPixelBase(uvec2 lumaCoords) {
     lumaCoords = clamp(lumaCoords, uvec2(0), uvec2(SRC_PICTURE_WIDTH - 1, SRC_PICTURE_HEIGHT - 1));
     u32vec3 result;
     switch (SRC_PICTURE_FORMAT) {
-        case PixelFormatPlanar8Bit420:
         case PixelFormatPlanar8Bit420YV12:
         case PixelFormatPlanar8Bit420NV12: {
             // Read Y plane, this is the same across all planar and semi-planar formats
@@ -418,6 +417,15 @@ u32vec3 readPixelBase(uvec2 lumaCoords) {
             const uint srcBufferUVIndex = (SRC_PICTURE_U_OFFSET / 2) + (chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE) + (chromaCoords.x * 2);
             result.y = SRC_PICTURE_BUFFER16[srcBufferUVIndex];
             result.z = SRC_PICTURE_BUFFER16[srcBufferUVIndex + 1];
+        } break;
+        case PixelFormatPlanar8Bit420: {
+            const uint srcYBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x;
+            result.x = SRC_PICTURE_BUFFER[srcYBufferIndex];
+            const uvec2 chromaCoords = lumaCoords / uvec2(2,2);
+            const uint srcBufferUIndex = SRC_PICTURE_U_OFFSET + chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE + chromaCoords.x;
+            result.y = SRC_PICTURE_BUFFER[srcBufferUIndex];
+            const uint srcBufferVIndex = SRC_PICTURE_V_OFFSET + chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE + chromaCoords.x;
+            result.z = SRC_PICTURE_BUFFER[srcBufferVIndex];
         } break;
         case PixelFormatPlanar8Bit422: {
             const uint srcYBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x;
