@@ -175,6 +175,11 @@ u32vec3 readPixelBase(uvec2 lumaCoords) {
         case PixelFormatPlanar8Bit420:
         case PixelFormatPlanar8Bit420YV12:
         case PixelFormatPlanar8Bit420NV12: {
+            result.x = 0xFF;
+            result.y = 0x80;
+            result.z = 0x80;
+            return result;
+            
             // Read Y plane, this is the same across all planar and semi-planar formats
             const uint srcYBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x;
             result.x = SRC_PICTURE_BUFFER[srcYBufferIndex];
@@ -832,15 +837,10 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
         if (rightPixelIndex < DST_PICTURE_WIDTH && topLineIndex < DST_PICTURE_HEIGHT) {
             const uint baseTopLineOffset = topLineIndex * DST_PICTURE_STRIDE;
             const uint topBlockOffset = baseTopLineOffset + blockCoords.x * 4;
-            //DST_PICTURE_BUFFER[topBlockOffset] = uint8_t(resultBlock.uSamples[0]); // U
-            //DST_PICTURE_BUFFER[topBlockOffset + 1] = uint8_t(resultBlock.ySamples[0]); // Y
-            //DST_PICTURE_BUFFER[topBlockOffset + 2] = uint8_t(resultBlock.vSamples[0]); // V
-            //DST_PICTURE_BUFFER[topBlockOffset + 3] = uint8_t(resultBlock.ySamples[1]); // Y
-            
-            DST_PICTURE_BUFFER[topBlockOffset] = uint8_t(0x80); // U
-            DST_PICTURE_BUFFER[topBlockOffset + 1] = uint8_t(0xFF); // Y
-            DST_PICTURE_BUFFER[topBlockOffset + 2] = uint8_t(0x80); // V
-            DST_PICTURE_BUFFER[topBlockOffset + 3] = uint8_t(0xFF); // Y
+            DST_PICTURE_BUFFER[topBlockOffset] = uint8_t(resultBlock.uSamples[0]); // U
+            DST_PICTURE_BUFFER[topBlockOffset + 1] = uint8_t(resultBlock.ySamples[0]); // Y
+            DST_PICTURE_BUFFER[topBlockOffset + 2] = uint8_t(resultBlock.vSamples[0]); // V
+            DST_PICTURE_BUFFER[topBlockOffset + 3] = uint8_t(resultBlock.ySamples[1]); // Y
         }
 
         // Write bottom block
@@ -848,15 +848,10 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
         if (rightPixelIndex < DST_PICTURE_WIDTH && bottomLineIndex < DST_PICTURE_HEIGHT) {
             const uint baseBottomLineOffset = bottomLineIndex * DST_PICTURE_STRIDE;
             const uint bottomBlockOffset = baseBottomLineOffset + blockCoords.x * 4;
-            //DST_PICTURE_BUFFER[bottomBlockOffset] = uint8_t(resultBlock.uSamples[1]); // U
-            //DST_PICTURE_BUFFER[bottomBlockOffset + 1] = uint8_t(resultBlock.ySamples[2]); // Y
-            //DST_PICTURE_BUFFER[bottomBlockOffset + 2] = uint8_t(resultBlock.vSamples[1]); // V
-            //DST_PICTURE_BUFFER[bottomBlockOffset + 3] = uint8_t(resultBlock.ySamples[3]); // Y
-            
-            DST_PICTURE_BUFFER[bottomBlockOffset] = uint8_t(0x80); // U
-            DST_PICTURE_BUFFER[bottomBlockOffset + 1] = uint8_t(0xFF); // Y
-            DST_PICTURE_BUFFER[bottomBlockOffset + 2] = uint8_t(0x80); // V
-            DST_PICTURE_BUFFER[bottomBlockOffset + 3] = uint8_t(0xFF); // Y
+            DST_PICTURE_BUFFER[bottomBlockOffset] = uint8_t(resultBlock.uSamples[1]); // U
+            DST_PICTURE_BUFFER[bottomBlockOffset + 1] = uint8_t(resultBlock.ySamples[2]); // Y
+            DST_PICTURE_BUFFER[bottomBlockOffset + 2] = uint8_t(resultBlock.vSamples[1]); // V
+            DST_PICTURE_BUFFER[bottomBlockOffset + 3] = uint8_t(resultBlock.ySamples[3]); // Y
         }
     } else {
         [[unroll]]
