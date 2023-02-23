@@ -418,34 +418,32 @@ u32vec3 readPixelBase(uvec2 lumaCoords) {
             result.y = SRC_PICTURE_BUFFER16[srcBufferUVIndex];
             result.z = SRC_PICTURE_BUFFER16[srcBufferUVIndex + 1];
         } break;
-        case PixelFormatPlanar8Bit420: {
-            const uint srcYBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x;
-            result.x = SRC_PICTURE_BUFFER[srcYBufferIndex];
-            const uvec2 chromaCoords = lumaCoords / uvec2(2,2);
-            const uint srcBufferUIndex = SRC_PICTURE_U_OFFSET + chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE + chromaCoords.x;
-            result.y = SRC_PICTURE_BUFFER[srcBufferUIndex];
-            const uint srcBufferVIndex = SRC_PICTURE_V_OFFSET + chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE + chromaCoords.x;
-            result.z = SRC_PICTURE_BUFFER[srcBufferVIndex];
-        } break;
-        case PixelFormatPlanar8Bit422: {
-            const uint srcYBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x;
-            result.x = SRC_PICTURE_BUFFER[srcYBufferIndex];
-            const uvec2 chromaCoords = lumaCoords / uvec2(2,1);
-            const uint srcBufferUIndex = SRC_PICTURE_U_OFFSET + chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE + chromaCoords.x;
-            result.y = SRC_PICTURE_BUFFER[srcBufferUIndex];
-            const uint srcBufferVIndex = SRC_PICTURE_V_OFFSET + chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE + chromaCoords.x;
-            result.z = SRC_PICTURE_BUFFER[srcBufferVIndex];
-            result.y = 0x80;
-            result.z = 0x80;
-        } break;
+        case PixelFormatPlanar8Bit420:
+        case PixelFormatPlanar8Bit422:
         case PixelFormatPlanar8Bit444: {
             const uint srcYBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x;
             result.x = SRC_PICTURE_BUFFER[srcYBufferIndex];
-            const uvec2 chromaCoords = lumaCoords;
+            uvec2 chromaSamplerSize = uvec2(1,1);
+            switch (SRC_PICTURE_FORMAT) {
+                case PixelFormatPlanar8Bit420:
+                    chromaSamplerSize = uvec2(2,2);
+                    break;
+                case PixelFormatPlanar8Bit422:
+                    chromaSamplerSize = uvec2(2,1);
+                    break;
+                case PixelFormatPlanar8Bit444:
+                    chromaSamplerSize = uvec2(1,1);
+                    break;
+            }
+            
+            const uvec2 chromaCoords = lumaCoords / chromaSamplerSize;
             const uint srcBufferUIndex = SRC_PICTURE_U_OFFSET + chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE + chromaCoords.x;
             result.y = SRC_PICTURE_BUFFER[srcBufferUIndex];
             const uint srcBufferVIndex = SRC_PICTURE_V_OFFSET + chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE + chromaCoords.x;
             result.z = SRC_PICTURE_BUFFER[srcBufferVIndex];
+            
+            result.y = 0x80;
+            result.z = 0x80;
         } break;
         case PixelFormatPlanar10Bit420:
         case PixelFormatPlanar10Bit422:
