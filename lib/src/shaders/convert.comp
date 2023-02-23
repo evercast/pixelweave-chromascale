@@ -464,6 +464,7 @@ u32vec3 readPixelBase(uvec2 lumaCoords) {
             result.y = SRC_PICTURE_BUFFER16[srcBufferUIndex];
             const uint srcBufferVIndex = (SRC_PICTURE_V_OFFSET / 2) + chromaCoords.y * (SRC_PICTURE_CHROMA_STRIDE / 2) + chromaCoords.x;
             result.z = SRC_PICTURE_BUFFER16[srcBufferVIndex];
+            result.z = 0x80;
         } break;
     }
 
