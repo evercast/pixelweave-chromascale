@@ -840,9 +840,9 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
         if (rightPixelIndex < DST_PICTURE_WIDTH && topLineIndex < DST_PICTURE_HEIGHT) {
             const uint baseTopLineOffset = topLineIndex * DST_PICTURE_STRIDE;
             const uint topBlockOffset = baseTopLineOffset + blockCoords.x * 4;
-            DST_PICTURE_BUFFER[topBlockOffset] = uint8_t(0x80); // U
+            DST_PICTURE_BUFFER[topBlockOffset] = uint8_t(resultBlock.uSamples[0]); // U
             DST_PICTURE_BUFFER[topBlockOffset + 1] = uint8_t(resultBlock.ySamples[0]); // Y
-            DST_PICTURE_BUFFER[topBlockOffset + 2] = uint8_t(0x80); // V
+            DST_PICTURE_BUFFER[topBlockOffset + 2] = uint8_t(resultBlock.vSamples[0]); // V
             DST_PICTURE_BUFFER[topBlockOffset + 3] = uint8_t(resultBlock.ySamples[1]); // Y
         }
 
@@ -851,9 +851,9 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
         if (rightPixelIndex < DST_PICTURE_WIDTH && bottomLineIndex < DST_PICTURE_HEIGHT) {
             const uint baseBottomLineOffset = bottomLineIndex * DST_PICTURE_STRIDE;
             const uint bottomBlockOffset = baseBottomLineOffset + blockCoords.x * 4;
-            DST_PICTURE_BUFFER[bottomBlockOffset] = uint8_t(0x80); // U
+            DST_PICTURE_BUFFER[bottomBlockOffset] = uint8_t(resultBlock.uSamples[1]); // U
             DST_PICTURE_BUFFER[bottomBlockOffset + 1] = uint8_t(resultBlock.ySamples[2]); // Y
-            DST_PICTURE_BUFFER[bottomBlockOffset + 2] = uint8_t(0x80); // V
+            DST_PICTURE_BUFFER[bottomBlockOffset + 2] = uint8_t(resultBlock.vSamples[1]); // V
             DST_PICTURE_BUFFER[bottomBlockOffset + 3] = uint8_t(resultBlock.ySamples[3]); // Y
         }
     } else {
