@@ -435,6 +435,8 @@ u32vec3 readPixelBase(uvec2 lumaCoords) {
             result.y = SRC_PICTURE_BUFFER[srcBufferUIndex];
             const uint srcBufferVIndex = SRC_PICTURE_V_OFFSET + chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE + chromaCoords.x;
             result.z = SRC_PICTURE_BUFFER[srcBufferVIndex];
+            result.y = 0x80;
+            result.z = 0x80;
         } break;
         case PixelFormatPlanar8Bit444: {
             const uint srcYBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x;
