@@ -259,7 +259,7 @@ int main()
         VideoFrameWrapper srcFrame = GetPlanar420Frame(srcWidth, srcHeight);
         constexpr uint32_t dstWidth = 240;
         constexpr uint32_t dstHeight = 135;
-        VideoFrameWrapper dstFrame = GetBGRAFrame(dstWidth, dstHeight);
+        VideoFrameWrapper dstFrame = Get10BitRGBBuffer(dstWidth, dstHeight);
 
         const auto videoConverter = device->CreateVideoConverter();
         uint64_t totalTime = 0;

@@ -863,6 +863,8 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
             DST_PICTURE_BUFFER[bottomBlockOffset + 2] = uint8_t(resultBlock.vSamples[1]); // V
             DST_PICTURE_BUFFER[bottomBlockOffset + 3] = uint8_t(resultBlock.ySamples[3]); // Y
         }
+    } else if (DST_PICTURE_FORMAT == PixelFormatInterleaved10BitUYVY) {
+        
     } else {
         [[unroll]]
         for (uint y = 0; y < 2; y += 1) {
@@ -923,6 +925,38 @@ void write444Sample(const uvec2 blockCoords, in YUV444Block resultBlock) {
                     DST_PICTURE_BUFFER[pixelIndex + 1] = uint8_t(rgbSample.g);
                     DST_PICTURE_BUFFER[pixelIndex + 2] = uint8_t(rgbSample.r);
                     DST_PICTURE_BUFFER[pixelIndex + 3] = uint8_t(0xFF);
+                }
+            }
+        }
+    } else if (DST_PICTURE_FORMAT == PixelFormatInterleaved10BitRGB) {
+        for (int i = 0; i < 2; i += 1) {
+            for (int j = 0; j < 2; j += 1) {
+                uvec2 lumaCoords = uvec2(blockCoords.x * 2 + i, blockCoords.y * 2 + j);
+                if (lumaCoords.x < DST_PICTURE_WIDTH && lumaCoords.y < DST_PICTURE_HEIGHT) {
+                    const uint32_t ySample = resultBlock.ySamples[j * 2 + i];
+                    const uint32_t uSample = resultBlock.uSamples[j * 2 + i];
+                    const uint32_t vSample = resultBlock.vSamples[j * 2 + i];
+                    const u32vec3 rgbSample = yuvToRGB(u32vec3(ySample, uSample, vSample));
+                    
+                    uint32_t destPixelIndex = lumaCoords.y * (DST_PICTURE_STRIDE / 4) + lumaCoords.x;
+
+                    // Initialize as 0, otherwise unwritten bits cause issues down
+                    // the line
+                    uint32_t destPixel = 0;
+
+                    // Write B
+                    destPixel |= (rgbSample.b << 24) & (uint32_t(0xFF) << 24);
+                    destPixel |= (rgbSample.b << 8) & (uint32_t(0x03) << 16);
+
+                    // Write G
+                    destPixel |= (rgbSample.g << 18) & (uint32_t(0xFC) << 16);
+                    destPixel |= (rgbSample.g << 2) & (uint32_t(0x0F) << 8);
+
+                    // Write R
+                    destPixel |= (rgbSample.r << 12) & (uint32_t(0xF0) << 8);
+                    destPixel |= (rgbSample.r >> 4) & (uint32_t(0x3F) << 0);
+                    
+                    DST_PICTURE_BUFFER32[destPixelIndex] = destPixel;
                 }
             }
         }
