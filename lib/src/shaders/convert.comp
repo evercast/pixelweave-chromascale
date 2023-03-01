@@ -513,6 +513,16 @@ vec3 GetYUVScale(const uint range, const uint bitDepth) {
     }
 }
 
+u32vec3 yuvToRGB(u32vec3 yuv) {
+    const uint32_t maxValueDst = (1 << DST_PICTURE_BIT_DEPTH) - 1;
+    const vec3 normalizedYUV = vec3(yuv) / vec3(maxValueDst);
+    const mat3 yuvToRGBMatrix = inverse(GetYUVMatrix(DST_PICTURE_YUV_MATRIX));
+    const vec3 offsetFullRange = GetYUVOffset(RangeFull, DST_PICTURE_BIT_DEPTH);
+    const vec3 normalizedRGB = yuvToRGBMatrix * (normalizedYUV - offsetFullRange);
+    const vec3 scaledPixel = round(normalizedRGB * maxValueDst);
+    return u32vec3(clamp(scaledPixel, vec3(0.0), vec3(maxValueDst)));
+}
+
 u32vec3 readPixel(uvec2 lumaCoords) {
     // Read binary data and normalize
     const uint32_t maxValueSrc = (1 << SRC_PICTURE_BIT_DEPTH) - 1;
@@ -898,49 +908,69 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
 }
 
 void write444Sample(const uvec2 blockCoords, in YUV444Block resultBlock) {
-    [[unroll]]
-    for (int i = 0; i < 2; i += 1) {
-        [[unroll]]
-        for (int j = 0; j < 2; j += 1) {
-            uvec2 lumaCoords = uvec2(blockCoords.x * 2 + i, blockCoords.y * 2 + j);
-            if (lumaCoords.x < DST_PICTURE_WIDTH && lumaCoords.y < DST_PICTURE_HEIGHT) {
-                const uint dstYBufferIndex = lumaCoords.y * DST_PICTURE_STRIDE / DST_PICTURE_BYTE_DEPTH + lumaCoords.x;
-                if (DST_PICTURE_BIT_DEPTH == 10) {
-                    DST_PICTURE_BUFFER16[dstYBufferIndex] = uint16_t(resultBlock.ySamples[j * 2 + i]);
-                } else {
-                    DST_PICTURE_BUFFER[dstYBufferIndex] = uint8_t(resultBlock.ySamples[j * 2 + i]);
+    if (DST_PICTURE_FORMAT == PixelFormatInterleaved8BitBGRA) {
+        for (int i = 0; i < 2; i += 1) {
+            for (int j = 0; j < 2; j += 1) {
+                uvec2 lumaCoords = uvec2(blockCoords.x * 2 + i, blockCoords.y * 2 + j);
+                if (lumaCoords.x < DST_PICTURE_WIDTH && lumaCoords.y < DST_PICTURE_HEIGHT) {
+                    const uint32_t ySample = resultBlock.ySamples[j * 2 + i];
+                    const uint32_t uSample = resultBlock.uSamples[j * 2 + i];
+                    const uint32_t vSample = resultBlock.vSamples[j * 2 + i];
+                    const u32vec3 rgbSample = yuvToRGB(u32vec3(ySample, uSample, vSample));
+                    
+                    const uint pixelIndex = lumaCoords.y * DST_PICTURE_STRIDE + lumaCoords.x * 4;
+                    DST_PICTURE_BUFFER[pixelIndex] = uint8_t(rgbSample.b);
+                    DST_PICTURE_BUFFER[pixelIndex + 1] = uint8_t(rgbSample.g);
+                    DST_PICTURE_BUFFER[pixelIndex + 2] = uint8_t(rgbSample.r);
+                    DST_PICTURE_BUFFER[pixelIndex + 3] = uint8_t(0xFF);
                 }
             }
         }
-    }
-
-    [[unroll]]
-    for (int i = 0; i < 2; i += 1) {
+    } else {
         [[unroll]]
-        for (int j = 0; j < 2; j += 1) {
-            const uvec2 chromaCoords = uvec2(blockCoords.x * 2 + i, blockCoords.y * 2 + j);
-            if (chromaCoords.x < DST_PICTURE_WIDTH && chromaCoords.y < DST_PICTURE_HEIGHT) {
-                const uint dstUBufferIndex = DST_PICTURE_U_OFFSET / DST_PICTURE_BYTE_DEPTH + chromaCoords.y * DST_PICTURE_CHROMA_STRIDE / DST_PICTURE_BYTE_DEPTH + chromaCoords.x;
-                if (DST_PICTURE_BIT_DEPTH == 10) {
-                    DST_PICTURE_BUFFER16[dstUBufferIndex] = uint16_t(resultBlock.uSamples[j * 2 + i]);
-                } else {
-                    DST_PICTURE_BUFFER[dstUBufferIndex] = uint8_t(resultBlock.uSamples[j * 2 + i]);
+        for (int i = 0; i < 2; i += 1) {
+            [[unroll]]
+            for (int j = 0; j < 2; j += 1) {
+                uvec2 lumaCoords = uvec2(blockCoords.x * 2 + i, blockCoords.y * 2 + j);
+                if (lumaCoords.x < DST_PICTURE_WIDTH && lumaCoords.y < DST_PICTURE_HEIGHT) {
+                    const uint dstYBufferIndex = lumaCoords.y * DST_PICTURE_STRIDE / DST_PICTURE_BYTE_DEPTH + lumaCoords.x;
+                    if (DST_PICTURE_BIT_DEPTH == 10) {
+                        DST_PICTURE_BUFFER16[dstYBufferIndex] = uint16_t(resultBlock.ySamples[j * 2 + i]);
+                    } else {
+                        DST_PICTURE_BUFFER[dstYBufferIndex] = uint8_t(resultBlock.ySamples[j * 2 + i]);
+                    }
                 }
             }
         }
-    }
 
-    [[unroll]]
-    for (int i = 0; i < 2; i += 1) {
         [[unroll]]
-        for (int j = 0; j < 2; j += 1) {
-            const uvec2 chromaCoords = uvec2(blockCoords.x * 2 + i, blockCoords.y * 2 + j);
-            if (chromaCoords.x < DST_PICTURE_WIDTH && chromaCoords.y < DST_PICTURE_HEIGHT) {
-                const uint dstVBufferIndex = DST_PICTURE_V_OFFSET / DST_PICTURE_BYTE_DEPTH + chromaCoords.y * DST_PICTURE_CHROMA_STRIDE / DST_PICTURE_BYTE_DEPTH + chromaCoords.x;
-                if (DST_PICTURE_BIT_DEPTH == 10) {
-                    DST_PICTURE_BUFFER16[dstVBufferIndex] = uint16_t(resultBlock.vSamples[j * 2 + i]);
-                } else {
-                    DST_PICTURE_BUFFER[dstVBufferIndex] = uint8_t(resultBlock.vSamples[j * 2 + i]);
+        for (int i = 0; i < 2; i += 1) {
+            [[unroll]]
+            for (int j = 0; j < 2; j += 1) {
+                const uvec2 chromaCoords = uvec2(blockCoords.x * 2 + i, blockCoords.y * 2 + j);
+                if (chromaCoords.x < DST_PICTURE_WIDTH && chromaCoords.y < DST_PICTURE_HEIGHT) {
+                    const uint dstUBufferIndex = DST_PICTURE_U_OFFSET / DST_PICTURE_BYTE_DEPTH + chromaCoords.y * DST_PICTURE_CHROMA_STRIDE / DST_PICTURE_BYTE_DEPTH + chromaCoords.x;
+                    if (DST_PICTURE_BIT_DEPTH == 10) {
+                        DST_PICTURE_BUFFER16[dstUBufferIndex] = uint16_t(resultBlock.uSamples[j * 2 + i]);
+                    } else {
+                        DST_PICTURE_BUFFER[dstUBufferIndex] = uint8_t(resultBlock.uSamples[j * 2 + i]);
+                    }
+                }
+            }
+        }
+
+        [[unroll]]
+        for (int i = 0; i < 2; i += 1) {
+            [[unroll]]
+            for (int j = 0; j < 2; j += 1) {
+                const uvec2 chromaCoords = uvec2(blockCoords.x * 2 + i, blockCoords.y * 2 + j);
+                if (chromaCoords.x < DST_PICTURE_WIDTH && chromaCoords.y < DST_PICTURE_HEIGHT) {
+                    const uint dstVBufferIndex = DST_PICTURE_V_OFFSET / DST_PICTURE_BYTE_DEPTH + chromaCoords.y * DST_PICTURE_CHROMA_STRIDE / DST_PICTURE_BYTE_DEPTH + chromaCoords.x;
+                    if (DST_PICTURE_BIT_DEPTH == 10) {
+                        DST_PICTURE_BUFFER16[dstVBufferIndex] = uint16_t(resultBlock.vSamples[j * 2 + i]);
+                    } else {
+                        DST_PICTURE_BUFFER[dstVBufferIndex] = uint8_t(resultBlock.vSamples[j * 2 + i]);
+                    }
                 }
             }
         }
@@ -973,9 +1003,7 @@ void write444Sample(const uvec2 blockCoords, in YUV444Block resultBlock) {
 */
 void main() {
     const uvec2 blockCoords = gl_GlobalInvocationID.xy;
-    if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB) {
-        // TODO
-    } else if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV420) {
+    if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV420) {
         YUV420Block resultBlock;
         resultBlock = read420Bilinear(blockCoords);
         write420Sample(blockCoords, resultBlock);
@@ -983,7 +1011,7 @@ void main() {
         YUV422Block resultBlock;
         resultBlock = read422Bilinear(blockCoords);
         write422Sample(blockCoords, resultBlock);
-    } else if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV444) {
+    } else if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV444 || DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB) {
         YUV444Block resultBlock;
         resultBlock = read444Bilinear(blockCoords);
         write444Sample(blockCoords, resultBlock);

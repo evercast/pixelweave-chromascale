@@ -137,6 +137,19 @@ PixelWeave::VideoFrameWrapper GetRGBAFrame(uint32_t width, uint32_t height)
     return VideoFrameWrapper{buffer, width * 4, 0, width, height, PixelWeave::PixelFormat::Interleaved8BitRGBA, PixelWeave::Range::Full};
 }
 
+PixelWeave::VideoFrameWrapper GetBGRAFrame(uint32_t width, uint32_t height)
+{
+    const uint32_t bufferSize = (height * width) * 4;
+    uint8_t* buffer = new uint8_t[bufferSize];
+    for (uint32_t sampleIndex = 0; sampleIndex < width * height; ++sampleIndex) {
+        buffer[sampleIndex * 4] = 0xFF;
+        buffer[sampleIndex * 4 + 1] = 0xFF;
+        buffer[sampleIndex * 4 + 2] = 0xFF;
+        buffer[sampleIndex * 4 + 3] = 0xFF;
+    }
+    return VideoFrameWrapper{buffer, width * 4, 0, width, height, PixelWeave::PixelFormat::Interleaved8BitBGRA, PixelWeave::Range::Full};
+}
+
 PixelWeave::VideoFrameWrapper GetPlanar42010BitFrame(uint32_t width, uint32_t height)
 {
     const uint32_t chromaWidth = (width + 1) / 2;
@@ -246,7 +259,7 @@ int main()
         VideoFrameWrapper srcFrame = GetPlanar420Frame(srcWidth, srcHeight);
         constexpr uint32_t dstWidth = 240;
         constexpr uint32_t dstHeight = 135;
-        VideoFrameWrapper dstFrame = GetUYVYFrame(dstWidth, dstHeight);
+        VideoFrameWrapper dstFrame = GetBGRAFrame(dstWidth, dstHeight);
 
         const auto videoConverter = device->CreateVideoConverter();
         uint64_t totalTime = 0;
