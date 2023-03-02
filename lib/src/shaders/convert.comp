@@ -886,7 +886,8 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
                     write10BitsInWord(word0, resultBlock.vSamples[i], 2);
                     DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset] = word0;
                     
-                    uint32_t word1 = 0;
+                    uint32_t word1 = DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 1];
+                    word1 = word1 & 0x3FFFFFFF;
                     write10BitsInWord(word1, resultBlock.ySamples[i * 2 + 1], 0);
                     atomicExchange(DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 1], word1);
                 }
@@ -895,11 +896,13 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
                 
                 if (wordIndex == 1) {
                     uint32_t word1 = DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 1];
+                    word1 = word1 & 0x3FFFFFFF;
                     write10BitsInWord(word1, resultBlock.uSamples[i], 1);
                     write10BitsInWord(word1, resultBlock.ySamples[i * 2], 2);
                     atomicExchange(DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 1], word1);
                     
-                    uint32_t word2 = 0;
+                    uint32_t word2 = DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 2];
+                    word2 = word2 & 0x3FFFFFFF;
                     write10BitsInWord(word2, resultBlock.vSamples[i], 0);
                     write10BitsInWord(word2, resultBlock.ySamples[i * 2 + 1], 1);
                     atomicExchange(DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 2], word2);
@@ -907,6 +910,7 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
                 
                 if (wordIndex == 2) {
                     uint32_t word2 = DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 2];
+                    word2 = word2 & 0x3FFFFFFF;
                     write10BitsInWord(word2, resultBlock.uSamples[i], 2);
                     atomicExchange(DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 2], word2);
                     
