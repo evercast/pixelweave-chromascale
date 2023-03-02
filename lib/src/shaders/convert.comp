@@ -843,7 +843,7 @@ void write10BitsInWord(inout uint32_t word, const uint32_t value, const uint32_t
     const uint32_t shiftBits = position * 10;
     const uint32_t mask = uint32_t(0x03FF) << shiftBits;
     const uint32_t shiftedValue = value << shiftBits;
-    word |= shiftedValue & mask;
+    word = word | (shiftedValue & mask);
 }
 
 void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
@@ -876,8 +876,8 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
             const uint rightPixelIndex = blockCoords.x * 2 + 1;
             if (rightPixelIndex < DST_PICTURE_WIDTH && topLineIndex < DST_PICTURE_HEIGHT) {
                 const uint topLineOffset = topLineIndex * (DST_PICTURE_STRIDE / 4);
-                const uint horizontalOffset = blockCoords.x * 2;
-                const uint wordIndex = (blockCoords.x * 2) / 3;
+                const uint horizontalOffset = (blockCoords.x / 3) * 4;
+                const uint wordIndex = blockCoords.x % 3;
                 
                 if (wordIndex == 0) {
                     uint32_t word0 = 0;
@@ -901,7 +901,7 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
                     
                     uint32_t word2 = 0;
                     write10BitsInWord(word2, resultBlock.vSamples[i * 2], 0);
-                    write10BitsInWord(word2, resultBlock.ySamples[i * 2 + 1], 2);
+                    write10BitsInWord(word2, resultBlock.ySamples[i * 2 + 1], 1);
                     DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 2] = word2;
                 }
                 
@@ -910,13 +910,13 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
                 if (wordIndex == 2) {
                     uint32_t word2 = DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 2];
                     write10BitsInWord(word2, resultBlock.uSamples[i * 2], 2);
-                    DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 3] = word2;
+                    DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 2] = word2;
                     
                     uint32_t word3 = 0;
                     write10BitsInWord(word3, resultBlock.ySamples[i * 2], 0);
                     write10BitsInWord(word3, resultBlock.vSamples[i * 2], 1);
                     write10BitsInWord(word3, resultBlock.ySamples[i * 2 + 1], 2);
-                    DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 4] = word3;
+                    DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 3] = word3;
                 }
             }
         }
