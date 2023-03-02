@@ -839,6 +839,13 @@ void write420Sample(const uvec2 blockCoords, in YUV420Block resultBlock) {
     }
 }
 
+void write10BitsInWord(inout uint32_t word, const uint32_t value, const uint32_t position) {
+    const uint32_t shiftBits = position * 10;
+    const uint32_t mask = uint32_t(0x03FF) << shiftBits;
+    const uint32_t shiftedValue = value << shiftBits;
+    word |= shiftedValue & mask;
+}
+
 void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
     if (DST_PICTURE_FORMAT == PixelFormatInterleaved8BitUYVY) {
         // Write top block
@@ -864,7 +871,55 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
             DST_PICTURE_BUFFER[bottomBlockOffset + 3] = uint8_t(resultBlock.ySamples[3]); // Y
         }
     } else if (DST_PICTURE_FORMAT == PixelFormatInterleaved10BitUYVY) {
-        
+        for (int i = 0; i < 2; ++i) {
+            const uint topLineIndex = blockCoords.y * 2 + i;
+            const uint rightPixelIndex = blockCoords.x * 2 + 1;
+            if (rightPixelIndex < DST_PICTURE_WIDTH && topLineIndex < DST_PICTURE_HEIGHT) {
+                const uint topLineOffset = topLineIndex * (DST_PICTURE_STRIDE / 4);
+                const uint horizontalOffset = blockCoords.x / 2;
+                const uint wordIndex = rightPixelIndex / 3;
+                
+                if (wordIndex == 0) {
+                    uint32_t word0 = 0;
+                    write10BitsInWord(word0, resultBlock.ySamples[i * 2], 1);
+                    write10BitsInWord(word0, resultBlock.uSamples[i * 2], 0);
+                    write10BitsInWord(word0, resultBlock.vSamples[i * 2], 2);
+                    DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset] = word0;
+                    
+                    uint32_t word1 = 0;
+                    write10BitsInWord(word1, resultBlock.ySamples[i * 2 + 1], 0);
+                    DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 1] = word1;
+                }
+                
+                barrier();
+                
+                if (wordIndex == 1) {
+                    uint32_t word1 = DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 1];
+                    write10BitsInWord(word1, resultBlock.uSamples[i * 2], 1);
+                    write10BitsInWord(word1, resultBlock.ySamples[i * 2], 2);
+                    DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 1] = word1;
+                    
+                    uint32_t word2 = 0;
+                    write10BitsInWord(word2, resultBlock.vSamples[i * 2], 0);
+                    write10BitsInWord(word2, resultBlock.ySamples[i * 2 + 1], 2);
+                    DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 2] = word2;
+                }
+                
+                barrier();
+                
+                if (wordIndex == 2) {
+                    uint32_t word2 = DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 2];
+                    write10BitsInWord(word2, resultBlock.uSamples[i * 2], 2);
+                    DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 3] = word2;
+                    
+                    uint32_t word3 = 0;
+                    write10BitsInWord(word3, resultBlock.ySamples[i * 2], 0);
+                    write10BitsInWord(word3, resultBlock.vSamples[i * 2], 1);
+                    write10BitsInWord(word3, resultBlock.ySamples[i * 2 + 1], 2);
+                    DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 4] = word3;
+                }
+            }
+        }
     } else {
         [[unroll]]
         for (uint y = 0; y < 2; y += 1) {
