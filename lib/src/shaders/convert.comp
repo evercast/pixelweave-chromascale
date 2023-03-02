@@ -877,7 +877,7 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
             if (rightPixelIndex < DST_PICTURE_WIDTH && topLineIndex < DST_PICTURE_HEIGHT) {
                 const uint topLineOffset = topLineIndex * (DST_PICTURE_STRIDE / 4);
                 const uint horizontalOffset = blockCoords.x / 2;
-                const uint wordIndex = rightPixelIndex / 3;
+                const uint wordIndex = (blockCoords.x * 2) / 3;
                 
                 if (wordIndex == 0) {
                     uint32_t word0 = 0;
@@ -918,6 +918,11 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
                     write10BitsInWord(word3, resultBlock.ySamples[i * 2 + 1], 2);
                     DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 4] = word3;
                 }
+                
+                DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 0] = 0xFFFFFFFF;
+                DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 1] = 0xFFFFFFFF;
+                DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 2] = 0xFFFFFFFF;
+                DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 3] = 0xFFFFFFFF;
             }
         }
     } else {
