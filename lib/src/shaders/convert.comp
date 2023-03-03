@@ -871,6 +871,7 @@ void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock) {
             DST_PICTURE_BUFFER[bottomBlockOffset + 3] = uint8_t(resultBlock.ySamples[3]); // Y
         }
     } else if (DST_PICTURE_FORMAT == PixelFormatInterleaved10BitUYVY) {
+        // TODO: This results in hazardous writes. Will be disabled for now.
         for (int i = 0; i < 2; ++i) {
             const uint topLineIndex = blockCoords.y * 2 + i;
             const uint rightPixelIndex = blockCoords.x * 2 + 1;
