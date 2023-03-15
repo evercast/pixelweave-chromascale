@@ -55,7 +55,7 @@ public:
 
     ~VulkanDevice() override;
 
-private:
+public:
     std::shared_ptr<VulkanInstance> mVulkanInstance;
     vk::PhysicalDevice mPhysicalDevice;
     vk::Device mLogicalDevice;

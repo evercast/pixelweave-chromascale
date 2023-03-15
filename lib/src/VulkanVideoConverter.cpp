@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "DebugUtils.h"
+#include "VulkanInstance.h"
 
 namespace PixelWeave
 {
@@ -101,6 +102,8 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
         PW_ASSERT_VK(mCommand.begin(commandBeginInfo));
 
         // Copy local memory into VRAM and add barrier for next stage
+        mCommand.beginDebugUtilsLabelEXT(vk::DebugUtilsLabelEXT{"Copy src image to GPU"},
+            mDevice->mVulkanInstance->mDynamicDispatcher);
         {
             mCommand.copyBuffer(
                 mSrcLocalBuffer->GetBufferHandle(),
@@ -119,6 +122,9 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
                 bufferBarrier,
                 {});
         }
+        mCommand.endDebugUtilsLabelEXT(mDevice->mVulkanInstance->mDynamicDispatcher);
+
+        mCommand.beginDebugUtilsLabelEXT(vk::DebugUtilsLabelEXT{"Dispatch compute"}, mDevice->mVulkanInstance->mDynamicDispatcher);
 
         // Bind compute shader resources
         mCommand.bindPipeline(vk::PipelineBindPoint::eCompute, mPipelineResources.pipeline);
@@ -144,6 +150,10 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
         const uint32_t groupCountY = (blockCountY / dispatchSizeY) + (dispatchSizeY - (blockCountY % dispatchSizeY));
         mCommand.dispatch(groupCountX, groupCountY, 1);
 
+        mCommand.endDebugUtilsLabelEXT(mDevice->mVulkanInstance->mDynamicDispatcher);
+        mCommand.beginDebugUtilsLabelEXT(
+            vk::DebugUtilsLabelEXT{"Copy dst image to CPU readable mem"},
+            mDevice->mVulkanInstance->mDynamicDispatcher);
         // Wait for compute stage and copy results back to local memory
         {
             const vk::BufferMemoryBarrier bufferBarrier = vk::BufferMemoryBarrier()
@@ -164,6 +174,8 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
                 mDstLocalBuffer->GetBufferHandle(),
                 vk::BufferCopy().setSize(mDstDeviceBuffer->GetBufferSize()).setDstOffset(0).setSrcOffset(0));
         }
+        mCommand.endDebugUtilsLabelEXT(mDevice->mVulkanInstance->mDynamicDispatcher);
+
 
         PW_ASSERT_VK(mCommand.end());
     }

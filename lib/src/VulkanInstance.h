@@ -18,7 +18,7 @@ public:
 
     ~VulkanInstance();
 
-private:
+public:
     ResultValue<vk::PhysicalDevice> FindSuitablePhysicalDevice();
 
     vk::Instance mInstanceHandle;

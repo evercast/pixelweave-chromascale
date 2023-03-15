@@ -43,6 +43,7 @@ ResultValue<std::shared_ptr<VulkanInstance>> VulkanInstance::Create()
 #if defined(PW_PLATFORM_MACOS)
         VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME
 #endif
+        VK_EXT_DEBUG_REPORT_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME
     };
 
 #if defined(PW_DEBUG)
