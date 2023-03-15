@@ -40,6 +40,11 @@ Result VulkanVideoConverter::ValidateInput(const VideoFrameWrapper& src, const V
         PixelFormat::Interleaved10BitRGBX,
         PixelFormat::Interleaved10BitRGBXLE,
         PixelFormat::Planar16BitP216,
+        PixelFormat::Planar8Bit422,
+        PixelFormat::Planar8Bit444,
+        PixelFormat::Planar10Bit420,
+        PixelFormat::Planar10Bit422,
+        PixelFormat::Planar10Bit444,
     };
     const bool isInputFormatSupported = std::any_of(validInputFormats.begin(), validInputFormats.end(), [&src](const PixelFormat& format) {
         return src.pixelFormat == format;
@@ -56,6 +61,9 @@ Result VulkanVideoConverter::ValidateInput(const VideoFrameWrapper& src, const V
         PixelFormat::Planar10Bit420,
         PixelFormat::Planar10Bit422,
         PixelFormat::Planar10Bit444,
+        PixelFormat::Interleaved8BitUYVY,
+        PixelFormat::Interleaved8BitBGRA,
+        PixelFormat::Interleaved10BitRGB,
     };
     const bool isOutputFormatSupported =
         std::any_of(validOutputFormats.begin(), validOutputFormats.end(), [&dst](const PixelFormat& format) {
