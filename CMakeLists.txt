@@ -13,6 +13,10 @@ endif()
 set(CMAKE_OSX_ARCHITECTURES x86_64)
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.13)
 
+# Build files in the top directory
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
 project(${PROJECT_NAME} VERSION ${VERSION} LANGUAGES CXX)
 
 # Add library subproject
@@ -20,6 +24,9 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib)
 
 # Add test subproject
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/test)
+
+# Add benchmark subproject
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/benchmark)
 
 # Configure 'Tests' as startup project
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Tests)
