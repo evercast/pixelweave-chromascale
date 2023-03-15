@@ -265,7 +265,8 @@ int main()
         for (int i = 0; i < totalFrames; ++i) {
             Timer timer;
             timer.Start();
-            if (videoConverter->Convert(srcFrame, dstFrame) != PixelWeave::Result::Success) {
+            auto resultAndBenchmark = videoConverter->ConvertWithBenchmark(srcFrame, dstFrame);
+            if (resultAndBenchmark.result != PixelWeave::Result::Success) {
                 std::cout << "Conversion failed" << std::endl;
             }
             totalTime += timer.ElapsedMicros();

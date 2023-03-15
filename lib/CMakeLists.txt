@@ -28,6 +28,7 @@ set(SOURCE
     src/VulkanBuffer.h
     src/VulkanBuffer.cpp
     src/VulkanBase.h
+    src/Timer.h
 )
 
 if(WIN32)

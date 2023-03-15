@@ -3,10 +3,11 @@
 #include <algorithm>
 
 #include "DebugUtils.h"
+#include "Timer.h"
 
 namespace PixelWeave
 {
-VulkanVideoConverter::VulkanVideoConverter(VulkanDevice* device) : mDevice(nullptr)
+VulkanVideoConverter::VulkanVideoConverter(VulkanDevice* device) : mDevice(nullptr), mEnableBenchmark(false)
 {
     device->AddRef();
     mDevice = device;
@@ -108,8 +109,15 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
         const vk::CommandBufferBeginInfo commandBeginInfo = vk::CommandBufferBeginInfo();
         PW_ASSERT_VK(mCommand.begin(commandBeginInfo));
 
+        if (mEnableBenchmark) {
+            mTimestampQueryPool = mDevice->CreateTimestampQueryPool(sTimemestampQueryCount);
+        }
+
         // Copy local memory into VRAM and add barrier for next stage
         {
+            if (mEnableBenchmark) {
+                mCommand.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, mTimestampQueryPool, sTimestampStartIndex);
+            }
             mCommand.copyBuffer(
                 mSrcLocalBuffer->GetBufferHandle(),
                 mSrcDeviceBuffer->GetBufferHandle(),
@@ -126,6 +134,9 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
                 {},
                 bufferBarrier,
                 {});
+            if (mEnableBenchmark) {
+                mCommand.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, mTimestampQueryPool, sTimestampSrcTransferDoneIndex);
+            }
         }
 
         // Bind compute shader resources
@@ -152,6 +163,10 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
         const uint32_t groupCountY = (blockCountY / dispatchSizeY) + (dispatchSizeY - (blockCountY % dispatchSizeY));
         mCommand.dispatch(groupCountX, groupCountY, 1);
 
+        if (mEnableBenchmark) {
+            mCommand.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, mTimestampQueryPool, sTimestampConvertIndex);
+        }
+
         // Wait for compute stage and copy results back to local memory
         {
             const vk::BufferMemoryBarrier bufferBarrier = vk::BufferMemoryBarrier()
@@ -171,6 +186,9 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
                 mDstDeviceBuffer->GetBufferHandle(),
                 mDstLocalBuffer->GetBufferHandle(),
                 vk::BufferCopy().setSize(mDstDeviceBuffer->GetBufferSize()).setDstOffset(0).setSrcOffset(0));
+            if (mEnableBenchmark) {
+                mCommand.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, mTimestampQueryPool, sTimestampDstTransferDoneIndex);
+            }
         }
 
         PW_ASSERT_VK(mCommand.end());
@@ -182,6 +200,9 @@ void VulkanVideoConverter::CleanUp()
     const bool wasInitialized = mPrevSourceFrame.has_value() && mPrevDstFrame.has_value();
     if (wasInitialized) {
         mDevice->DestroyCommand(mCommand);
+        if (mEnableBenchmark) {
+            mDevice->DestroyQueryPool(mTimestampQueryPool);
+        }
         mDevice->DestroyVideoConversionPipeline(mPipelineResources);
         mSrcLocalBuffer->Release();
         mSrcDeviceBuffer->Release();
@@ -194,10 +215,27 @@ void VulkanVideoConverter::CleanUp()
 
 Result VulkanVideoConverter::Convert(const VideoFrameWrapper& src, VideoFrameWrapper& dst)
 {
+    ResultValue<BenchmarkResult> withBenchmarkResult = ConvertInternal(src, dst, false);
+    return withBenchmarkResult.result;
+}
+
+ResultValue<BenchmarkResult> VulkanVideoConverter::ConvertWithBenchmark(const VideoFrameWrapper& src, VideoFrameWrapper& dst)
+{
+    return ConvertInternal(src, dst, true);
+}
+
+ResultValue<BenchmarkResult> VulkanVideoConverter::ConvertInternal(
+    const VideoFrameWrapper& src,
+    VideoFrameWrapper& dst,
+    const bool enableBenchmark)
+{
+    // Enable benchmark if GPU timestamps are supported
+    mEnableBenchmark = enableBenchmark && mDevice->SupportsTimestamps();
+
     // Validate input, return nothing on failure
     const Result validationResult = ValidateInput(src, dst);
     if (validationResult != Result::Success) {
-        return validationResult;
+        return ResultValue<BenchmarkResult>{validationResult, {}};
     }
 
     // Initialize resources and cache shaders, buffers, etc
@@ -212,24 +250,40 @@ Result VulkanVideoConverter::Convert(const VideoFrameWrapper& src, VideoFrameWra
     }
 
     // Copy src buffer into GPU readable buffer
+    BenchmarkResult benchmarkResult;
+    PixelWeave::Timer cpuTimer;
+    cpuTimer.Start();
     const vk::DeviceSize srcBufferSize = src.GetBufferSize();
     uint8_t* mappedSrcBuffer = mSrcLocalBuffer->MapBuffer();
     std::copy_n(src.buffer, srcBufferSize, mappedSrcBuffer);
     mSrcLocalBuffer->UnmapBuffer();
+    benchmarkResult.copyToDeviceVisibleTimeMicros = cpuTimer.ElapsedMicros();
 
     // Dispatch command in compute queue
+    cpuTimer.Start();
     vk::Fence computeFence = mDevice->CreateFence();
     mDevice->SubmitCommand(mCommand, computeFence);
     mDevice->WaitForFence(computeFence);
     mDevice->DestroyFence(computeFence);
+    if (mEnableBenchmark) {
+        std::vector<uint64_t> queryResult = mDevice->GetTimestampQueryResults(mTimestampQueryPool, sTimemestampQueryCount);
+        mDevice->ResetQueryPool(mTimestampQueryPool, sTimemestampQueryCount);
+        benchmarkResult.transferDeviceVisibleToDeviceLocalTimeMicros = queryResult[1] - queryResult[0];
+        benchmarkResult.computeConversionTimeMicros = queryResult[2] - queryResult[1];
+        benchmarkResult.transferDeviceLocalToHostVisibleTimeMicros = queryResult[3] - queryResult[2];
+    }
+
+    benchmarkResult.gpuConversionTimeMicros = cpuTimer.ElapsedMicros();
 
     // Copy contents into CPU buffer
+    cpuTimer.Start();
     const vk::DeviceSize dstBufferSize = dst.GetBufferSize();
     uint8_t* mappedDstBuffer = mDstLocalBuffer->MapBuffer();
     std::copy_n(mappedDstBuffer, dstBufferSize, dst.buffer);
     mDstLocalBuffer->UnmapBuffer();
+    benchmarkResult.copyDeviceVisibleToHostLocalTimeMicros = cpuTimer.ElapsedMicros();
 
-    return Result::Success;
+    return ResultValue<BenchmarkResult>{Result::Success, benchmarkResult};
 }
 
 VulkanVideoConverter::~VulkanVideoConverter()

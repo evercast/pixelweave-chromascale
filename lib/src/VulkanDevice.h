@@ -47,6 +47,12 @@ public:
     void SubmitCommand(const vk::CommandBuffer& commandBuffer, const vk::Fence& fence);
     void DestroyCommand(vk::CommandBuffer& commandBuffer);
 
+    bool SupportsTimestamps() const;
+    vk::QueryPool CreateTimestampQueryPool(const uint32_t queryCount);
+    void ResetQueryPool(vk::QueryPool& queryPool, const uint32_t queryCount);
+    std::vector<uint64_t> GetTimestampQueryResults(vk::QueryPool queryPool, const uint32_t queryCount);
+    void DestroyQueryPool(vk::QueryPool& queryPool);
+
     vk::Fence CreateFence();
     void WaitForFence(vk::Fence& fence);
     void DestroyFence(vk::Fence& fence);
