@@ -11,9 +11,6 @@ set(SOURCES main.cpp)
 
 add_executable(${SUBPROJECT_NAME} ${HEADERS} ${SOURCES})
 
-set(RENDERDOC_INSTALL_DIR "C:/Program Files/RenderDoc")
-target_include_directories(${SUBPROJECT_NAME} PRIVATE ${RENDERDOC_INSTALL_DIR})
-
 include(${CMAKE_CURRENT_SOURCE_DIR}/../CXXUtils.cmake)
 pw_configure_cxx(${SUBPROJECT_NAME})
 

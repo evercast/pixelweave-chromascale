@@ -51,7 +51,7 @@ PixelWeave::VideoFrameWrapper GetPlanar420Frame(uint32_t width, uint32_t height)
             buffer[sampleIndex] = 0xFF;
         }
     }
-    
+
     const uint32_t uSampleOffset = stride * height;
     const uint32_t vSampleOffset = uSampleOffset + chromaStride * chromaHeight;
     for (uint32_t chromaIndexY = 0; chromaIndexY < chromaHeight; ++chromaIndexY) {
@@ -61,7 +61,14 @@ PixelWeave::VideoFrameWrapper GetPlanar420Frame(uint32_t width, uint32_t height)
             buffer[vSampleOffset + chromaSampleIndex] = chromaIndexY % 2 == 0 ? 0xCC : 0xDD;
         }
     }
-    return VideoFrameWrapper{buffer, stride, chromaStride, width, height, PixelWeave::PixelFormat::Planar8Bit420, PixelWeave::Range::Limited};
+    return VideoFrameWrapper{
+        buffer,
+        stride,
+        chromaStride,
+        width,
+        height,
+        PixelWeave::PixelFormat::Planar8Bit420,
+        PixelWeave::Range::Limited};
 }
 
 PixelWeave::VideoFrameWrapper GetPlanar422Frame(uint32_t width, uint32_t height)
@@ -194,7 +201,13 @@ PixelWeave::VideoFrameWrapper GetPlanar42210BitFrame(uint32_t width, uint32_t he
     for (uint32_t vSampleIndex = 0; vSampleIndex < chromaWidth * chromaHeight; ++vSampleIndex) {
         buffer[vSampleOffset + vSampleIndex] = 0x03FF;
     }
-    return VideoFrameWrapper{reinterpret_cast<uint8_t*>(buffer), width * 2, ((width + 1) / 2) * 2,  width, height, PixelWeave::PixelFormat::Planar10Bit422};
+    return VideoFrameWrapper{
+        reinterpret_cast<uint8_t*>(buffer),
+        width * 2,
+        ((width + 1) / 2) * 2,
+        width,
+        height,
+        PixelWeave::PixelFormat::Planar10Bit422};
 }
 
 PixelWeave::VideoFrameWrapper GetPlanar44410BitFrame(uint32_t width, uint32_t height)
@@ -214,7 +227,13 @@ PixelWeave::VideoFrameWrapper GetPlanar44410BitFrame(uint32_t width, uint32_t he
     for (uint32_t vSampleIndex = 0; vSampleIndex < chromaWidth * chromaHeight; ++vSampleIndex) {
         buffer[vSampleOffset + vSampleIndex] = 0x3FF;
     }
-    return VideoFrameWrapper{reinterpret_cast<uint8_t*>(buffer), width * 2, width * 2, width, height, PixelWeave::PixelFormat::Planar10Bit444};
+    return VideoFrameWrapper{
+        reinterpret_cast<uint8_t*>(buffer),
+        width * 2,
+        width * 2,
+        width,
+        height,
+        PixelWeave::PixelFormat::Planar10Bit444};
 }
 
 PixelWeave::VideoFrameWrapper Get10BitRGBBuffer(uint32_t width, uint32_t height)
@@ -237,7 +256,7 @@ PixelWeave::VideoFrameWrapper GetPlanarP126Frame(uint32_t width, uint32_t height
         buffer[ySampleIndex] = 0x00FF;
     }
     const uint32_t uvSampleOffset = width * height;
-    
+
     for (uint32_t lineIndex = 0; lineIndex < chromaHeight; ++lineIndex) {
         const uint16_t sample = lineIndex % 2 == 1 ? 0 : 0xFFFF;
         const uint32_t lineOffset = chromaWidth * 2 * lineIndex;
