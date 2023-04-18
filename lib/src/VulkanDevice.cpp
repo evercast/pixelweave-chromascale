@@ -8,6 +8,8 @@
 #include "VideoFrameWrapper.h"
 #include "VulkanInstance.h"
 #include "VulkanVideoConverter.h"
+#define VMA_IMPLEMENTATION
+#include "vk_mem_alloc.h"
 
 namespace PixelWeave
 {
@@ -53,6 +55,13 @@ VulkanDevice::VulkanDevice(const std::shared_ptr<VulkanInstance>& instance, vk::
     const vk::CommandPoolCreateInfo commandPoolCreateInfo =
         vk::CommandPoolCreateInfo().setQueueFamilyIndex(queueFamilyIndex).setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
     mCommandPool = PW_ASSERT_VK(mLogicalDevice.createCommandPool(commandPoolCreateInfo));
+
+    VmaAllocatorCreateInfo allocatorInfo{};
+    allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_2;
+    allocatorInfo.physicalDevice = mPhysicalDevice;
+    allocatorInfo.device = mLogicalDevice;
+    allocatorInfo.instance = mVulkanInstance->GetHandle();
+    vmaCreateAllocator(&allocatorInfo, &mAllocator);
 }
 
 VideoConverter* VulkanDevice::CreateVideoConverter()
@@ -82,7 +91,7 @@ vk::DeviceMemory VulkanDevice::AllocateMemory(const vk::MemoryPropertyFlags& mem
 VulkanBuffer* VulkanDevice::CreateBuffer(
     const vk::DeviceSize& size,
     const vk::BufferUsageFlags& usageFlags,
-    const vk::MemoryPropertyFlags& memoryFlags)
+    const VmaAllocationCreateFlags& memoryFlags)
 {
     return VulkanBuffer::Create(this, size, usageFlags, memoryFlags);
 }
@@ -363,6 +372,7 @@ void VulkanDevice::DestroyFence(vk::Fence& fence)
 
 VulkanDevice::~VulkanDevice()
 {
+    vmaDestroyAllocator(mAllocator);
     mLogicalDevice.destroyCommandPool(mCommandPool);
     mLogicalDevice.destroy();
     mVulkanInstance = nullptr;

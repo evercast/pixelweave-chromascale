@@ -71,22 +71,22 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
     mSrcLocalBuffer = mDevice->CreateBuffer(
         srcBufferSize,
         vk::BufferUsageFlagBits::eTransferSrc,
-        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
     mSrcDeviceBuffer = mDevice->CreateBuffer(
         srcBufferSize,
         vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
-        vk::MemoryPropertyFlagBits::eDeviceLocal);
+        VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
 
     // Create CPU readable dest buffer to do conversions in
     const vk::DeviceSize dstBufferSize = dst.GetBufferSize();
     mDstLocalBuffer = mDevice->CreateBuffer(
         dstBufferSize,
         vk::BufferUsageFlagBits::eTransferDst,
-        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+        VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
     mDstDeviceBuffer = mDevice->CreateBuffer(
         dstBufferSize,
         vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferSrc,
-        vk::MemoryPropertyFlagBits::eDeviceLocal);
+        VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
 
     // Create compute pipeline and bindings
     mPipelineResources = mDevice->CreateVideoConversionPipeline(src, mSrcDeviceBuffer, dst, mDstDeviceBuffer);

@@ -8,3 +8,4 @@
 #define VULKAN_HPP_ASSERT(condition)
 #endif
 #include <vulkan/vulkan.hpp>
+#include "vk_mem_alloc.h"

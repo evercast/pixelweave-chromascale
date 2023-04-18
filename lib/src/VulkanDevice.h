@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "Device.h"
+#include "VulkanBase.h"
 #include "VulkanBuffer.h"
 
 namespace PixelWeave
@@ -25,7 +26,7 @@ public:
     VulkanBuffer* CreateBuffer(
         const vk::DeviceSize& size,
         const vk::BufferUsageFlags& usageFlags,
-        const vk::MemoryPropertyFlags& memoryFlags);
+        const VmaAllocationCreateFlags& memoryFlags);
 
     // Pipeline handling
     struct VideoConversionPipelineResources {
@@ -59,6 +60,8 @@ public:
 
     vk::Device& GetLogicalDevice() { return mLogicalDevice; }
 
+    VmaAllocator& GetAllocator() { return mAllocator; }
+
     ~VulkanDevice() override;
 
 private:
@@ -67,6 +70,7 @@ private:
     vk::Device mLogicalDevice;
     vk::Queue mComputeQueue;
     vk::CommandPool mCommandPool;
+    VmaAllocator mAllocator;
 };
 
 }  // namespace PixelWeave

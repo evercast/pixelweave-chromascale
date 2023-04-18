@@ -29,6 +29,7 @@ set(SOURCE
     src/VulkanBuffer.cpp
     src/VulkanBase.h
     src/Timer.h
+    src/vk_mem_alloc.h
 )
 
 if(WIN32)
