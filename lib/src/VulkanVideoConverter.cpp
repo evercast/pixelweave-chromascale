@@ -27,24 +27,12 @@ Result VulkanVideoConverter::ValidateInput(const VideoFrameWrapper& src, const V
     // Validate input format
     static_assert(AllPixelFormats.size() == 19);
     std::vector<PixelFormat> validInputFormats{
-        PixelFormat::Interleaved8BitUYVY,
-        PixelFormat::Interleaved8BitBGRA,
-        PixelFormat::Interleaved8BitRGBA,
-        PixelFormat::Planar8Bit420,
-        PixelFormat::Planar8Bit420YV12,
-        PixelFormat::Planar8Bit420NV12,
-        PixelFormat::Interleaved10BitUYVY,
-        PixelFormat::Interleaved10BitRGB,
-        PixelFormat::Interleaved12BitRGB,
-        PixelFormat::Interleaved8BitARGB,
-        PixelFormat::Interleaved12BitRGBLE,
-        PixelFormat::Interleaved10BitRGBX,
-        PixelFormat::Interleaved10BitRGBXLE,
-        PixelFormat::Planar16BitP216,
-        PixelFormat::Planar8Bit422,
-        PixelFormat::Planar8Bit444,
-        PixelFormat::Planar10Bit420,
-        PixelFormat::Planar10Bit422,
+        PixelFormat::Interleaved8BitUYVY,    PixelFormat::Interleaved8BitBGRA,   PixelFormat::Interleaved8BitRGBA,
+        PixelFormat::Planar8Bit420,          PixelFormat::Planar8Bit420YV12,     PixelFormat::Planar8Bit420NV12,
+        PixelFormat::Interleaved10BitUYVY,   PixelFormat::Interleaved10BitRGB,   PixelFormat::Interleaved12BitRGB,
+        PixelFormat::Interleaved8BitARGB,    PixelFormat::Interleaved12BitRGBLE, PixelFormat::Interleaved10BitRGBX,
+        PixelFormat::Interleaved10BitRGBXLE, PixelFormat::Planar16BitP216,       PixelFormat::Planar8Bit422,
+        PixelFormat::Planar8Bit444,          PixelFormat::Planar10Bit420,        PixelFormat::Planar10Bit422,
         PixelFormat::Planar10Bit444,
     };
     const bool isInputFormatSupported = std::any_of(validInputFormats.begin(), validInputFormats.end(), [&src](const PixelFormat& format) {
@@ -94,7 +82,7 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
     mDstLocalBuffer = mDevice->CreateBuffer(
         dstBufferSize,
         vk::BufferUsageFlagBits::eTransferDst,
-        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostCached);
     mDstDeviceBuffer = mDevice->CreateBuffer(
         dstBufferSize,
         vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferSrc,
