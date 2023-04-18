@@ -82,7 +82,7 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
     mDstLocalBuffer = mDevice->CreateBuffer(
         dstBufferSize,
         vk::BufferUsageFlagBits::eTransferDst,
-        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostCached);
+        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
     mDstDeviceBuffer = mDevice->CreateBuffer(
         dstBufferSize,
         vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferSrc,
