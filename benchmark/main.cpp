@@ -431,7 +431,7 @@ int main()
         struct Resolution {
             uint32_t width, height;
         };
-        std::vector<Resolution> resolutions{Resolution{3840, 2160}, Resolution{1920, 1080}, Resolution{1280, 720}};
+        std::vector<Resolution> resolutions{Resolution{3840, 2160}, Resolution{2560, 1440}, Resolution{1920, 1080}, Resolution{1280, 720}};
 
         const auto videoConverter = device->CreateVideoConverter();
 
