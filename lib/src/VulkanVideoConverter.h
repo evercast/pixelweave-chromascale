@@ -27,10 +27,8 @@ private:
 
     VulkanDevice* mDevice;
 
-    VulkanBuffer* mSrcLocalBuffer;
     VulkanBuffer* mSrcDeviceBuffer;
 
-    VulkanBuffer* mDstLocalBuffer;
     VulkanBuffer* mDstDeviceBuffer;
 
     VulkanDevice::VideoConversionPipelineResources mPipelineResources;

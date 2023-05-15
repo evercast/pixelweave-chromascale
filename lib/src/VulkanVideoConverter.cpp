@@ -68,25 +68,18 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
 {
     // Create source buffer and copy CPU memory into it
     const vk::DeviceSize srcBufferSize = src.GetBufferSize();
-    mSrcLocalBuffer = mDevice->CreateBuffer(
-        srcBufferSize,
-        vk::BufferUsageFlagBits::eTransferSrc,
-        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
     mSrcDeviceBuffer = mDevice->CreateBuffer(
         srcBufferSize,
-        vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
-        VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+        vk::BufferUsageFlagBits::eStorageBuffer,
+        VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+            VMA_ALLOCATION_CREATE_MAPPED_BIT);
 
     // Create CPU readable dest buffer to do conversions in
     const vk::DeviceSize dstBufferSize = dst.GetBufferSize();
-    mDstLocalBuffer = mDevice->CreateBuffer(
-        dstBufferSize,
-        vk::BufferUsageFlagBits::eTransferDst,
-        VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
     mDstDeviceBuffer = mDevice->CreateBuffer(
         dstBufferSize,
-        vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferSrc,
-        VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+        vk::BufferUsageFlagBits::eStorageBuffer,
+        VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
 
     // Create compute pipeline and bindings
     mPipelineResources = mDevice->CreateVideoConversionPipeline(src, mSrcDeviceBuffer, dst, mDstDeviceBuffer);
@@ -102,7 +95,7 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
         }
 
         // Copy local memory into VRAM and add barrier for next stage
-        {
+        /* {
             if (mEnableBenchmark) {
                 mCommand.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, mTimestampQueryPool, sTimestampStartIndex);
             }
@@ -125,7 +118,7 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
             if (mEnableBenchmark) {
                 mCommand.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, mTimestampQueryPool, sTimestampSrcTransferDoneIndex);
             }
-        }
+        }*/
 
         // Bind compute shader resources
         mCommand.bindPipeline(vk::PipelineBindPoint::eCompute, mPipelineResources.pipeline);
@@ -156,7 +149,7 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
         }
 
         // Wait for compute stage and copy results back to local memory
-        {
+        /* {
             const vk::BufferMemoryBarrier bufferBarrier = vk::BufferMemoryBarrier()
                                                               .setSrcAccessMask(vk::AccessFlagBits::eShaderWrite)
                                                               .setBuffer(mDstDeviceBuffer->GetBufferHandle())
@@ -177,7 +170,7 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
             if (mEnableBenchmark) {
                 mCommand.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, mTimestampQueryPool, sTimestampDstTransferDoneIndex);
             }
-        }
+        }*/
 
         PW_ASSERT_VK(mCommand.end());
     }
@@ -192,10 +185,10 @@ void VulkanVideoConverter::CleanUp()
             mDevice->DestroyQueryPool(mTimestampQueryPool);
         }
         mDevice->DestroyVideoConversionPipeline(mPipelineResources);
-        mSrcLocalBuffer->Release();
+        // mSrcLocalBuffer->Release();
         mSrcDeviceBuffer->Release();
         mDstDeviceBuffer->Release();
-        mDstLocalBuffer->Release();
+        // mDstLocalBuffer->Release();
         mPrevSourceFrame = std::optional<VideoFrameWrapper>();
         mPrevDstFrame = std::optional<VideoFrameWrapper>();
     }
@@ -242,9 +235,9 @@ ResultValue<BenchmarkResult> VulkanVideoConverter::ConvertInternal(
     PixelWeave::Timer cpuTimer;
     cpuTimer.Start();
     const vk::DeviceSize srcBufferSize = src.GetBufferSize();
-    uint8_t* mappedSrcBuffer = mSrcLocalBuffer->MapBuffer();
+    uint8_t* mappedSrcBuffer = mSrcDeviceBuffer->MapBuffer();
     std::copy_n(src.buffer, srcBufferSize, mappedSrcBuffer);
-    mSrcLocalBuffer->UnmapBuffer();
+    mSrcDeviceBuffer->UnmapBuffer();
     benchmarkResult.copyToDeviceVisibleTimeMicros = cpuTimer.ElapsedMicros();
 
     // Dispatch command in compute queue
@@ -254,11 +247,11 @@ ResultValue<BenchmarkResult> VulkanVideoConverter::ConvertInternal(
     mDevice->WaitForFence(computeFence);
     mDevice->DestroyFence(computeFence);
     if (mEnableBenchmark) {
-        std::vector<uint64_t> queryResult = mDevice->GetTimestampQueryResults(mTimestampQueryPool, sTimemestampQueryCount);
-        mDevice->ResetQueryPool(mTimestampQueryPool, sTimemestampQueryCount);
-        benchmarkResult.transferDeviceVisibleToDeviceLocalTimeMicros = queryResult[1] - queryResult[0];
-        benchmarkResult.computeConversionTimeMicros = queryResult[2] - queryResult[1];
-        benchmarkResult.transferDeviceLocalToHostVisibleTimeMicros = queryResult[3] - queryResult[2];
+        // std::vector<uint64_t> queryResult = mDevice->GetTimestampQueryResults(mTimestampQueryPool, sTimemestampQueryCount);
+        // mDevice->ResetQueryPool(mTimestampQueryPool, sTimemestampQueryCount);
+        // benchmarkResult.transferDeviceVisibleToDeviceLocalTimeMicros = queryResult[1] - queryResult[0];
+        // benchmarkResult.computeConversionTimeMicros = queryResult[2] - queryResult[1];
+        // benchmarkResult.transferDeviceLocalToHostVisibleTimeMicros = queryResult[3] - queryResult[2];
     }
 
     benchmarkResult.gpuConversionTimeMicros = cpuTimer.ElapsedMicros();
@@ -266,9 +259,9 @@ ResultValue<BenchmarkResult> VulkanVideoConverter::ConvertInternal(
     // Copy contents into CPU buffer
     cpuTimer.Start();
     const vk::DeviceSize dstBufferSize = dst.GetBufferSize();
-    uint8_t* mappedDstBuffer = mDstLocalBuffer->MapBuffer();
+    uint8_t* mappedDstBuffer = mDstDeviceBuffer->MapBuffer();
     std::copy_n(mappedDstBuffer, dstBufferSize, dst.buffer);
-    mDstLocalBuffer->UnmapBuffer();
+    mDstDeviceBuffer->UnmapBuffer();
     benchmarkResult.copyDeviceVisibleToHostLocalTimeMicros = cpuTimer.ElapsedMicros();
 
     return ResultValue<BenchmarkResult>{Result::Success, benchmarkResult};

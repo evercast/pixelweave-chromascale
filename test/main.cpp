@@ -289,22 +289,27 @@ int main()
         VideoFrameWrapper srcFrame = GetPlanar420Frame(srcWidth, srcHeight);
         constexpr uint32_t dstWidth = 1920;
         constexpr uint32_t dstHeight = 1080;
-        VideoFrameWrapper dstFrame = Get10BitUYVYBuffer(dstWidth, dstHeight);
+        VideoFrameWrapper dstFrame = GetUYVYFrame(dstWidth, dstHeight);
 
         const auto videoConverter = device->CreateVideoConverter();
         uint64_t totalTime = 0;
-        const int totalFrames = 100;
+        uint64_t computeTime = 0;
+        const int totalFrames = 500;
         for (int i = 0; i < totalFrames; ++i) {
             Timer timer;
             timer.Start();
-            if (videoConverter->Convert(srcFrame, dstFrame) != PixelWeave::Result::Success) {
+            auto conversionResult = videoConverter->ConvertWithBenchmark(srcFrame, dstFrame);
+            if (conversionResult.result != PixelWeave::Result::Success) {
                 std::cout << "Conversion failed" << std::endl;
             }
             totalTime += timer.ElapsedMicros();
             std::cout << "Processing frame " << i << " took " << timer.ElapsedMillis() << "ms (" << timer.ElapsedMicros() << " us)"
                       << std::endl;
+            std::cout << conversionResult.value.gpuConversionTimeMicros << std::endl;
+            computeTime += conversionResult.value.gpuConversionTimeMicros;
         }
-        std::cout << "Average time: " << static_cast<double>(totalTime) / (1000.0 * static_cast<double>(totalFrames)) << " ms" << std::endl;
+        std::cout << "Average time: " << static_cast<double>(totalTime) / (1000.0 * static_cast<double>(totalFrames)) << " ms"
+                  << " Compute:" << computeTime / totalFrames << std::endl;
 
         videoConverter->Release();
         device->Release();
