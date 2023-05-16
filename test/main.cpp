@@ -284,38 +284,44 @@ int main()
 {
     auto [result, device] = PixelWeave::Device::Create();
     if (result == PixelWeave::Result::Success) {
-        constexpr uint32_t srcWidth = 1920;
-        constexpr uint32_t srcHeight = 1080;
-        VideoFrameWrapper srcFrame = GetPlanar420Frame(srcWidth, srcHeight);
-        constexpr uint32_t dstWidth = 1920;
-        constexpr uint32_t dstHeight = 1080;
-        VideoFrameWrapper dstFrame = GetUYVYFrame(dstWidth, dstHeight);
+        struct Resolution {
+            uint32_t width, height;
+        };
+        std::vector<Resolution> resolutions{
+            Resolution{3840, 2160},
+            Resolution{2560, 1440},
+            Resolution{1920, 1080},
+            Resolution{1280, 720},
+            Resolution{854, 480}};
+        for (auto resolution : resolutions) {
+            VideoFrameWrapper srcFrame = GetPlanar420Frame(resolution.width, resolution.height);
+            VideoFrameWrapper dstFrame = GetUYVYFrame(resolution.width, resolution.height);
 
-        const auto videoConverter = device->CreateVideoConverter();
-        uint64_t totalTime = 0;
-        uint64_t computeTime = 0;
-        const int totalFrames = 500;
-        for (int i = 0; i < totalFrames; ++i) {
-            Timer timer;
-            timer.Start();
-            auto conversionResult = videoConverter->ConvertWithBenchmark(srcFrame, dstFrame);
-            if (conversionResult.result != PixelWeave::Result::Success) {
-                std::cout << "Conversion failed" << std::endl;
+            const auto videoConverter = device->CreateVideoConverter();
+            uint64_t totalTime = 0;
+            uint64_t computeTime = 0;
+            const int totalFrames = 100;
+            for (int i = 0; i < totalFrames; ++i) {
+                Timer timer;
+                timer.Start();
+                auto conversionResult = videoConverter->ConvertWithBenchmark(srcFrame, dstFrame);
+                if (conversionResult.result != PixelWeave::Result::Success) {
+                    std::cout << "Conversion failed" << std::endl;
+                }
+                totalTime += timer.ElapsedMicros();
+                computeTime += conversionResult.value.gpuConversionTimeMicros;
             }
-            totalTime += timer.ElapsedMicros();
-            std::cout << "Processing frame " << i << " took " << timer.ElapsedMillis() << "ms (" << timer.ElapsedMicros() << " us)"
-                      << std::endl;
-            std::cout << conversionResult.value.gpuConversionTimeMicros << std::endl;
-            computeTime += conversionResult.value.gpuConversionTimeMicros;
+            std::cout << "Res: " << resolution.height
+                      << ". Average time: " << static_cast<double>(totalTime) / (1000.0 * static_cast<double>(totalFrames)) << " ms"
+                      << " Compute:" << computeTime / totalFrames << std::endl;
+
+            videoConverter->Release();
+
+            delete[] srcFrame.buffer;
+            delete[] dstFrame.buffer;
         }
-        std::cout << "Average time: " << static_cast<double>(totalTime) / (1000.0 * static_cast<double>(totalFrames)) << " ms"
-                  << " Compute:" << computeTime / totalFrames << std::endl;
 
-        videoConverter->Release();
         device->Release();
-
-        delete[] srcFrame.buffer;
-        delete[] dstFrame.buffer;
 
         return 0;
     }
