@@ -1,3 +1,6 @@
 [submodule "lib/src/incbin"]
 	path = lib/src/incbin
 	url = https://github.com/graphitemaster/incbin.git
+[submodule "thirdparty/VulkanMemoryAllocator"]
+	path = thirdparty/VulkanMemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
