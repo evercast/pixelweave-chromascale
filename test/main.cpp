@@ -289,7 +289,7 @@ int main()
         VideoFrameWrapper srcFrame = GetPlanar420Frame(srcWidth, srcHeight);
         constexpr uint32_t dstWidth = 1920;
         constexpr uint32_t dstHeight = 1080;
-        VideoFrameWrapper dstFrame = Get10BitUYVYBuffer(dstWidth, dstHeight);
+        VideoFrameWrapper dstFrame = GetUYVYFrame(dstWidth, dstHeight);
 
         const auto videoConverter = device->CreateVideoConverter();
         uint64_t totalTime = 0;

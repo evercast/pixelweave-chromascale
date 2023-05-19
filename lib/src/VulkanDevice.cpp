@@ -9,7 +9,9 @@
 #include "VulkanInstance.h"
 #include "VulkanVideoConverter.h"
 #define VMA_IMPLEMENTATION
-#include "vk_mem_alloc.h"
+#pragma warning(push, 0)
+#include "VulkanMemoryAllocator/include/vk_mem_alloc.h"
+#pragma warning(pop)
 
 namespace PixelWeave
 {

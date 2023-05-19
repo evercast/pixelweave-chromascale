@@ -29,7 +29,7 @@ set(SOURCE
     src/VulkanBuffer.cpp
     src/VulkanBase.h
     src/Timer.h
-    src/vk_mem_alloc.h
+    ../thirdparty/VulkanMemoryAllocator/include/vk_mem_alloc.h
 )
 
 if(WIN32)
@@ -39,8 +39,8 @@ if(WIN32)
     )
 elseif(LINUX)
     set(PLATFORM_SPECIFIC_SOURCES
-        src/incbin/incbin.h
-        src/incbin/incbin.c
+        ../thirdparty/incbin/incbin.h
+        ../thirdparty/incbin/incbin.c
     )
 endif()
 
@@ -62,6 +62,7 @@ add_library(${SUBPROJECT_NAME} SHARED
 set_target_properties(${SUBPROJECT_NAME} PROPERTIES PUBLIC_HEADER "${HEADERS}")
 
 include_directories(include)
+include_directories(../thirdparty)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../CXXUtils.cmake)
 pw_configure_cxx(${SUBPROJECT_NAME})
