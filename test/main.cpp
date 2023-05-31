@@ -286,25 +286,30 @@ int main()
     if (result == PixelWeave::Result::Success) {
         constexpr uint32_t srcWidth = 1920;
         constexpr uint32_t srcHeight = 1080;
-        VideoFrameWrapper srcFrame = GetPlanar420Frame(srcWidth, srcHeight);
+        VideoFrameWrapper srcFrame = GetRGBAFrame(srcWidth, srcHeight);
+        srcFrame.range = PixelWeave::Range::Full;
+        srcFrame.yuvMatrix = PixelWeave::YUVMatrix::BT2020;
         constexpr uint32_t dstWidth = 1920;
         constexpr uint32_t dstHeight = 1080;
-        VideoFrameWrapper dstFrame = GetUYVYFrame(dstWidth, dstHeight);
+        VideoFrameWrapper dstFrame = GetPlanar444Frame(dstWidth, dstHeight);
 
         const auto videoConverter = device->CreateVideoConverter();
         uint64_t totalTime = 0;
-        const int totalFrames = 100;
+        const int totalFrames = 10000;
         for (int i = 0; i < totalFrames; ++i) {
             Timer timer;
             timer.Start();
             if (videoConverter->Convert(srcFrame, dstFrame) != PixelWeave::Result::Success) {
                 std::cout << "Conversion failed" << std::endl;
             }
-            totalTime += timer.ElapsedMicros();
-            std::cout << "Processing frame " << i << " took " << timer.ElapsedMillis() << "ms (" << timer.ElapsedMicros() << " us)"
-                      << std::endl;
+            if (i > 0) {
+                totalTime += timer.ElapsedMicros();
+                std::cout << "Processing frame " << i << " took " << timer.ElapsedMillis() << "ms (" << timer.ElapsedMicros() << " us)"
+                          << std::endl;
+            }
         }
-        std::cout << "Average time: " << static_cast<double>(totalTime) / (1000.0 * static_cast<double>(totalFrames)) << " ms" << std::endl;
+        std::cout << "Average time: " << static_cast<double>(totalTime) / (1000.0 * static_cast<double>(totalFrames - 1)) << " ms"
+                  << std::endl;
 
         videoConverter->Release();
         device->Release();
