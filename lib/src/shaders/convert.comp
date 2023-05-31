@@ -1098,16 +1098,13 @@ void write444Sample(const uvec2 blockCoords, in YUV444Block resultBlock) {
 void main() {
     const uvec2 blockCoords = gl_GlobalInvocationID.xy;
     if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV420) {
-        YUV420Block resultBlock;
-        resultBlock = read420Bilinear(blockCoords);
+        YUV420Block resultBlock = read420Bilinear(blockCoords);
         write420Sample(blockCoords, resultBlock);
     } else if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV422) {
-        YUV422Block resultBlock;
-        resultBlock = read422Bilinear(blockCoords);
+        YUV422Block resultBlock = read422Bilinear(blockCoords);
         write422Sample(blockCoords, resultBlock);
     } else if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV444 || DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB) {
-        YUV444Block resultBlock;
-        resultBlock = read444Bilinear(blockCoords);
+        YUV444Block resultBlock = read444Bilinear(blockCoords);
         write444Sample(blockCoords, resultBlock);
     }
 }
