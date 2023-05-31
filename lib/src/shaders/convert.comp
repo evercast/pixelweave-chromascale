@@ -157,6 +157,78 @@ struct RGBBlock {
     uint32_t[4] bSamples; // Top left, top right, bottom left, bottom right
 };
 
+// Block conversion helpers
+YUV420Block convert422To420(in YUV422Block source) {
+    YUV420Block result;
+    [[unroll]]
+    for (uint i = 0; i < 4; i += 1) {
+        result.ySamples[i] = source.ySamples[i];
+    }
+    result.uSample = (source.uSamples[0] + source.uSamples[1]) / 2;
+    result.vSample = (source.vSamples[0] + source.vSamples[1]) / 2;
+    return result;
+}
+
+YUV420Block convert444To420(in YUV444Block source) {
+    YUV420Block result;
+    [[unroll]]
+    for (uint i = 0; i < 4; i += 1) {
+        result.ySamples[i] = source.ySamples[i];
+    }
+    result.uSample = (source.uSamples[0] + source.uSamples[1] + source.uSamples[2] + source.uSamples[3]) / 4;
+    result.vSample = (source.vSamples[0] + source.vSamples[1] + source.vSamples[2] + source.vSamples[3]) / 4;
+    return result;
+}
+
+YUV422Block convert420To422(in YUV420Block source) {
+    YUV422Block result;
+    [[unroll]]
+    for (uint i = 0; i < 4; i += 1) {
+        result.ySamples[i] = source.ySamples[i];
+    }
+    [[unroll]]
+    for (uint i = 0; i < 2; i += 1) {
+        result.uSamples[i] = source.uSample;
+        result.vSamples[i] = source.vSample;
+    }
+    return result;
+}
+
+YUV422Block convert444To422(in YUV444Block source) {
+    YUV422Block result;
+    [[unroll]]
+    for (uint i = 0; i < 4; i += 1) {
+        result.ySamples[i] = source.ySamples[i];
+    }
+    result.uSamples[0] = (source.uSamples[0] + source.uSamples[1]) / 2;
+    result.uSamples[1] = (source.uSamples[2] + source.uSamples[3]) / 2;
+    result.vSamples[0] = (source.vSamples[0] + source.vSamples[1]) / 2;
+    result.vSamples[1] = (source.vSamples[2] + source.vSamples[3]) / 2;
+    return result;
+}
+
+YUV444Block convert420To444(in YUV420Block source) {
+    YUV444Block result;
+    [[unroll]]
+    for (uint i = 0; i < 4; i += 1) {
+        result.ySamples[i] = source.ySamples[i];
+        result.uSamples[i] = source.uSample;
+        result.vSamples[i] = source.vSample;
+    }
+    return result;
+}
+
+YUV444Block convert422To444(in YUV422Block source) {
+    YUV444Block result;
+    [[unroll]]
+    for (uint i = 0; i < 4; i += 1) {
+        result.ySamples[i] = source.ySamples[i];
+        result.uSamples[i] = source.uSamples[i/2];
+        result.vSamples[i] = source.vSamples[i/2];
+    }
+    return result;
+}
+
 // Read and conversion functions
 uint16_t SwapEndianess(const uint16_t source) {
     return (source >> 8) | (source << 8);
@@ -470,24 +542,34 @@ u32vec3 readPixelBase(uvec2 lumaCoords) {
     return result;
 }
 
+const float KG709 = (1.0f - KR709 - KB709);
+const float KG2020 = (1.0f - KR2020 - KB2020);
+
+#define GENERATE_YUV_MATRIX(KR, KB, KG) \
+    mat3(                               \
+        KR,                             \
+        -0.5f * (KR / (1.0f - KB)),     \
+        0.5f,                           \
+        KG,                             \
+        -0.5f * (KG / (1.0f - KB)),     \
+        -0.5f * (KG / (1.0f - KR)),     \
+        KB,                             \
+        0.5f,                           \
+        -0.5f * (KB / (1.0f - KR)))
+
+const mat3 BT709_YUV_MATRIX = GENERATE_YUV_MATRIX(KR709, KB709, KG709);
+const mat3 BT2020_YUV_MATRIX = GENERATE_YUV_MATRIX(KR2020, KB2020, KG2020);
+
 mat3 GetYUVMatrix(uint matrixType) {
     float kr = 0.0, kb = 0.0;
     switch (matrixType) {
         case YUVMatrixBT709: {
-            kr = KR709;
-            kb = KB709;
+            return BT709_YUV_MATRIX;
         } break;
         case YUVMatrixBT2020: {
-            kr = KR2020;
-            kb = KB2020;
+            return BT2020_YUV_MATRIX;
         } break;
     }
-    const float kg = 1 - kr - kb;
-    return mat3( 
-        kr,  -0.5f * (kr / (1.0f - kb)), 0.5f,
-        kg,  -0.5f * (kg / (1.0f - kb)), -0.5f * (kg / (1.0f - kr)),
-        kb,  0.5f, -0.5f * (kb / (1.0f - kr))
-    );
 }
 
 vec3 GetYUVOffset(const uint rangeType, const uint bitDepth) {
@@ -504,7 +586,7 @@ vec3 GetYUVScale(const uint range, const uint bitDepth) {
     // This is a good aproximation for now, but we must consider other bitdepths
     if (range == RangeLimited) {
         return vec3(
-            (235.0-16.0) / 255.0,
+            (235.0 - 16.0) / 255.0,
             (240.0 - 16.0) / 255.0,
             (240.0 - 16.0) / 255.0
         );
@@ -523,10 +605,10 @@ u32vec3 yuvToRGB(u32vec3 yuv) {
     return u32vec3(clamp(scaledPixel, vec3(0.0), vec3(maxValueDst)));
 }
 
-u32vec3 readPixel(uvec2 lumaCoords) {
-    // Read binary data and normalize
+u32vec3 srcPixelToDstPixel(u32vec3 srcPixel) {
+    // Normalize source data
     const uint32_t maxValueSrc = (1 << SRC_PICTURE_BIT_DEPTH) - 1;
-    vec3 pixel = vec3(readPixelBase(lumaCoords)) / vec3(maxValueSrc);
+    vec3 pixel = vec3(srcPixel) / vec3(maxValueSrc);
 
     // Convert RGB samples to YUV for consistency
     if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB) {
@@ -561,178 +643,49 @@ u32vec3 readPixel(uvec2 lumaCoords) {
     return u32vec3(clamp(scaledPixel, vec3(0.0), vec3(maxValueDst)));
 }
 
-// Bilinear sampling
-
-YUV420Block read420Bilinear(const uvec2 blockCoords) {
-    YUV420Block result;
-    const uvec2 srcImageSize = uvec2(SRC_PICTURE_WIDTH, SRC_PICTURE_HEIGHT);
-    const uvec2 dstImageSize = uvec2(DST_PICTURE_WIDTH, DST_PICTURE_HEIGHT);
-    u32vec3[4 * 4] sampledPixels;
+YUV444Block convertToDstSample(in YUV444Block srcBlock) {
+    YUV444Block result;
     [[unroll]]
     for (int i = 0; i < BlockSize.x; i += 1) {
         [[unroll]]
         for (int j = 0; j < BlockSize.y; j += 1) {
-            const uvec2 dstLumaCoords = blockCoords * BlockSize + uvec2(i,j);
-            const vec2 pixelSize = vec2(1.0) / vec2(dstImageSize);
-            const vec2 normalizedLumaCoords = dstLumaCoords / vec2(dstImageSize);
-            const vec2 srcLumaCoords = normalizedLumaCoords * vec2(srcImageSize);
-            const vec2 pixelDistance = fract(normalizedLumaCoords * srcImageSize);
-
-            const vec2 topLeftCoord = srcLumaCoords;
-            const vec2 topRightCoord = srcLumaCoords + vec2(pixelSize.x, 0.0);
-            const vec2 bottomLeftCoord = srcLumaCoords + vec2(0.0, pixelSize.y);
-            const vec2 bottomRightCoord = srcLumaCoords + pixelSize;
-
-            const uint blockIndex = 4 * ((j * BlockSize.y) + i);
-            sampledPixels[blockIndex] = readPixel((uvec2(topLeftCoord)));
-            sampledPixels[blockIndex + 1] = readPixel(uvec2(topRightCoord));
-            sampledPixels[blockIndex + 2] = readPixel(uvec2(bottomLeftCoord));
-            sampledPixels[blockIndex + 3] = readPixel(uvec2(bottomRightCoord));
-
-            // Interpolate and write Y sample
-            const u32vec3 topLeftPixel = sampledPixels[blockIndex];
-            const u32vec3 topRightPixel = sampledPixels[blockIndex + 1];
-            const u32vec3 bottomLeftPixel = sampledPixels[blockIndex + 2];
-            const u32vec3 bottomRightPixel = sampledPixels[blockIndex + 3];
-            {
-                vec4 ySamples = vec4(
-                    float(topLeftPixel.x),
-                    float(topRightPixel.x),
-                    float(bottomLeftPixel.x),
-                    float(bottomRightPixel.x)
-                );
-                const float topXInterp = mix(ySamples.x, ySamples.y, pixelDistance.x);
-                const float bottomXInterp = mix(ySamples.z, ySamples.w, pixelDistance.x);
-                result.ySamples[j * BlockSize.y + i] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
-            }
-        }
-    }
-
-    // Interpolate chroma samples, get average of all samples in the 4 by 4 block
-    const u32vec3 topLeftPixel = (sampledPixels[4 * 0 + 0] + sampledPixels[4 * 1 + 0] + sampledPixels[4 * 2 + 0] +  sampledPixels[4 * 3 + 0]) / 4;
-    const u32vec3 topRightPixel = (sampledPixels[4 * 0 + 1] + sampledPixels[4 * 1 + 1] + sampledPixels[4 * 2 + 1] +  sampledPixels[4 * 3 + 1]) / 4;
-    const u32vec3 bottomLeftPixel = (sampledPixels[4 * 0 + 2] + sampledPixels[4 * 1 + 2] + sampledPixels[4 * 2 + 2] +  sampledPixels[4 * 3 + 2]) / 4;
-    const u32vec3 bottomRightPixel = (sampledPixels[4 * 0 + 3] + sampledPixels[4 * 1 + 3] + sampledPixels[4 * 2 + 3] +  sampledPixels[4 * 3 + 3]) / 4;
-
-    const vec2 normalizedChromaCoords = blockCoords / vec2(uvec2(DST_PICTURE_CHROMA_WIDTH, DST_PICTURE_CHROMA_HEIGHT));
-    const vec2 pixelDistance = fract(normalizedChromaCoords * uvec2(SRC_PICTURE_CHROMA_WIDTH, SRC_PICTURE_CHROMA_HEIGHT));
-    // Interpolate and write U sample
-    {
-        vec4 uSamples = vec4(
-            float(topLeftPixel.y),
-            float(topRightPixel.y),
-            float(bottomLeftPixel.y),
-            float(bottomRightPixel.y)
-        );
-        const float topXInterp = mix(uSamples.x, uSamples.y, pixelDistance.x);
-        const float bottomXInterp = mix(uSamples.z, uSamples.w, pixelDistance.x);
-        result.uSample = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
-    }
-
-    // Interpolate and write V sample
-    {
-        vec4 vSamples = vec4(
-            float(topLeftPixel.z),
-            float(topRightPixel.z),
-            float(bottomLeftPixel.z),
-            float(bottomRightPixel.z)
-        );
-        const float topXInterp = mix(vSamples.x, vSamples.y, pixelDistance.x);
-        const float bottomXInterp = mix(vSamples.z, vSamples.w, pixelDistance.x);
-        result.vSample = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
-    }
-
-    return result;
-}
-
-YUV422Block read422Bilinear(const uvec2 blockCoords) {
-    YUV422Block result;
-    const uvec2 srcImageSize = uvec2(SRC_PICTURE_WIDTH, SRC_PICTURE_HEIGHT);
-    const uvec2 dstImageSize = uvec2(DST_PICTURE_WIDTH, DST_PICTURE_HEIGHT);
-    u32vec3[4 * 4] sampledPixels;
-    [[unroll]]
-    for (int i = 0; i < BlockSize.x; i += 1) {
-        [[unroll]]
-        for (int j = 0; j < BlockSize.y; j += 1) {
-            const uvec2 dstLumaCoords = blockCoords * BlockSize + uvec2(i,j);
-            const vec2 pixelSize = vec2(1.0) / vec2(dstImageSize);
-            const vec2 normalizedLumaCoords = dstLumaCoords / vec2(dstImageSize);
-            const vec2 srcLumaCoords = normalizedLumaCoords * vec2(srcImageSize);
-            const vec2 pixelDistance = fract(normalizedLumaCoords * srcImageSize);
-
-            const vec2 topLeftCoord = srcLumaCoords;
-            const vec2 topRightCoord = srcLumaCoords + vec2(pixelSize.x, 0.0);
-            const vec2 bottomLeftCoord = srcLumaCoords + vec2(0.0, pixelSize.y);
-            const vec2 bottomRightCoord = srcLumaCoords + pixelSize;
-
-            const uint blockIndex = 4 * ((j * BlockSize.y) + i);
-            sampledPixels[blockIndex] = readPixel(uvec2(topLeftCoord));
-            sampledPixels[blockIndex + 1] = readPixel(uvec2(topRightCoord));
-            sampledPixels[blockIndex + 2] = readPixel(uvec2(bottomLeftCoord));
-            sampledPixels[blockIndex + 3] = readPixel(uvec2(bottomRightCoord));
-
-            const u32vec3 topLeftPixel = sampledPixels[blockIndex];
-            const u32vec3 topRightPixel = sampledPixels[blockIndex + 1];
-            const u32vec3 bottomLeftPixel = sampledPixels[blockIndex + 2];
-            const u32vec3 bottomRightPixel = sampledPixels[blockIndex + 3];
-            // Interpolate and write Y sample
-            {
-                vec4 ySamples = vec4(
-                    float(topLeftPixel.x),
-                    float(topRightPixel.x),
-                    float(bottomLeftPixel.x),
-                    float(bottomRightPixel.x)
-                );
-                const float topXInterp = mix(ySamples.x, ySamples.y, pixelDistance.x);
-                const float bottomXInterp = mix(ySamples.z, ySamples.w, pixelDistance.x);
-                result.ySamples[j * BlockSize.y + i] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
-            }
-        }
-    }
-
-    [[unroll]]
-    for (int j = 0; j < BlockSize.y; j += 1) {
-        const uvec2 dstLumaCoords = blockCoords * BlockSize + uvec2(0,j);
-        const vec2 normalizedLumaCoords = dstLumaCoords / vec2(dstImageSize);
-        const vec2 pixelDistance = fract(normalizedLumaCoords * srcImageSize);
-
-        // Get average of all samples in the 4 by 4 block (horizontally only, vertical resolution is preserved in 422 chroma)
-        const uint leftBlockIndex = 4 * (j * BlockSize.y);
-        const uint rightBlockIndex = leftBlockIndex + 4;
-        const u32vec3 topLeftPixel = (sampledPixels[leftBlockIndex] + sampledPixels[rightBlockIndex + 0]) / 2;
-        const u32vec3 topRightPixel = (sampledPixels[leftBlockIndex + 1] + sampledPixels[rightBlockIndex + 1]) / 2;
-        const u32vec3 bottomLeftPixel = (sampledPixels[leftBlockIndex + 2] + sampledPixels[rightBlockIndex + 2]) / 2;
-        const u32vec3 bottomRightPixel = (sampledPixels[leftBlockIndex + 3] + sampledPixels[rightBlockIndex + 3]) / 2;
-        // Interpolate and write U sample
-        {
-            vec4 uSamples = vec4(
-                float(topLeftPixel.y),
-                float(topRightPixel.y),
-                float(bottomLeftPixel.y),
-                float(bottomRightPixel.y)
+            const uint blockOffset = j * BlockSize.y + i;
+            u32vec3 srcPixel = u32vec3(
+                srcBlock.ySamples[blockOffset],
+                srcBlock.uSamples[blockOffset],
+                srcBlock.vSamples[blockOffset]
             );
-            const float topXInterp = mix(uSamples.x, uSamples.y, pixelDistance.x);
-            const float bottomXInterp = mix(uSamples.z, uSamples.w, pixelDistance.x);
-            result.uSamples[j] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
-        }
-
-        // Interpolate and write V sample
-        {
-            vec4 vSamples = vec4(
-                float(topLeftPixel.z),
-                float(topRightPixel.z),
-                float(bottomLeftPixel.z),
-                float(bottomRightPixel.z)
-            );
-            const float topXInterp = mix(vSamples.x, vSamples.y, pixelDistance.x);
-            const float bottomXInterp = mix(vSamples.z, vSamples.w, pixelDistance.x);
-            result.vSamples[j] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
+            const u32vec3 resultPixel = srcPixelToDstPixel(srcPixel);
+            result.ySamples[blockOffset] = resultPixel.x;
+            result.uSamples[blockOffset] = resultPixel.y;
+            result.vSamples[blockOffset] = resultPixel.z;
         }
     }
     return result;
 }
 
-YUV444Block read444Bilinear(const uvec2 blockCoords) {
+YUV444Block readNearest(const uvec2 blockCoords) {
+    YUV444Block result;
+    const uvec2 srcImageSize = uvec2(SRC_PICTURE_WIDTH, SRC_PICTURE_HEIGHT);
+    const uvec2 dstImageSize = uvec2(DST_PICTURE_WIDTH, DST_PICTURE_HEIGHT);
+    [[unroll]]
+    for (int i = 0; i < BlockSize.x; i += 1) {
+        [[unroll]]
+        for (int j = 0; j < BlockSize.y; j += 1) {
+            const vec2 dstLumaCoords = blockCoords * BlockSize + uvec2(i,j) + vec2(0.5f);
+            const vec2 normalizedLumaCoords = dstLumaCoords / vec2(dstImageSize);
+            const vec2 srcLumaCoords = normalizedLumaCoords * vec2(srcImageSize);
+
+            u32vec3 sampledPixel = readPixelBase(uvec2(srcLumaCoords));
+            result.ySamples[j * BlockSize.y + i] = sampledPixel.x;
+            result.uSamples[j * BlockSize.y + i] = sampledPixel.y;
+            result.vSamples[j * BlockSize.y + i] = sampledPixel.z;
+        }
+    }
+    return result;
+}
+
+YUV444Block readBilinear(const uvec2 blockCoords) {
     YUV444Block result;
     const uvec2 srcImageSize = uvec2(SRC_PICTURE_WIDTH, SRC_PICTURE_HEIGHT);
     const uvec2 dstImageSize = uvec2(DST_PICTURE_WIDTH, DST_PICTURE_HEIGHT);
@@ -751,10 +704,10 @@ YUV444Block read444Bilinear(const uvec2 blockCoords) {
             const vec2 bottomLeftCoord = srcLumaCoords + vec2(0.0, pixelSize.y);
             const vec2 bottomRightCoord = srcLumaCoords + pixelSize;
 
-            u32vec3 topLeftPixel = readPixel(uvec2(topLeftCoord));
-            u32vec3 topRightPixel = readPixel(uvec2(topRightCoord));
-            u32vec3 bottomLeftPixel = readPixel(uvec2(bottomLeftCoord));
-            u32vec3 bottomRightPixel = readPixel(uvec2(bottomRightCoord));
+            u32vec3 topLeftPixel = readPixelBase(uvec2(topLeftCoord));
+            u32vec3 topRightPixel = readPixelBase(uvec2(topRightCoord));
+            u32vec3 bottomLeftPixel = readPixelBase(uvec2(bottomLeftCoord));
+            u32vec3 bottomRightPixel = readPixelBase(uvec2(bottomRightCoord));
             
             // Interpolate and write Y sample
             {
@@ -1097,14 +1050,18 @@ void write444Sample(const uvec2 blockCoords, in YUV444Block resultBlock) {
 */
 void main() {
     const uvec2 blockCoords = gl_GlobalInvocationID.xy;
+    YUV444Block readBlock;
+    if (SRC_PICTURE_WIDTH == DST_PICTURE_WIDTH && SRC_PICTURE_HEIGHT == DST_PICTURE_HEIGHT) {
+       readBlock = readNearest(blockCoords);
+    } else {
+        readBlock = readBilinear(blockCoords);
+    }
+    readBlock = convertToDstSample(readBlock);
     if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV420) {
-        YUV420Block resultBlock = read420Bilinear(blockCoords);
-        write420Sample(blockCoords, resultBlock);
+        write420Sample(blockCoords, convert444To420(readBlock));
     } else if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV422) {
-        YUV422Block resultBlock = read422Bilinear(blockCoords);
-        write422Sample(blockCoords, resultBlock);
+        write422Sample(blockCoords, convert444To422(readBlock));
     } else if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV444 || DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB) {
-        YUV444Block resultBlock = read444Bilinear(blockCoords);
-        write444Sample(blockCoords, resultBlock);
+        write444Sample(blockCoords, readBlock);
     }
 }
