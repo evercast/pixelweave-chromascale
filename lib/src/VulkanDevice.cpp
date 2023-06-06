@@ -8,6 +8,10 @@
 #include "VideoFrameWrapper.h"
 #include "VulkanInstance.h"
 #include "VulkanVideoConverter.h"
+#define VMA_IMPLEMENTATION
+#pragma warning(push, 0)
+#include "VulkanMemoryAllocator/include/vk_mem_alloc.h"
+#pragma warning(pop)
 
 namespace PixelWeave
 {
@@ -53,6 +57,13 @@ VulkanDevice::VulkanDevice(const std::shared_ptr<VulkanInstance>& instance, vk::
     const vk::CommandPoolCreateInfo commandPoolCreateInfo =
         vk::CommandPoolCreateInfo().setQueueFamilyIndex(queueFamilyIndex).setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
     mCommandPool = PW_ASSERT_VK(mLogicalDevice.createCommandPool(commandPoolCreateInfo));
+
+    VmaAllocatorCreateInfo allocatorInfo{};
+    allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_2;
+    allocatorInfo.physicalDevice = mPhysicalDevice;
+    allocatorInfo.device = mLogicalDevice;
+    allocatorInfo.instance = mVulkanInstance->GetHandle();
+    vmaCreateAllocator(&allocatorInfo, &mAllocator);
 }
 
 VideoConverter* VulkanDevice::CreateVideoConverter()
@@ -82,7 +93,7 @@ vk::DeviceMemory VulkanDevice::AllocateMemory(const vk::MemoryPropertyFlags& mem
 VulkanBuffer* VulkanDevice::CreateBuffer(
     const vk::DeviceSize& size,
     const vk::BufferUsageFlags& usageFlags,
-    const vk::MemoryPropertyFlags& memoryFlags)
+    const VmaAllocationCreateFlags& memoryFlags)
 {
     return VulkanBuffer::Create(this, size, usageFlags, memoryFlags);
 }
@@ -304,6 +315,47 @@ void VulkanDevice::DestroyCommand(vk::CommandBuffer& commandBuffer)
     mLogicalDevice.freeCommandBuffers(mCommandPool, commandBuffer);
 }
 
+bool VulkanDevice::SupportsTimestamps() const
+{
+    const vk::PhysicalDeviceProperties deviceProperties = mPhysicalDevice.getProperties();
+    return deviceProperties.limits.timestampComputeAndGraphics;
+}
+
+vk::QueryPool VulkanDevice::CreateTimestampQueryPool(const uint32_t queryCount)
+{
+    vk::QueryPoolCreateInfo queryPoolCreateInfo =
+        vk::QueryPoolCreateInfo().setQueryType(vk::QueryType::eTimestamp).setQueryCount(queryCount);
+    vk::QueryPool queryPool = PW_ASSERT_VK(mLogicalDevice.createQueryPool(queryPoolCreateInfo));
+    mLogicalDevice.resetQueryPool(queryPool, 0, queryCount);
+    return queryPool;
+}
+
+void VulkanDevice::ResetQueryPool(vk::QueryPool& queryPool, const uint32_t queryCount)
+{
+    mLogicalDevice.resetQueryPool(queryPool, 0, queryCount);
+}
+
+std::vector<uint64_t> VulkanDevice::GetTimestampQueryResults(vk::QueryPool queryPool, const uint32_t queryCount)
+{
+    std::vector<uint64_t> results = PW_ASSERT_VK(mLogicalDevice.getQueryPoolResults<uint64_t>(
+        queryPool,
+        0,
+        queryCount,
+        size_t(queryCount * sizeof(uint64_t)),
+        vk::DeviceSize(sizeof(uint64_t)),
+        vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWait));
+    const double timePeriod = mPhysicalDevice.getProperties().limits.timestampPeriod;
+    for (uint64_t& result : results) {
+        result = static_cast<uint64_t>(static_cast<double>(result) * timePeriod / 1000.0);
+    }
+    return results;
+}
+
+void VulkanDevice::DestroyQueryPool(vk::QueryPool& queryPool)
+{
+    mLogicalDevice.destroyQueryPool(queryPool);
+}
+
 vk::Fence VulkanDevice::CreateFence()
 {
     const vk::FenceCreateInfo fenceInfo = vk::FenceCreateInfo();
@@ -322,6 +374,7 @@ void VulkanDevice::DestroyFence(vk::Fence& fence)
 
 VulkanDevice::~VulkanDevice()
 {
+    vmaDestroyAllocator(mAllocator);
     mLogicalDevice.destroyCommandPool(mCommandPool);
     mLogicalDevice.destroy();
     mVulkanInstance = nullptr;

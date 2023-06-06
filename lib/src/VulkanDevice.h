@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "Device.h"
+#include "VulkanBase.h"
 #include "VulkanBuffer.h"
 
 namespace PixelWeave
@@ -25,7 +26,7 @@ public:
     VulkanBuffer* CreateBuffer(
         const vk::DeviceSize& size,
         const vk::BufferUsageFlags& usageFlags,
-        const vk::MemoryPropertyFlags& memoryFlags);
+        const VmaAllocationCreateFlags& memoryFlags);
 
     // Pipeline handling
     struct VideoConversionPipelineResources {
@@ -47,11 +48,19 @@ public:
     void SubmitCommand(const vk::CommandBuffer& commandBuffer, const vk::Fence& fence);
     void DestroyCommand(vk::CommandBuffer& commandBuffer);
 
+    bool SupportsTimestamps() const;
+    vk::QueryPool CreateTimestampQueryPool(const uint32_t queryCount);
+    void ResetQueryPool(vk::QueryPool& queryPool, const uint32_t queryCount);
+    std::vector<uint64_t> GetTimestampQueryResults(vk::QueryPool queryPool, const uint32_t queryCount);
+    void DestroyQueryPool(vk::QueryPool& queryPool);
+
     vk::Fence CreateFence();
     void WaitForFence(vk::Fence& fence);
     void DestroyFence(vk::Fence& fence);
 
     vk::Device& GetLogicalDevice() { return mLogicalDevice; }
+
+    VmaAllocator& GetAllocator() { return mAllocator; }
 
     ~VulkanDevice() override;
 
@@ -61,6 +70,7 @@ private:
     vk::Device mLogicalDevice;
     vk::Queue mComputeQueue;
     vk::CommandPool mCommandPool;
+    VmaAllocator mAllocator;
 };
 
 }  // namespace PixelWeave

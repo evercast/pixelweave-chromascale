@@ -15,7 +15,7 @@ public:
     static ResultValue<Device*> CreateDevice(const std::shared_ptr<VulkanInstance>& instance);
 
     VulkanInstance(const vk::Instance& instance);
-
+    vk::Instance GetHandle() { return mInstanceHandle; }
     ~VulkanInstance();
 
 private:

@@ -14,7 +14,7 @@ public:
         VulkanDevice* device,
         const vk::DeviceSize& size,
         const vk::BufferUsageFlags& usageFlags,
-        const vk::MemoryPropertyFlags& memoryFlags);
+        const VmaAllocationCreateFlags& memoryFlags);
 
     const vk::DeviceSize& GetBufferSize() const { return mSize; }
     const vk::Buffer& GetBufferHandle() const { return mBufferHandle; }
@@ -28,7 +28,7 @@ private:
         VulkanDevice* device,
         vk::DeviceSize size,
         vk::Buffer bufferHandle,
-        vk::DeviceMemory memoryHandle,
+        VmaAllocation allocation,
         vk::DescriptorBufferInfo descriptorInfo);
 
     ~VulkanBuffer() override;
@@ -36,7 +36,7 @@ private:
     VulkanDevice* mDevice;
     vk::DeviceSize mSize;
     vk::Buffer mBufferHandle;
-    vk::DeviceMemory mMemoryHandle;
+    VmaAllocation mAllocation;
     vk::DescriptorBufferInfo mDescriptorInfo;
 };
 }  // namespace PixelWeave

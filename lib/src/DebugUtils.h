@@ -65,3 +65,8 @@ inline void PW_ASSERT_VK(vk::Result result)
 {
     PW_ASSERT(result == vk::Result::eSuccess);
 }
+
+inline void PW_ASSERT_VK(VkResult result)
+{
+    PW_ASSERT(result == VK_SUCCESS);
+}

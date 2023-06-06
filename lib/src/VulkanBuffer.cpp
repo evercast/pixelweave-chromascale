@@ -10,51 +10,61 @@ VulkanBuffer* VulkanBuffer::Create(
     VulkanDevice* device,
     const vk::DeviceSize& size,
     const vk::BufferUsageFlags& usageFlags,
-    const vk::MemoryPropertyFlags& memoryFlags)
+    const VmaAllocationCreateFlags& memoryFlags)
 {
-    const vk::Device& logicalDevice = device->GetLogicalDevice();
+    VmaAllocator allocator = device->GetAllocator();
     const vk::BufferCreateInfo bufferCreateInfo =
         vk::BufferCreateInfo().setSize(size).setUsage(usageFlags).setSharingMode(vk::SharingMode::eExclusive);
-    const vk::Buffer bufferHandle = PW_ASSERT_VK(logicalDevice.createBuffer(bufferCreateInfo));
 
-    const vk::MemoryRequirements memoryRequirements = logicalDevice.getBufferMemoryRequirements(bufferHandle);
-    const vk::DeviceMemory memoryHandle = device->AllocateMemory(memoryFlags, memoryRequirements);
+    VmaAllocationCreateInfo allocationInfo{};
+    allocationInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    allocationInfo.flags = memoryFlags;
+    VmaAllocationInfo allocInfo{};
 
-    PW_ASSERT_VK(logicalDevice.bindBufferMemory(bufferHandle, memoryHandle, 0));
+    vk::Buffer bufferHandle;
+    VmaAllocation allocation;
+    PW_ASSERT_VK(vmaCreateBuffer(
+        allocator,
+        (VkBufferCreateInfo*)&bufferCreateInfo,
+        &allocationInfo,
+        (VkBuffer*)&bufferHandle,
+        &allocation,
+        &allocInfo));
 
     const vk::DescriptorBufferInfo bufferInfo = vk::DescriptorBufferInfo().setBuffer(bufferHandle).setOffset(0).setRange(size);
 
-    return new VulkanBuffer(device, size, bufferHandle, memoryHandle, bufferInfo);
+    return new VulkanBuffer(device, size, bufferHandle, allocation, bufferInfo);
 }
 
 VulkanBuffer::VulkanBuffer(
     VulkanDevice* device,
     vk::DeviceSize size,
     vk::Buffer bufferHandle,
-    vk::DeviceMemory memoryHandle,
+    VmaAllocation allocation,
     vk::DescriptorBufferInfo descriptorInfo)
-    : mDevice(device), mSize(size), mBufferHandle(bufferHandle), mMemoryHandle(memoryHandle), mDescriptorInfo(descriptorInfo)
+    : mDevice(device), mSize(size), mBufferHandle(bufferHandle), mAllocation(allocation), mDescriptorInfo(descriptorInfo)
 {
     mDevice->AddRef();
 }
 
 uint8_t* VulkanBuffer::MapBuffer()
 {
-    const vk::Device& logicalDevice = mDevice->GetLogicalDevice();
-    return static_cast<uint8_t*>(PW_ASSERT_VK(logicalDevice.mapMemory(mMemoryHandle, 0, mSize)));
+    VmaAllocator allocator = mDevice->GetAllocator();
+    uint8_t* mappedResult = nullptr;
+    PW_ASSERT_VK(vmaMapMemory(allocator, mAllocation, (void**)&mappedResult));
+    return mappedResult;
 }
 
 void VulkanBuffer::UnmapBuffer()
 {
-    const vk::Device& logicalDevice = mDevice->GetLogicalDevice();
-    logicalDevice.unmapMemory(mMemoryHandle);
+    VmaAllocator allocator = mDevice->GetAllocator();
+    vmaUnmapMemory(allocator, mAllocation);
 }
 
 VulkanBuffer::~VulkanBuffer()
 {
-    vk::Device& logicalDevice = mDevice->GetLogicalDevice();
-    logicalDevice.destroyBuffer(mBufferHandle);
-    logicalDevice.freeMemory(mMemoryHandle);
+    VmaAllocator allocator = mDevice->GetAllocator();
+    vmaDestroyBuffer(allocator, mBufferHandle, mAllocation);
     mDevice->Release();
 }
 

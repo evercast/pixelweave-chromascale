@@ -1,4 +1,5 @@
 #include <chrono>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -6,19 +7,6 @@
 #include "Device.h"
 
 using namespace PixelWeave;
-
-struct Timer {
-    void Start() { beginTime = std::chrono::steady_clock::now(); }
-    template <typename M>
-    uint64_t Elapsed()
-    {
-        return std::chrono::duration_cast<M>(std::chrono::steady_clock::now() - beginTime).count();
-    }
-    uint64_t ElapsedMillis() { return Elapsed<std::chrono::milliseconds>(); }
-    uint64_t ElapsedMicros() { return Elapsed<std::chrono::microseconds>(); }
-
-    std::chrono::steady_clock::time_point beginTime;
-};
 
 PixelWeave::VideoFrameWrapper GetUYVYFrame(uint32_t width, uint32_t height)
 {
@@ -280,38 +268,262 @@ PixelWeave::VideoFrameWrapper Get10BitUYVYBuffer(uint32_t width, uint32_t height
     return VideoFrameWrapper{reinterpret_cast<uint8_t*>(buffer), stride, 0, width, height, PixelWeave::PixelFormat::Interleaved10BitUYVY};
 }
 
+VideoFrameWrapper CreateFrame(PixelFormat pixelFormat, uint32_t width, uint32_t height)
+{
+    switch (pixelFormat) {
+        case PixelFormat::Interleaved8BitUYVY: {
+            return GetUYVYFrame(width, height);
+        } break;
+        case PixelFormat::Interleaved8BitBGRA: {
+            return GetBGRAFrame(width, height);
+        } break;
+        case PixelFormat::Interleaved8BitRGBA: {
+            return GetRGBAFrame(width, height);
+        } break;
+        case PixelFormat::Planar8Bit420: {
+            return GetPlanar420Frame(width, height);
+        } break;
+        case PixelFormat::Planar8Bit422: {
+            return GetPlanar422Frame(width, height);
+        } break;
+        case PixelFormat::Planar8Bit444: {
+            return GetPlanar444Frame(width, height);
+        } break;
+        case PixelFormat::Planar8Bit420YV12: {
+            return GetPlanarYV12Frame(width, height);
+        } break;
+        case PixelFormat::Planar8Bit420NV12: {
+            return GetPlanarNV12Frame(width, height);
+        } break;
+        case PixelFormat::Interleaved10BitUYVY: {
+            return Get10BitUYVYBuffer(width, height);
+        } break;
+        case PixelFormat::Interleaved10BitRGB: {
+            return Get10BitRGBBuffer(width, height);
+        } break;
+        case PixelFormat::Interleaved12BitRGB: {
+            //
+        } break;
+        case PixelFormat::Planar10Bit420: {
+            return GetPlanar42010BitFrame(width, height);
+        } break;
+        case PixelFormat::Planar10Bit422: {
+            return GetPlanar42210BitFrame(width, height);
+        } break;
+        case PixelFormat::Planar10Bit444: {
+            return GetPlanar44410BitFrame(width, height);
+        } break;
+        case PixelFormat::Interleaved8BitARGB: {
+            //
+        } break;
+        case PixelFormat::Interleaved12BitRGBLE: {
+            //
+        } break;
+        case PixelFormat::Interleaved10BitRGBX: {
+            //
+        } break;
+        case PixelFormat::Interleaved10BitRGBXLE: {
+            //
+        } break;
+        case PixelFormat::Planar16BitP216: {
+            return GetPlanarP126Frame(width, height);
+        } break;
+    }
+    return PixelWeave::VideoFrameWrapper{};
+}
+
+std::string GetFormatName(PixelFormat pixelFormat)
+{
+    switch (pixelFormat) {
+        case PixelFormat::Interleaved8BitUYVY: {
+            return "Interleaved8BitUYVY";
+        } break;
+        case PixelFormat::Interleaved8BitBGRA: {
+            return "Interleaved8BitBGRA";
+        } break;
+        case PixelFormat::Interleaved8BitRGBA: {
+            return "Interleaved8BitRGBA";
+        } break;
+        case PixelFormat::Planar8Bit420: {
+            return "Planar8Bit420";
+        } break;
+        case PixelFormat::Planar8Bit422: {
+            return "Planar8Bit422";
+        } break;
+        case PixelFormat::Planar8Bit444: {
+            return "Planar8Bit444";
+        } break;
+        case PixelFormat::Planar8Bit420YV12: {
+            return "Planar8Bit420YV12";
+        } break;
+        case PixelFormat::Planar8Bit420NV12: {
+            return "Planar8Bit420NV12";
+        } break;
+        case PixelFormat::Interleaved10BitUYVY: {
+            return "Interleaved10BitUYVY";
+        } break;
+        case PixelFormat::Interleaved10BitRGB: {
+            return "Interleaved10BitRGB";
+        } break;
+        case PixelFormat::Interleaved12BitRGB: {
+            return "Interleaved12BitRGB";
+        } break;
+        case PixelFormat::Planar10Bit420: {
+            return "Planar10Bit420";
+        } break;
+        case PixelFormat::Planar10Bit422: {
+            return "Planar10Bit422";
+        } break;
+        case PixelFormat::Planar10Bit444: {
+            return "Planar10Bit444";
+        } break;
+        case PixelFormat::Interleaved8BitARGB: {
+            return "Interleaved8BitARGB";
+        } break;
+        case PixelFormat::Interleaved12BitRGBLE: {
+            return "Interleaved12BitRGBLE";
+        } break;
+        case PixelFormat::Interleaved10BitRGBX: {
+            return "Interleaved10BitRGBX";
+        } break;
+        case PixelFormat::Interleaved10BitRGBXLE: {
+            return "Interleaved10BitRGBXLE";
+        } break;
+        case PixelFormat::Planar16BitP216: {
+            return "Planar16BitP216";
+        } break;
+    }
+    return "";
+}
+
 int main()
 {
     auto [result, device] = PixelWeave::Device::Create();
     if (result == PixelWeave::Result::Success) {
-        constexpr uint32_t srcWidth = 1920;
-        constexpr uint32_t srcHeight = 1080;
-        VideoFrameWrapper srcFrame = GetPlanar420Frame(srcWidth, srcHeight);
-        constexpr uint32_t dstWidth = 1920;
-        constexpr uint32_t dstHeight = 1080;
-        VideoFrameWrapper dstFrame = GetUYVYFrame(dstWidth, dstHeight);
+        std::vector<PixelFormat> validInputFormats{
+            PixelFormat::Interleaved8BitUYVY,
+            PixelFormat::Interleaved8BitBGRA,
+            PixelFormat::Interleaved8BitRGBA,
+            PixelFormat::Planar8Bit420,
+            PixelFormat::Planar8Bit420YV12,
+            PixelFormat::Planar8Bit420NV12,
+            PixelFormat::Interleaved10BitRGB,
+            PixelFormat::Planar16BitP216,
+            PixelFormat::Planar8Bit422,
+            PixelFormat::Planar8Bit444,
+            PixelFormat::Planar10Bit420,
+            PixelFormat::Planar10Bit422,
+            PixelFormat::Planar10Bit444,
+        };
+
+        std::vector<PixelFormat> validOutputFormats{
+            PixelFormat::Planar8Bit420,
+            PixelFormat::Planar8Bit422,
+            PixelFormat::Planar8Bit444,
+            PixelFormat::Planar10Bit420,
+            PixelFormat::Planar10Bit422,
+            PixelFormat::Planar10Bit444,
+            PixelFormat::Interleaved8BitUYVY,
+            PixelFormat::Interleaved8BitBGRA,
+            PixelFormat::Interleaved10BitRGB,
+        };
+
+        struct Resolution {
+            uint32_t width, height;
+        };
+        std::vector<Resolution> resolutions{Resolution{3840, 2160}, Resolution{2560, 1440}, Resolution{1920, 1080}, Resolution{1280, 720}};
 
         const auto videoConverter = device->CreateVideoConverter();
-        uint64_t totalTime = 0;
-        const int totalFrames = 100;
-        for (int i = 0; i < totalFrames; ++i) {
-            Timer timer;
-            timer.Start();
-            if (videoConverter->Convert(srcFrame, dstFrame) != PixelWeave::Result::Success) {
-                std::cout << "Conversion failed" << std::endl;
+
+        struct BenchmarkResult {
+            PixelFormat inputFormat;
+            uint32_t inputWidth;
+            uint32_t inputHeight;
+            PixelFormat outputFormat;
+            uint32_t outputWidth;
+            uint32_t outputHeight;
+            uint64_t copyToDeviceVisibleTimeMicros = 0;
+            uint64_t transferDeviceVisibleToDeviceLocalTimeMicros = 0;
+            uint64_t computeConversionTimeMicros = 0;
+            uint64_t copyDeviceVisibleToHostLocalTimeMicros = 0;
+        };
+
+        std::vector<BenchmarkResult> results;
+        for (Resolution inputResolution : resolutions) {
+            for (PixelFormat inputFormat : validInputFormats) {
+                PixelWeave::VideoFrameWrapper inputFrame = CreateFrame(inputFormat, inputResolution.width, inputResolution.height);
+                for (Resolution outputResolution : resolutions) {
+                    for (PixelFormat outputFormat : validOutputFormats) {
+                        PixelWeave::VideoFrameWrapper outputFrame =
+                            CreateFrame(outputFormat, outputResolution.width, outputResolution.height);
+                        {
+                            BenchmarkResult benchmarkResult{
+                                inputFormat,
+                                inputResolution.width,
+                                inputResolution.height,
+                                outputFormat,
+                                outputResolution.width,
+                                outputResolution.height};
+                            std::cout << "Benchmarking: Input(" << GetFormatName(inputFormat) << "-" << inputResolution.width << "x"
+                                      << inputResolution.height << ") Output(" << GetFormatName(outputFormat) << "-"
+                                      << outputResolution.width << "x" << outputResolution.height << ")" << std::endl;
+                            constexpr uint32_t iterations = 10;
+                            for (uint32_t i = 0; i < iterations + 1; ++i) {
+                                auto resultAndBenchmark = videoConverter->ConvertWithBenchmark(inputFrame, outputFrame);
+
+                                if (resultAndBenchmark.result != Result::Success) {
+                                    std::cout << "Error converting frame" << std::endl;
+                                    while (true) {
+                                    };
+                                }
+
+                                if (i > 0) {
+                                    benchmarkResult.copyToDeviceVisibleTimeMicros += resultAndBenchmark.value.copyToDeviceVisibleTimeMicros;
+                                    benchmarkResult.transferDeviceVisibleToDeviceLocalTimeMicros +=
+                                        resultAndBenchmark.value.transferDeviceVisibleToDeviceLocalTimeMicros;
+                                    benchmarkResult.computeConversionTimeMicros += resultAndBenchmark.value.computeConversionTimeMicros;
+                                    benchmarkResult.copyDeviceVisibleToHostLocalTimeMicros +=
+                                        resultAndBenchmark.value.copyDeviceVisibleToHostLocalTimeMicros;
+                                }
+                            }
+                            benchmarkResult.copyToDeviceVisibleTimeMicros /= iterations;
+                            benchmarkResult.transferDeviceVisibleToDeviceLocalTimeMicros /= iterations;
+                            benchmarkResult.computeConversionTimeMicros /= iterations;
+                            benchmarkResult.copyDeviceVisibleToHostLocalTimeMicros /= iterations;
+                            results.push_back(benchmarkResult);
+                        }
+                        delete[] outputFrame.buffer;
+                    }
+                }
+                delete[] inputFrame.buffer;
             }
-            totalTime += timer.ElapsedMicros();
-            std::cout << "Processing frame " << i << " took " << timer.ElapsedMillis() << "ms (" << timer.ElapsedMicros() << " us)"
-                      << std::endl;
         }
-        std::cout << "Average time: " << static_cast<double>(totalTime) / (1000.0 * static_cast<double>(totalFrames)) << " ms" << std::endl;
+
+        std::fstream benchmarkStream;
+        const std::string separator = ",";
+        benchmarkStream.open("benchmark.csv", std::ios::out);
+        benchmarkStream << "InputFormat" << separator << "InputWidth" << separator << "InputHeight" << separator << "OutputFormat"
+                        << separator << "OutputWidth" << separator << "OutputHeight" << separator << "CopyToDeviceVisibleTimeMicros"
+                        << separator << "TransferDeviceVisibleToDeviceLocalTimeMicros" << separator << "ComputeConversionTimeMicros"
+                        << separator << "CopyDeviceVisibleToHostLocalTimeMicros" << separator << "TotalTime" << std::endl;
+
+        for (const BenchmarkResult& benchmarkResult : results) {
+            benchmarkStream << GetFormatName(benchmarkResult.inputFormat) << separator << benchmarkResult.inputWidth << separator
+                            << benchmarkResult.inputHeight << separator << GetFormatName(benchmarkResult.outputFormat) << separator
+                            << benchmarkResult.outputWidth << separator << benchmarkResult.outputHeight << separator
+                            << benchmarkResult.copyToDeviceVisibleTimeMicros << separator
+                            << benchmarkResult.transferDeviceVisibleToDeviceLocalTimeMicros << separator
+                            << benchmarkResult.computeConversionTimeMicros << separator
+                            << benchmarkResult.copyDeviceVisibleToHostLocalTimeMicros << separator
+                            << (benchmarkResult.copyToDeviceVisibleTimeMicros +
+                                benchmarkResult.transferDeviceVisibleToDeviceLocalTimeMicros + benchmarkResult.computeConversionTimeMicros +
+                                benchmarkResult.copyDeviceVisibleToHostLocalTimeMicros)
+                            << std::endl;
+        }
+        benchmarkStream.close();
 
         videoConverter->Release();
         device->Release();
-
-        delete[] srcFrame.buffer;
-        delete[] dstFrame.buffer;
-
         return 0;
     }
     return -1;
