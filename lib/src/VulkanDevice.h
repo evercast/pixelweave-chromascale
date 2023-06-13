@@ -37,7 +37,7 @@ public:
         vk::DescriptorPool descriptorPool;
         vk::DescriptorSet descriptorSet;
     };
-    VideoConversionPipelineResources CreateVideoConversionPipeline(
+    ResultValue<VideoConversionPipelineResources> CreateVideoConversionPipeline(
         const VideoFrameWrapper& src,
         const VulkanBuffer* srcBuffer,
         const VideoFrameWrapper& dst,

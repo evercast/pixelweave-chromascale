@@ -29,6 +29,8 @@ set(SOURCE
     src/VulkanBuffer.cpp
     src/VulkanBase.h
     src/Timer.h
+    src/ColorSpaceUtils.h
+    src/ColorSpaceUtils.cpp
 )
 
 if(WIN32)

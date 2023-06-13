@@ -7,9 +7,9 @@
 #pragma warning(push, 0)
 #include "vk_mem_alloc.h"
 #pragma warning(pop)
-#include "glm/glm.hpp"
 #include "shaderc/shaderc.hpp"
 
+#include "ColorSpaceUtils.h"
 #include "DebugUtils.h"
 #include "ResourceLoader.h"
 #include "VideoFrameWrapper.h"
@@ -106,51 +106,102 @@ VulkanBuffer* VulkanDevice::CreateBuffer(
     return VulkanBuffer::Create(this, size, usageFlags, memoryFlags);
 }
 
-glm::mat3 GetMatrix(PixelWeave::YUVMatrix matrix)
+std::vector<uint32_t> CompileShader(const VideoFrameWrapper& src, const VideoFrameWrapper& dst)
 {
-    constexpr float KR709 = 0.2126f;
-    constexpr float KB709 = 0.0722f;
+    Resource shaderResource = ResourceLoader::Load(Resource::Id::ComputeShader);
 
-    constexpr float KR2020 = 0.2627f;
-    constexpr float KB2020 = 0.0593f;
-    const auto getMatrix = [](float kr, float kb) -> glm::mat3 {
-        float kg = 1.0f - kr - kb;
-        return glm::mat3(
-            kr,
-            -0.5f * (kr / (1.0f - kb)),
-            0.5f,
-            kg,
-            -0.5f * (kg / (1.0f - kb)),
-            -0.5f * (kg / (1.0f - kr)),
-            kb,
-            0.5f,
-            -0.5f * (kb / (1.0f - kr)));
+    shaderc::Compiler compiler;
+    shaderc::CompileOptions options;
+
+    options.SetOptimizationLevel(shaderc_optimization_level::shaderc_optimization_level_performance);
+
+    const auto encodeMatrix = [](const glm::mat3& matrix) -> std::string {
+        std::ostringstream stringStream;
+        stringStream << "mat3(";
+        for (uint32_t i = 0; i < 3 * 3; ++i) {
+            stringStream << matrix[i % 3][i / 3];
+            if (i < 3 * 3 - 1) {
+                stringStream << ",";
+            }
+        }
+        stringStream << ")";
+        return stringStream.str();
     };
 
-    switch (matrix) {
-        case YUVMatrix::BT709:
-            return getMatrix(KR709, KB709);
-        case YUVMatrix::BT2020:
-            return getMatrix(KR2020, KB2020);
+    const auto encodeVector = [](const glm::vec3& vector) -> std::string {
+        std::ostringstream stringStream;
+        stringStream << "vec3(";
+        for (uint32_t i = 0; i < 3; ++i) {
+            stringStream << vector[i];
+            if (i < 2) {
+                stringStream << ",";
+            }
+        }
+        stringStream << ")";
+        return stringStream.str();
+    };
+
+    const glm::mat3 srcRGBToYUVMatrix = PixelWeave::GetMatrix(src.yuvMatrix);
+    const glm::mat3 srcYUVToRGBMatrix = glm::inverse(srcRGBToYUVMatrix);
+
+    options.AddMacroDefinition("SRC_PICTURE_WIDTH", std::to_string(src.width));
+    options.AddMacroDefinition("SRC_PICTURE_HEIGHT", std::to_string(src.height));
+    options.AddMacroDefinition("SRC_PICTURE_STRIDE", std::to_string(src.stride));
+    options.AddMacroDefinition("SRC_PICTURE_CHROMA_WIDTH", std::to_string(src.GetChromaWidth()));
+    options.AddMacroDefinition("SRC_PICTURE_CHROMA_HEIGHT", std::to_string(src.GetChromaHeight()));
+    options.AddMacroDefinition("SRC_PICTURE_CHROMA_STRIDE", std::to_string(src.GetChromaStride()));
+    options.AddMacroDefinition("SRC_PICTURE_FORMAT", std::to_string(static_cast<uint32_t>(src.pixelFormat)));
+    options.AddMacroDefinition("SRC_PICTURE_SUBSAMPLE_TYPE", std::to_string(static_cast<uint32_t>(src.GetSubsampleType())));
+    options.AddMacroDefinition("SRC_PICTURE_U_OFFSET", std::to_string(src.GetUOffset()));
+    options.AddMacroDefinition("SRC_PICTURE_V_OFFSET", std::to_string(src.GetVOffset()));
+    options.AddMacroDefinition("SRC_PICTURE_BIT_DEPTH", std::to_string(src.GetBitDepth()));
+    options.AddMacroDefinition("SRC_PICTURE_BYTE_DEPTH", std::to_string(src.GetByteDepth()));
+    options.AddMacroDefinition("SRC_PICTURE_RANGE", std::to_string(static_cast<uint32_t>(src.range)));
+    options.AddMacroDefinition("SRC_PICTURE_YUV_MATRIX", std::to_string(static_cast<uint32_t>(src.yuvMatrix)));
+    options.AddMacroDefinition("SRC_PICTURE_RGB_TO_YUV_MATRIX", encodeMatrix(srcRGBToYUVMatrix));
+    options.AddMacroDefinition("SRC_PICTURE_YUV_TO_RGB_MATRIX", encodeMatrix(srcYUVToRGBMatrix));
+    options.AddMacroDefinition("SRC_PICTURE_YUV_OFFSET", encodeVector(PixelWeave::GetYUVOffset(src.range, src.GetBitDepth())));
+    options.AddMacroDefinition("SRC_PICTURE_YUV_OFFSET_FULL", encodeVector(PixelWeave::GetYUVOffset(Range::Full, src.GetBitDepth())));
+    options.AddMacroDefinition("SRC_PICTURE_YUV_SCALE", encodeVector(PixelWeave::GetYUVScale(src.range, src.GetBitDepth())));
+
+    const glm::mat3 dstRGBToYUVMatrix = GetMatrix(dst.yuvMatrix);
+    const glm::mat3 dstYUVToRGBMatrix = glm::inverse(dstRGBToYUVMatrix);
+
+    options.AddMacroDefinition("DST_PICTURE_WIDTH", std::to_string(dst.width));
+    options.AddMacroDefinition("DST_PICTURE_HEIGHT", std::to_string(dst.height));
+    options.AddMacroDefinition("DST_PICTURE_STRIDE", std::to_string(dst.stride));
+    options.AddMacroDefinition("DST_PICTURE_CHROMA_WIDTH", std::to_string(dst.GetChromaWidth()));
+    options.AddMacroDefinition("DST_PICTURE_CHROMA_HEIGHT", std::to_string(dst.GetChromaHeight()));
+    options.AddMacroDefinition("DST_PICTURE_CHROMA_STRIDE", std::to_string(dst.GetChromaStride()));
+    options.AddMacroDefinition("DST_PICTURE_FORMAT", std::to_string(static_cast<uint32_t>(dst.pixelFormat)));
+    options.AddMacroDefinition("DST_PICTURE_SUBSAMPLE_TYPE", std::to_string(static_cast<uint32_t>(dst.GetSubsampleType())));
+    options.AddMacroDefinition("DST_PICTURE_U_OFFSET", std::to_string(dst.GetUOffset()));
+    options.AddMacroDefinition("DST_PICTURE_V_OFFSET", std::to_string(dst.GetVOffset()));
+    options.AddMacroDefinition("DST_PICTURE_BIT_DEPTH", std::to_string(dst.GetBitDepth()));
+    options.AddMacroDefinition("DST_PICTURE_BYTE_DEPTH", std::to_string(dst.GetByteDepth()));
+    options.AddMacroDefinition("DST_PICTURE_RANGE", std::to_string(static_cast<uint32_t>(dst.range)));
+    options.AddMacroDefinition("DST_PICTURE_YUV_MATRIX", std::to_string(static_cast<uint32_t>(dst.yuvMatrix)));
+    options.AddMacroDefinition("DST_PICTURE_RGB_TO_YUV_MATRIX", encodeMatrix(dstRGBToYUVMatrix));
+    options.AddMacroDefinition("DST_PICTURE_YUV_TO_RGB_MATRIX", encodeMatrix(dstYUVToRGBMatrix));
+    options.AddMacroDefinition("DST_PICTURE_YUV_OFFSET", encodeVector(PixelWeave::GetYUVOffset(dst.range, dst.GetBitDepth())));
+    options.AddMacroDefinition("DST_PICTURE_YUV_OFFSET_FULL", encodeVector(PixelWeave::GetYUVOffset(Range::Full, dst.GetBitDepth())));
+    options.AddMacroDefinition("DST_PICTURE_YUV_SCALE", encodeVector(PixelWeave::GetYUVScale(dst.range, dst.GetBitDepth())));
+
+    shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(
+        reinterpret_cast<const char*>(shaderResource.buffer),
+        shaderResource.size,
+        shaderc_shader_kind::shaderc_glsl_compute_shader,
+        "convert.comp",
+        options);
+
+    if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
+        return {};
     }
-    return glm::mat3();
+    ResourceLoader::CleanUp(shaderResource);
+    return std::vector<uint32_t>(module.cbegin(), module.cend());
 }
 
-glm::vec3 GetYUVScale(Range range, [[maybe_unused]] uint32_t bitDepth)
-{
-    return range == Range::Limited ? glm::vec3((235.0 - 16.0) / 255.0, (240.0 - 16.0) / 255.0, (240.0 - 16.0) / 255.0) : glm::vec3(1.0);
-}
-
-glm::vec3 GetYUVOffset(Range range, uint32_t bitDepth)
-{
-    return glm::vec3(
-               (range == Range::Limited) ? float(1 << (bitDepth - 4)) : 0.0f,
-               float(1 << (bitDepth - 1)),
-               float(1 << (bitDepth - 1))) /
-           glm::vec3(float((1 << bitDepth) - 1));
-}
-
-VulkanDevice::VideoConversionPipelineResources VulkanDevice::CreateVideoConversionPipeline(
+ResultValue<VulkanDevice::VideoConversionPipelineResources> VulkanDevice::CreateVideoConversionPipeline(
     const VideoFrameWrapper& src,
     const VulkanBuffer* srcBuffer,
     const VideoFrameWrapper& dst,
@@ -179,118 +230,8 @@ VulkanDevice::VideoConversionPipelineResources VulkanDevice::CreateVideoConversi
     const vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo().setSetLayouts(resources.descriptorLayout);
     resources.pipelineLayout = PW_ASSERT_VK(mLogicalDevice.createPipelineLayout(pipelineLayoutInfo));
 
-    std::vector<uint32_t> compiledShader;
-    {
-        Resource shaderResource = ResourceLoader::Load(Resource::Id::ComputeShader);
+    std::vector<uint32_t> compiledShader = CompileShader(src, dst);
 
-        shaderc::Compiler compiler;
-        shaderc::CompileOptions options;
-
-        options.SetOptimizationLevel(shaderc_optimization_level::shaderc_optimization_level_performance);
-
-        const auto encodeMatrix = [](const glm::mat3& matrix) -> std::string {
-            std::ostringstream stringStream;
-            stringStream << "mat3(";
-            for (uint32_t i = 0; i < 3 * 3; ++i) {
-                stringStream << matrix[i % 3][i / 3];
-                if (i < 3 * 3 - 1) {
-                    stringStream << ",";
-                }
-            }
-            stringStream << ")";
-            return stringStream.str();
-        };
-
-        const auto encodeVector = [](const glm::vec3& vector) -> std::string {
-            std::ostringstream stringStream;
-            stringStream << "vec3(";
-            for (uint32_t i = 0; i < 3; ++i) {
-                stringStream << vector[i];
-                if (i < 2) {
-                    stringStream << ",";
-                }
-            }
-            stringStream << ")";
-            return stringStream.str();
-        };
-
-        const glm::mat3 srcMatrix = GetMatrix(src.yuvMatrix);
-        const glm::mat3 srcMatrixInv = glm::inverse(srcMatrix);
-
-        const glm::mat3 dstMatrix = GetMatrix(dst.yuvMatrix);
-        const glm::mat3 dstMatrixInv = glm::inverse(dstMatrix);
-
-        options.AddMacroDefinition("SRC_PICTURE_WIDTH", std::to_string(src.width));
-        options.AddMacroDefinition("SRC_PICTURE_HEIGHT", std::to_string(src.height));
-        options.AddMacroDefinition("SRC_PICTURE_STRIDE", std::to_string(src.stride));
-        options.AddMacroDefinition("SRC_PICTURE_CHROMA_WIDTH", std::to_string(src.GetChromaWidth()));
-        options.AddMacroDefinition("SRC_PICTURE_CHROMA_HEIGHT", std::to_string(src.GetChromaHeight()));
-        options.AddMacroDefinition("SRC_PICTURE_CHROMA_STRIDE", std::to_string(src.GetChromaStride()));
-        options.AddMacroDefinition("SRC_PICTURE_FORMAT", std::to_string(static_cast<uint32_t>(src.pixelFormat)));
-        options.AddMacroDefinition("SRC_PICTURE_SUBSAMPLE_TYPE", std::to_string(static_cast<uint32_t>(src.GetSubsampleType())));
-        options.AddMacroDefinition("SRC_PICTURE_U_OFFSET", std::to_string(src.GetUOffset()));
-        options.AddMacroDefinition("SRC_PICTURE_V_OFFSET", std::to_string(src.GetVOffset()));
-        options.AddMacroDefinition("SRC_PICTURE_BIT_DEPTH", std::to_string(src.GetBitDepth()));
-        options.AddMacroDefinition("SRC_PICTURE_BYTE_DEPTH", std::to_string(src.GetByteDepth()));
-        options.AddMacroDefinition("SRC_PICTURE_RANGE", std::to_string(static_cast<uint32_t>(src.range)));
-        options.AddMacroDefinition("SRC_PICTURE_YUV_MATRIX", std::to_string(static_cast<uint32_t>(src.yuvMatrix)));
-        options.AddMacroDefinition("SRC_PICTURE_RGB_TO_YUV_MATRIX", encodeMatrix(srcMatrix));
-        options.AddMacroDefinition("SRC_PICTURE_YUV_TO_RGB_MATRIX", encodeMatrix(srcMatrixInv));
-        options.AddMacroDefinition("SRC_PICTURE_YUV_OFFSET", encodeVector(GetYUVOffset(src.range, src.GetBitDepth())));
-        options.AddMacroDefinition("SRC_PICTURE_YUV_OFFSET_FULL", encodeVector(GetYUVOffset(Range::Full, src.GetBitDepth())));
-        options.AddMacroDefinition("SRC_PICTURE_YUV_SCALE", encodeVector(GetYUVScale(src.range, src.GetBitDepth())));
-
-        options.AddMacroDefinition("DST_PICTURE_WIDTH", std::to_string(dst.width));
-        options.AddMacroDefinition("DST_PICTURE_HEIGHT", std::to_string(dst.height));
-        options.AddMacroDefinition("DST_PICTURE_STRIDE", std::to_string(dst.stride));
-        options.AddMacroDefinition("DST_PICTURE_CHROMA_WIDTH", std::to_string(dst.GetChromaWidth()));
-        options.AddMacroDefinition("DST_PICTURE_CHROMA_HEIGHT", std::to_string(dst.GetChromaHeight()));
-        options.AddMacroDefinition("DST_PICTURE_CHROMA_STRIDE", std::to_string(dst.GetChromaStride()));
-        options.AddMacroDefinition("DST_PICTURE_FORMAT", std::to_string(static_cast<uint32_t>(dst.pixelFormat)));
-        options.AddMacroDefinition("DST_PICTURE_SUBSAMPLE_TYPE", std::to_string(static_cast<uint32_t>(dst.GetSubsampleType())));
-        options.AddMacroDefinition("DST_PICTURE_U_OFFSET", std::to_string(dst.GetUOffset()));
-        options.AddMacroDefinition("DST_PICTURE_V_OFFSET", std::to_string(dst.GetVOffset()));
-        options.AddMacroDefinition("DST_PICTURE_BIT_DEPTH", std::to_string(dst.GetBitDepth()));
-        options.AddMacroDefinition("DST_PICTURE_BYTE_DEPTH", std::to_string(dst.GetByteDepth()));
-        options.AddMacroDefinition("DST_PICTURE_RANGE", std::to_string(static_cast<uint32_t>(dst.range)));
-        options.AddMacroDefinition("DST_PICTURE_YUV_MATRIX", std::to_string(static_cast<uint32_t>(dst.yuvMatrix)));
-        options.AddMacroDefinition("DST_PICTURE_RGB_TO_YUV_MATRIX", encodeMatrix(dstMatrix));
-        options.AddMacroDefinition("DST_PICTURE_YUV_TO_RGB_MATRIX", encodeMatrix(dstMatrixInv));
-        options.AddMacroDefinition("DST_PICTURE_YUV_OFFSET", encodeVector(GetYUVOffset(dst.range, dst.GetBitDepth())));
-        options.AddMacroDefinition("DST_PICTURE_YUV_OFFSET_FULL", encodeVector(GetYUVOffset(Range::Full, dst.GetBitDepth())));
-        options.AddMacroDefinition("DST_PICTURE_YUV_SCALE", encodeVector(GetYUVScale(dst.range, dst.GetBitDepth())));
-
-        /* {
-                    shaderc::PreprocessedSourceCompilationResult proprocessResult = compiler.PreprocessGlsl(
-                        reinterpret_cast<const char*>(shaderResource.buffer),
-                        shaderResource.size,
-                        shaderc_shader_kind::shaderc_glsl_compute_shader,
-                        "convert.comp",
-                        options);
-                    if (proprocessResult.GetCompilationStatus() != shaderc_compilation_status_success) {
-                        std::cout << "Error building shader: \n" << proprocessResult.GetErrorMessage() << std::endl;
-                    } else {
-                        std::vector<char> preprocessedCode = std::vector<char>(proprocessResult.cbegin(), proprocessResult.cend());
-                        preprocessedCode.push_back('\0');
-                        std::cout << preprocessedCode.data() << std::endl;
-                    }
-                }
-        */
-
-        shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(
-            reinterpret_cast<const char*>(shaderResource.buffer),
-            shaderResource.size,
-            shaderc_shader_kind::shaderc_glsl_compute_shader,
-            "convert.comp",
-            options);
-
-        if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
-            std::cerr << module.GetErrorMessage();
-        }
-
-        compiledShader = std::vector<uint32_t>(module.cbegin(), module.cend());
-        ResourceLoader::CleanUp(shaderResource);
-    }
     vk::ShaderModuleCreateInfo shaderCreateInfo =
         vk::ShaderModuleCreateInfo().setCodeSize(compiledShader.size() * sizeof(uint32_t)).setPCode(compiledShader.data());
     resources.shader = PW_ASSERT_VK(mLogicalDevice.createShaderModule(shaderCreateInfo));
@@ -326,7 +267,7 @@ VulkanDevice::VideoConversionPipelineResources VulkanDevice::CreateVideoConversi
             .setBufferInfo(dstBuffer->GetDescriptorInfo())};
     mLogicalDevice.updateDescriptorSets(imageWriteDescriptorSet, {});
 
-    return resources;
+    return {Result::Success, resources};
 }
 
 void VulkanDevice::DestroyVideoConversionPipeline(VideoConversionPipelineResources& pipelineResources)

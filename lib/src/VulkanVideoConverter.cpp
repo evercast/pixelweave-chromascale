@@ -89,7 +89,8 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
         VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
 
     // Create compute pipeline and bindings
-    mPipelineResources = mDevice->CreateVideoConversionPipeline(src, mSrcDeviceBuffer, dst, mDstDeviceBuffer);
+    const auto [result, pipelineResources] = mDevice->CreateVideoConversionPipeline(src, mSrcDeviceBuffer, dst, mDstDeviceBuffer);
+    mPipelineResources = pipelineResources;
     mCommand = mDevice->CreateCommandBuffer();
 
     // Record command buffer
