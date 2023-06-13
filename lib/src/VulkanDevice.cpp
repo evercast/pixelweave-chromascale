@@ -286,7 +286,6 @@ VulkanDevice::VideoConversionPipelineResources VulkanDevice::CreateVideoConversi
 
         if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
             std::cerr << module.GetErrorMessage();
-            __debugbreak();
         }
 
         compiledShader = std::vector<uint32_t>(module.cbegin(), module.cend());

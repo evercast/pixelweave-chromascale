@@ -125,7 +125,7 @@ if(APPLE)
         XCODE_ATTRIBUTE_GCC_WARN_UNUSED_FUNCTION "YES"
         XCODE_ATTRIBUTE_ENABLE_TESTABILITY "YES"
     )
-    target_link_libraries(${SUBPROJECT_NAME} "-framework CoreFoundation")
+    target_link_libraries(${SUBPROJECT_NAME} PRIVATE "-framework CoreFoundation")
     add_compile_definitions(PW_BUNDLE_ID="${PW_BUNDLE_ID}")
 elseif(LINUX)
     install(TARGETS ${SUBPROJECT_NAME} LIBRARY DESTINATION lib PUBLIC_HEADER DESTINATION include/PixelWeave)
