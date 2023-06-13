@@ -29,7 +29,6 @@ set(SOURCE
     src/VulkanBuffer.cpp
     src/VulkanBase.h
     src/Timer.h
-    ../thirdparty/VulkanMemoryAllocator/include/vk_mem_alloc.h
 )
 
 if(WIN32)
@@ -54,9 +53,9 @@ endforeach()
 source_group("Shaders" FILES ${RELATIVE_SHADER_PATHS})
 
 if(APPLE)
-    set(RESOURCE_FILES "${SHADER}.spv")
+    set(RESOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/${RELATIVE_SHADER_PATH}")
 elseif(LINUX)
-    set(RESOURCE_FILES "${SHADER}.spv")
+    set(RESOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/${RELATIVE_SHADER_PATH}")
     add_compile_options("-Wa,-I${CMAKE_CURRENT_SOURCE_DIR}/src/shaders")
 endif()
 
@@ -70,7 +69,6 @@ add_library(${SUBPROJECT_NAME} SHARED
 set_target_properties(${SUBPROJECT_NAME} PROPERTIES PUBLIC_HEADER "${HEADERS}")
 
 include_directories(include)
-include_directories(../thirdparty)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../CXXUtils.cmake)
 pw_configure_cxx(${SUBPROJECT_NAME})
@@ -84,20 +82,20 @@ add_compile_definitions(VMA_VULKAN_VERSION=1002000)
 add_compile_definitions(VMA_STATIC_VULKAN_FUNCTIONS=0)
 add_compile_definitions(VMA_DYNAMIC_VULKAN_FUNCTIONS=1)
 find_package(Vulkan REQUIRED)
-target_link_libraries(${SUBPROJECT_NAME} Vulkan::Vulkan)
+target_link_libraries(${SUBPROJECT_NAME} PRIVATE Vulkan::Vulkan)
 include_directories(${Vulkan_INCLUDE_DIRS})
 
+# Find and link VMA
+find_package(unofficial-vulkan-memory-allocator CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::vulkan-memory-allocator::vulkan-memory-allocator)
+
 # Add libshaderc dependency
-set_property(TARGET ${SUBPROJECT_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
-add_library(shaderc STATIC IMPORTED)
-set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION "$ENV{VULKAN_SDK}/Lib/shaderc_combined.lib")
-message(STATUS "$ENV{VULKAN_SDK}/Lib/shaderc.lib")
-set_target_properties(shaderc PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "$ENV{VULKAN_SDK}/Include")
+find_package(unofficial-shaderc CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::shaderc::shaderc)
 
-# Add GLM dependency (header only library)
-include_directories(../thirdparty/glm)
-
-target_link_libraries(${SUBPROJECT_NAME} shaderc)
+# Find and link GLM
+find_package(glm CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm)
 
 # Set up macOS framework
 if(APPLE)

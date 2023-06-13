@@ -5,7 +5,7 @@
 
 #define VMA_IMPLEMENTATION
 #pragma warning(push, 0)
-#include "VulkanMemoryAllocator/include/vk_mem_alloc.h"
+#include "vk_mem_alloc.h"
 #pragma warning(pop)
 #include "glm/glm.hpp"
 #include "shaderc/shaderc.hpp"

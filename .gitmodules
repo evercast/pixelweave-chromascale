@@ -1,12 +1,6 @@
 [submodule "thirdparty/incbin"]
 	path = thirdparty/incbin
 	url = https://github.com/graphitemaster/incbin
-[submodule "thirdparty/VulkanMemoryAllocator"]
-	path = thirdparty/VulkanMemoryAllocator
-	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
-[submodule "thirdparty/shaderc"]
-	path = thirdparty/shaderc
-	url = https://github.com/google/shaderc
-[submodule "thirdparty/glm"]
-	path = thirdparty/glm
-	url = https://github.com/g-truc/glm
+[submodule "thirdparty/vcpkg"]
+	path = thirdparty/vcpkg
+	url = https://github.com/dg0yt/vcpkg
