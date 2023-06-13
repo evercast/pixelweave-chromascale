@@ -1,0 +1,1025 @@
+#version 450
+
+#extension GL_EXT_shader_explicit_arithmetic_types : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_8bit_storage : require
+#extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_control_flow_attributes : require
+
+// When adding new pixel formats, fill the corresponding read<Subsample>From<Subsample> and readPixels function
+// See PixelFormat.h
+#define PixelFormatInterleaved8BitUYVY 0
+#define PixelFormatInterleaved8BitBGRA 1
+#define PixelFormatInterleaved8BitRGBA 2
+#define PixelFormatPlanar8Bit420 3
+#define PixelFormatPlanar8Bit422 4
+#define PixelFormatPlanar8Bit444 5
+#define PixelFormatPlanar8Bit420YV12 6
+#define PixelFormatPlanar8Bit420NV12 7
+#define PixelFormatInterleaved10BitUYVY 8
+#define PixelFormatInterleaved10BitRGB 9
+#define PixelFormatInterleaved12BitRGB 10
+#define PixelFormatPlanar10Bit420 11
+#define PixelFormatPlanar10Bit422 12
+#define PixelFormatPlanar10Bit444 13
+#define PixelFormatInterleaved8BitARGB 14
+#define PixelFormatInterleaved12BitRGBLE 15
+#define PixelFormatInterleaved10BitRGBX 16
+#define PixelFormatInterleaved10BitRGBXLE 17
+#define PixelFormatPlanar16BitP216 18
+
+#define RangeLimited 0
+#define RangeFull 1
+
+#define YUVMatrixBT709 0
+#define YUVMatrixBT2020 1
+
+#define SUBSAMPLE_TYPE_RGB 0
+#define SUBSAMPLE_TYPE_YUV420 1
+#define SUBSAMPLE_TYPE_YUV422 2
+#define SUBSAMPLE_TYPE_YUV444 3
+
+#define SRC_PICTURE_BLOCK_COUNT_X (SRC_PICTURE_WIDTH + 1) / 2
+#define SRC_PICTURE_BLOCK_COUNT_Y (SRC_PICTURE_HEIGHT + 1) / 2
+#define DST_PICTURE_BLOCK_COUNT_X (DST_PICTURE_WIDTH + 1) / 2
+#define DST_PICTURE_BLOCK_COUNT_Y (DST_PICTURE_HEIGHT + 1) / 2
+
+const uvec2 BlockSize = uvec2(2, 2);
+
+#define LOCAL_WORKGROUP_SIZE_X 16
+#define LOCAL_WORKGROUP_SIZE_Y 16
+
+const mat3 srcPictureRGBToYUVMatrix = SRC_PICTURE_RGB_TO_YUV_MATRIX;
+const mat3 srcPictureYUVToRGBMatrix = SRC_PICTURE_YUV_TO_RGB_MATRIX;
+const mat3 dstPictureRGBToYUVMatrix = DST_PICTURE_RGB_TO_YUV_MATRIX;
+const mat3 dstPictureYUVToRGBMatrix = DST_PICTURE_YUV_TO_RGB_MATRIX;
+
+layout(local_size_x = LOCAL_WORKGROUP_SIZE_X, local_size_y = LOCAL_WORKGROUP_SIZE_Y) in;
+
+layout(scalar, set = 0, binding = 0) readonly buffer SrcPicture
+{
+    uint8_t[] pBuffer;
+}
+srcPicture;
+
+layout(scalar, set = 0, binding = 0) readonly buffer SrcPicture16Bit
+{
+    uint16_t[] pBuffer;
+}
+srcPicture16;
+
+layout(scalar, set = 0, binding = 0) readonly buffer SrcPicture32Bit
+{
+    uint32_t[] pBuffer;
+}
+srcPicture32;
+
+#define SRC_PICTURE_BUFFER srcPicture.pBuffer
+#define SRC_PICTURE_BUFFER16 srcPicture16.pBuffer
+#define SRC_PICTURE_BUFFER32 srcPicture32.pBuffer
+
+layout(scalar, set = 0, binding = 1) buffer DstPicture
+{
+    uint8_t[] pBuffer;
+}
+dstPicture;
+
+layout(scalar, set = 0, binding = 1) buffer DstPicture16Bit
+{
+    uint16_t[] pBuffer;
+}
+dstPicture16;
+
+layout(scalar, set = 0, binding = 1) buffer DstPicture32Bit
+{
+    uint32_t[] pBuffer;
+}
+dstPicture32;
+
+#define DST_PICTURE_BUFFER dstPicture.pBuffer
+#define DST_PICTURE_BUFFER16 dstPicture16.pBuffer
+#define DST_PICTURE_BUFFER32 dstPicture32.pBuffer
+
+struct YUV420Block {
+    uint32_t[4] ySamples;  // Top left, top right, bottom left, bottom right
+    uint32_t uSample;
+    uint32_t vSample;
+};
+
+struct YUV422Block {
+    uint32_t[4] ySamples;  // Top left, top right, bottom left, bottom right
+    uint32_t[2] uSamples;  // Top, bottom
+    uint32_t[2] vSamples;  // Top, bottom
+};
+
+struct YUV444Block {
+    uint32_t[4] ySamples;  // Top left, top right, bottom left, bottom right
+    uint32_t[4] uSamples;  // Top left, top right, bottom left, bottom right
+    uint32_t[4] vSamples;  // Top left, top right, bottom left, bottom right
+};
+
+struct RGBBlock {
+    uint32_t[4] rSamples;  // Top left, top right, bottom left, bottom right
+    uint32_t[4] gSamples;  // Top left, top right, bottom left, bottom right
+    uint32_t[4] bSamples;  // Top left, top right, bottom left, bottom right
+};
+
+// Block conversion helpers
+YUV420Block convert422To420(in YUV422Block source)
+{
+    YUV420Block result;
+    [[unroll]] for (uint i = 0; i < 4; i += 1) {
+        result.ySamples[i] = source.ySamples[i];
+    }
+    result.uSample = (source.uSamples[0] + source.uSamples[1]) / 2;
+    result.vSample = (source.vSamples[0] + source.vSamples[1]) / 2;
+    return result;
+}
+
+YUV420Block convert444To420(in YUV444Block source)
+{
+    YUV420Block result;
+    [[unroll]] for (uint i = 0; i < 4; i += 1) {
+        result.ySamples[i] = source.ySamples[i];
+    }
+    result.uSample = (source.uSamples[0] + source.uSamples[1] + source.uSamples[2] + source.uSamples[3]) / 4;
+    result.vSample = (source.vSamples[0] + source.vSamples[1] + source.vSamples[2] + source.vSamples[3]) / 4;
+    return result;
+}
+
+YUV422Block convert420To422(in YUV420Block source)
+{
+    YUV422Block result;
+    [[unroll]] for (uint i = 0; i < 4; i += 1) {
+        result.ySamples[i] = source.ySamples[i];
+    }
+    [[unroll]] for (uint i = 0; i < 2; i += 1) {
+        result.uSamples[i] = source.uSample;
+        result.vSamples[i] = source.vSample;
+    }
+    return result;
+}
+
+YUV422Block convert444To422(in YUV444Block source)
+{
+    YUV422Block result;
+    [[unroll]] for (uint i = 0; i < 4; i += 1) {
+        result.ySamples[i] = source.ySamples[i];
+    }
+    result.uSamples[0] = (source.uSamples[0] + source.uSamples[1]) / 2;
+    result.uSamples[1] = (source.uSamples[2] + source.uSamples[3]) / 2;
+    result.vSamples[0] = (source.vSamples[0] + source.vSamples[1]) / 2;
+    result.vSamples[1] = (source.vSamples[2] + source.vSamples[3]) / 2;
+    return result;
+}
+
+YUV444Block convert420To444(in YUV420Block source)
+{
+    YUV444Block result;
+    [[unroll]] for (uint i = 0; i < 4; i += 1) {
+        result.ySamples[i] = source.ySamples[i];
+        result.uSamples[i] = source.uSample;
+        result.vSamples[i] = source.vSample;
+    }
+    return result;
+}
+
+YUV444Block convert422To444(in YUV422Block source)
+{
+    YUV444Block result;
+    [[unroll]] for (uint i = 0; i < 4; i += 1) {
+        result.ySamples[i] = source.ySamples[i];
+        result.uSamples[i] = source.uSamples[i / 2];
+        result.vSamples[i] = source.vSamples[i / 2];
+    }
+    return result;
+}
+
+// Read and conversion functions
+uint16_t SwapEndianess(const uint16_t source)
+{
+    return (source >> 8) | (source << 8);
+}
+
+uint32_t SwapEndianess(const uint32_t source)
+{
+    const uint32_t masked = ((source << 8) & uint32_t(0xFF00FF00)) | ((source >> 8) & uint32_t(0xFF00FF));
+    return (masked << 16) | (masked >> 16);
+}
+
+u32vec3 readPixelInterleaved8BitUYVY(uvec2 lumaCoords)
+{
+    const uint verticalOffset = lumaCoords.y * SRC_PICTURE_STRIDE;
+    const uint blockOffset = (lumaCoords.x / 2) * 4;        // 4 channels per sample of which 2 are Y
+    const uint ySampleOffset = 1 + (lumaCoords.x % 2) * 2;  // 1 or 3 cause U Y V Y
+    const uint srcYBufferIndex = verticalOffset + blockOffset + ySampleOffset;
+    const uint srcUBufferIndex = verticalOffset + blockOffset;
+    const uint srcVBufferIndex = srcUBufferIndex + 2;
+    return u32vec3(SRC_PICTURE_BUFFER[srcYBufferIndex], SRC_PICTURE_BUFFER[srcUBufferIndex], SRC_PICTURE_BUFFER[srcVBufferIndex]);
+}
+
+u32vec3 readPixelInterleaved8BitBGRA(uvec2 lumaCoords)
+{
+    const uint32_t pixelIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x * 4;
+    const u32vec3 rgbSample =
+        u32vec3(SRC_PICTURE_BUFFER[pixelIndex + 2], SRC_PICTURE_BUFFER[pixelIndex + 1], SRC_PICTURE_BUFFER[pixelIndex + 0]);
+    return rgbSample;
+}
+
+u32vec3 readPixelInterleaved8BitRGBA(uvec2 lumaCoords)
+{
+    const uint32_t pixelIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x * 4;
+    const u32vec3 rgbSample =
+        u32vec3(SRC_PICTURE_BUFFER[pixelIndex + 0], SRC_PICTURE_BUFFER[pixelIndex + 1], SRC_PICTURE_BUFFER[pixelIndex + 2]);
+    return rgbSample;
+}
+
+u32vec3 readPixelPlanar8Bit(uvec2 lumaCoords)
+{
+    const uint srcYBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x;
+    u32vec3 result;
+    result.x = SRC_PICTURE_BUFFER[srcYBufferIndex];
+#if (SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit420)
+    const uvec2 chromaSamplerSize = uvec2(2, 2);
+#elif (SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit422)
+    const uvec2 chromaSamplerSize = uvec2(2, 1);
+#else
+    const uvec2 chromaSamplerSize = uvec2(1, 1);
+#endif
+    const uvec2 chromaCoords = lumaCoords / chromaSamplerSize;
+    const uint srcBufferUIndex = SRC_PICTURE_U_OFFSET + chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE + chromaCoords.x;
+    result.y = SRC_PICTURE_BUFFER[srcBufferUIndex];
+    const uint srcBufferVIndex = SRC_PICTURE_V_OFFSET + chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE + chromaCoords.x;
+    result.z = SRC_PICTURE_BUFFER[srcBufferVIndex];
+    return result;
+}
+
+u32vec3 readPixelPlanar8Bit420YV12(uvec2 lumaCoords)
+{
+    // Read Y plane, this is the same across all planar and semi-planar formats
+    const uint srcYBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x;
+    u32vec3 result;
+    result.x = SRC_PICTURE_BUFFER[srcYBufferIndex];
+    // Fetch U, V samples from U, V planes
+    const uvec2 chromaCoords = lumaCoords / BlockSize;
+    const uint srcBufferUIndex = SRC_PICTURE_U_OFFSET + chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE + chromaCoords.x;
+    result.y = SRC_PICTURE_BUFFER[srcBufferUIndex];
+    const uint srcBufferVIndex = SRC_PICTURE_V_OFFSET + chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE + chromaCoords.x;
+    result.z = SRC_PICTURE_BUFFER[srcBufferVIndex];
+    return result;
+}
+
+u32vec3 readPixelPlanar8Bit420NV12(uvec2 lumaCoords)
+{
+    // Read Y plane, this is the same across all planar and semi-planar formats
+    const uint srcYBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x;
+    u32vec3 result;
+    result.x = SRC_PICTURE_BUFFER[srcYBufferIndex];
+    // Fetch UV sample from UV plane
+    const uvec2 chromaCoords = lumaCoords / BlockSize;
+    const uint actualChromaStride = SRC_PICTURE_CHROMA_STRIDE * 2;
+    const uint srcBufferUVIndex = SRC_PICTURE_U_OFFSET + chromaCoords.y * actualChromaStride + chromaCoords.x * 2;
+    result.y = SRC_PICTURE_BUFFER[srcBufferUVIndex];
+    result.z = SRC_PICTURE_BUFFER[srcBufferUVIndex + 1];
+    return result;
+}
+
+u32vec3 readPixelInterleaved10BitUYVY(uvec2 lumaCoords)
+{
+    const uint verticalOffset = lumaCoords.y * SRC_PICTURE_STRIDE / 4;  // In words (32 bit)
+
+    // Each 4 word block contains 6 pixels in total (6 y, 3uv)
+    // Find the subLine (i.e. 4 word block) index
+    const uint subLineIndex = (lumaCoords.x / 6) * 4;
+    struct UYVYBlock {
+        uint16_t y[6];
+        uint16_t u[3];
+        uint16_t v[3];
+    };
+
+    const uint32_t word0 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex];
+    const uint32_t word1 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 1];
+    const uint32_t word2 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 2];
+    const uint32_t word3 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 3];
+
+    UYVYBlock block;
+    const uint32_t mask = 0x3FF;
+
+    block.y[0] = uint16_t((word0 >> 10) & mask);
+    block.y[1] = uint16_t(word1 & mask);
+    block.y[2] = uint16_t((word1 >> 20) & mask);
+    block.y[3] = uint16_t((word2 >> 10) & mask);
+    block.y[4] = uint16_t(word3 & mask);
+    block.y[5] = uint16_t((word3 >> 20) & mask);
+
+    block.u[0] = uint16_t(word0 & mask);
+    block.u[1] = uint16_t((word1 >> 10) & mask);
+    block.u[2] = uint16_t((word2 >> 20) & mask);
+
+    block.v[0] = uint16_t((word0 >> 20) & mask);
+    block.v[1] = uint16_t(word2 & mask);
+    block.v[2] = uint16_t((word3 >> 10) & mask);
+
+    const uint yIndex = lumaCoords.x % 6;
+    const uint uvIndex = yIndex / 2;
+
+    return u32vec3(block.y[yIndex], block.u[uvIndex], block.v[uvIndex]);
+}
+
+u32vec3 readPixelInterleaved10BitRGB(uvec2 lumaCoords)
+{
+    const uint verticalOffset = (lumaCoords.y * SRC_PICTURE_STRIDE) / 4;  // Each pixel takes 4 bytes
+    uint32_t word = SRC_PICTURE_BUFFER32[verticalOffset + lumaCoords.x];
+    u32vec3 pixel;
+
+    pixel.r = uint32_t((word & 0x3F) << 4);
+    pixel.r = pixel.r | uint32_t((word & (0xF0 << 8)) >> 12);
+
+    pixel.g = uint32_t((word & (0xFC << 16)) >> 18);
+    pixel.g = pixel.g | uint32_t((word & (0x0F << 8)) >> 2);
+
+    pixel.b = uint32_t((word & (0xFF << 24)) >> 24);
+    pixel.b = pixel.b | uint32_t((word & (0x03 << 16)) >> 8);
+
+    return pixel;
+}
+
+u32vec3 readPixelInterleaved12BitRGB(uvec2 lumaCoords)
+{
+    const uint verticalOffset = lumaCoords.y * SRC_PICTURE_STRIDE / 4;  // In words (32 bit)
+    const uint subLineIndex = (lumaCoords.x / 9) * 4;
+
+    const uint pixelSubIndex = lumaCoords.x % 8;
+    u32vec3 pixel;
+    switch (pixelSubIndex) {
+        case 0: {
+            uint32_t word0 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex];
+            uint32_t word1 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 1];
+#if (SRC_PICTURE_FORMAT == PixelFormatInterleaved12BitRGBLE)
+            word0 = SwapEndianess(word0);
+            word1 = SwapEndianess(word0);
+#endif
+            pixel = u32vec3(
+                ((word0 & (0xFF << 24)) >> 24) | ((word0 & (0x0F << 16)) >> 8),
+                ((word0 & (0xF0 << 16)) >> 12) | ((word0 & (0xFF << 8)) >> 4),
+                (word0 & 0xFF) | ((word1 & (0x0F << 24)) >> 16));
+        } break;
+        case 1: {
+            uint32_t word1 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 1];
+            uint32_t word2 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 2];
+#if (SRC_PICTURE_FORMAT == PixelFormatInterleaved12BitRGBLE)
+            word1 = SwapEndianess(word1);
+            word2 = SwapEndianess(word2);
+#endif
+            pixel = u32vec3(
+                ((word1 & (0xF0 << 24)) >> 28) | ((word1 & (0xFF << 16)) >> 12),
+                ((word1 & (0xFF << 8)) >> 8) | ((word1 & 0x0F) << 8),
+                ((word1 & (0xF0 << 0)) >> 4) | ((word2 & (0xFF << 24)) >> 20));
+        } break;
+        case 2: {
+            uint32_t word2 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 2];
+            uint32_t word3 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 3];
+#if (SRC_PICTURE_FORMAT == PixelFormatInterleaved12BitRGBLE)
+            word2 = SwapEndianess(word2);
+            word3 = SwapEndianess(word3);
+#endif
+            pixel = u32vec3(
+                ((word2 & (0xFF << 16)) >> 16) | ((word2 & (0x0F << 8)) >> 0),
+                ((word2 & (0xF0 << 8)) >> 12) | ((word2 & (0xFF << 0)) << 4),
+                ((word3 & (0xFF << 24)) >> 24) | ((word3 & (0x0F << 16)) >> 8));
+        } break;
+        case 3: {
+            uint32_t word3 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 3];
+            uint32_t word4 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 4];
+#if (SRC_PICTURE_FORMAT == PixelFormatInterleaved12BitRGBLE)
+            word3 = SwapEndianess(word3);
+            word4 = SwapEndianess(word4);
+#endif
+            pixel = u32vec3(
+                ((word3 & (0xF0 << 16)) >> 20) | ((word3 & (0xFF << 8)) >> 4),
+                (word3 & 0xFF) | ((word4 & (0x0F << 24)) >> 16),
+                ((word4 & (0xF0 << 24)) >> 16) | ((word4 & (0x0F << 20)) >> 28));
+        } break;
+        case 4: {
+            uint32_t word4 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 4];
+            uint32_t word5 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 5];
+#if (SRC_PICTURE_FORMAT == PixelFormatInterleaved12BitRGBLE)
+            word4 = SwapEndianess(word4);
+            word5 = SwapEndianess(word5);
+#endif
+            pixel = u32vec3(
+                ((word4 & (0xFF << 8)) >> 8) | ((word4 & (0x0F << 0)) << 8),
+                ((word4 & 0xF0) >> 4) | ((word5 & (0xFF << 24)) >> 24),
+                ((word5 & (0xFF << 16)) >> 16) | (word5 & (0x0F << 8)));
+        } break;
+        case 5: {
+            uint32_t word5 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 5];
+            uint32_t word6 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 6];
+#if (SRC_PICTURE_FORMAT == PixelFormatInterleaved12BitRGBLE)
+            word5 = SwapEndianess(word5);
+            word6 = SwapEndianess(word6);
+#endif
+            pixel = u32vec3(
+                ((word5 & (0xF0 << 8)) >> 12) | ((word5 & 0xFF) << 4),
+                ((word6 & (0xFF << 24)) >> 24) | ((word6 & (0x0F << 16)) >> 8),
+                ((word6 & (0xF0 << 16)) >> 20) | ((word6 & (0xFF << 8)) >> 4));
+        } break;
+        case 6: {
+            uint32_t word6 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 6];
+            uint32_t word7 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 7];
+#if (SRC_PICTURE_FORMAT == PixelFormatInterleaved12BitRGBLE)
+            word6 = SwapEndianess(word6);
+            word7 = SwapEndianess(word7);
+#endif
+            pixel = u32vec3(
+                (word6 & 0xFF) | ((word7 & (0x0F << 24)) >> 16),
+                ((word7 & (0xFF << 16)) >> 12) | ((word7 & (0xF0 << 24)) >> 28),
+                ((word7 & (0xFF << 8)) >> 8) | ((word7 & 0x0F) << 8));
+        } break;
+        case 7: {
+            uint32_t word7 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 7];
+            uint32_t word8 = SRC_PICTURE_BUFFER32[verticalOffset + subLineIndex + 8];
+#if (SRC_PICTURE_FORMAT == PixelFormatInterleaved12BitRGBLE)
+            word7 = SwapEndianess(word7);
+            word8 = SwapEndianess(word8);
+#endif
+            pixel = u32vec3(
+                ((word8 & (0xFF << 24)) >> 12) | (word7 & 0xF0 >> 4),
+                ((word8 & (0xFF << 16)) >> 16) | (word8 & (0xF0 << 8)),
+                ((word8 & (0xF0 << 8)) >> 12) | ((word8 & 0xFF) << 4));
+        } break;
+    }
+    return pixel;
+}
+
+u32vec3 readPixelInterleaved8BitARGB(uvec2 lumaCoords)
+{
+    const uint32_t pixelIndex = lumaCoords.y * SRC_PICTURE_STRIDE + lumaCoords.x * 4;
+    const u32vec3 rgbSample =
+        u32vec3(SRC_PICTURE_BUFFER[pixelIndex + 1], SRC_PICTURE_BUFFER[pixelIndex + 2], SRC_PICTURE_BUFFER[pixelIndex + 3]);
+    return rgbSample;
+}
+
+u32vec3 readPixelInterleaved10BitRGBX(uvec2 lumaCoords)
+{
+    const uint verticalOffset = (lumaCoords.y * SRC_PICTURE_STRIDE) / 4;  // Each pixel takes 4 bytes
+    uint32_t word = SRC_PICTURE_BUFFER32[verticalOffset + lumaCoords.x];
+#if (SRC_PICTURE_FORMAT == PixelFormatInterleaved10BitRGBXLE)
+    word = SwapEndianess(word);
+#endif
+    u32vec3 pixel;
+
+    pixel.r = uint32_t((word & 0xFF) << 2);
+    pixel.r = pixel.r | uint32_t((word & (0xC0 << 8)) >> 14);
+
+    pixel.g = uint32_t((word & (0x3F << 8)) >> 4);
+    pixel.g = pixel.g | uint32_t((word & (0xF0 << 16)) >> 20);
+
+    pixel.b = uint32_t((word & (0x0F << 16)) >> 10);
+    pixel.b = pixel.b | uint32_t((word & (0xFC << 24)) >> 26);
+
+    return pixel;
+}
+
+u32vec3 readPixelPlanar16BitP216(uvec2 lumaCoords)
+{
+    const uint srcYBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE / 2 + lumaCoords.x;
+    u32vec3 result;
+    result.x = SRC_PICTURE_BUFFER16[srcYBufferIndex];
+    // ChromacCoords are divided by 1 (height) because it's a 422 format
+    const uvec2 chromaCoords = lumaCoords / uvec2(2, 1);
+    // Account for: Color buffer offset, current video line, horizonal sample offset (uv sample)
+    const uint srcBufferUVIndex = (SRC_PICTURE_U_OFFSET / 2) + (chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE) + (chromaCoords.x * 2);
+    result.y = SRC_PICTURE_BUFFER16[srcBufferUVIndex];
+    result.z = SRC_PICTURE_BUFFER16[srcBufferUVIndex + 1];
+    return result;
+}
+
+u32vec3 readPixelPlanar10Bit(uvec2 lumaCoords)
+{
+    u32vec3 result;
+    const uint srcYBufferIndex = lumaCoords.y * (SRC_PICTURE_STRIDE / 2) + lumaCoords.x;
+    result.x = SRC_PICTURE_BUFFER16[srcYBufferIndex];
+#if (SRC_PICTURE_FORMAT == PixelFormatPlanar10Bit420)
+    const uvec2 chromaSamplerSize = uvec2(2, 2);
+#elif (SRC_PICTURE_FORMAT == PixelFormatPlanar10Bit422)
+    const uvec2 chromaSamplerSize = uvec2(2, 1);
+#else
+    const uvec2 chromaSamplerSize = uvec2(1, 1);
+#endif
+    const uvec2 chromaCoords = lumaCoords / chromaSamplerSize;
+    const uint srcBufferUIndex = (SRC_PICTURE_U_OFFSET / 2) + chromaCoords.y * (SRC_PICTURE_CHROMA_STRIDE / 2) + chromaCoords.x;
+    result.y = SRC_PICTURE_BUFFER16[srcBufferUIndex];
+    const uint srcBufferVIndex = (SRC_PICTURE_V_OFFSET / 2) + chromaCoords.y * (SRC_PICTURE_CHROMA_STRIDE / 2) + chromaCoords.x;
+    result.z = SRC_PICTURE_BUFFER16[srcBufferVIndex];
+    return result;
+}
+// Map generic read function to actual entry as seen above
+#if (SRC_PICTURE_FORMAT == PixelFormatInterleaved8BitUYVY)
+#define READ_SAMPLE readPixelInterleaved8BitUYVY
+#elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved8BitBGRA)
+#define READ_SAMPLE readPixelInterleaved8BitBGRA
+#elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved8BitRGBA)
+#define READ_SAMPLE readPixelInterleaved8BitRGBA
+#elif (SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit420)
+#define READ_SAMPLE readPixelPlanar8Bit
+#elif (SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit422)
+#define READ_SAMPLE readPixelPlanar8Bit
+#elif (SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit444)
+#define READ_SAMPLE readPixelPlanar8Bit
+#elif (SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit420YV12)
+#define READ_SAMPLE readPixelPlanar8Bit420YV12
+#elif (SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit420NV12)
+#define READ_SAMPLE readPixelPlanar8Bit420NV12
+#elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved10BitUYVY)
+#define READ_SAMPLE readPixelInterleaved10BitUYVY
+#elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved10BitRGB)
+#define READ_SAMPLE readPixelInterleaved10BitRGB
+#elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved12BitRGB)
+#define READ_SAMPLE readPixelInterleaved12BitRGB
+#elif (SRC_PICTURE_FORMAT == PixelFormatPlanar10Bit420)
+#define READ_SAMPLE readPixelPlanar10Bit
+#elif (SRC_PICTURE_FORMAT == PixelFormatPlanar10Bit422)
+#define READ_SAMPLE readPixelPlanar10Bit
+#elif (SRC_PICTURE_FORMAT == PixelFormatPlanar10Bit444)
+#define READ_SAMPLE readPixelPlanar10Bit
+#elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved8BitARGB)
+#define READ_SAMPLE readPixelInterleaved8BitARGB
+#elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved12BitRGBLE)
+#define READ_SAMPLE readPixelInterleaved12BitRGB
+#elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved12BitRGBLE)
+#define READ_SAMPLE readPixelInterleaved12BitRGB
+#elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved10BitRGBX)
+#define READ_SAMPLE readPixelInterleaved10BitRGBX
+#elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved10BitRGBXLE)
+#define READ_SAMPLE readPixelInterleaved10BitRGBX
+#elif (SRC_PICTURE_FORMAT == PixelFormatPlanar16BitP216)
+#define READ_SAMPLE readPixelPlanar16BitP216
+#else
+#error "SRC_PICTURE_FORMAT value not supported."
+#endif
+
+#define GetMaxValue(BIT_DEPTH) float((1 << BIT_DEPTH) - 1)
+
+u32vec3 readPixel(uvec2 lumaCoords)
+{
+    lumaCoords = clamp(lumaCoords, uvec2(0), uvec2(SRC_PICTURE_WIDTH - 1, SRC_PICTURE_HEIGHT - 1));
+    return READ_SAMPLE(lumaCoords);
+}
+
+u32vec3 yuvToRGB(u32vec3 yuv)
+{
+    const float maxValueDst = GetMaxValue(DST_PICTURE_BIT_DEPTH);
+    const vec3 normalizedYUV = vec3(yuv) / vec3(maxValueDst);
+    const mat3 rgbToYUVMatrix = dstPictureRGBToYUVMatrix;
+    const mat3 yuvToRGBMatrix = inverse(rgbToYUVMatrix);
+    const vec3 offsetFullRange = vec3(0);
+    const vec3 normalizedRGB = yuvToRGBMatrix * (normalizedYUV - offsetFullRange);
+    const vec3 scaledPixel = round(normalizedRGB * maxValueDst);
+    return u32vec3(clamp(scaledPixel, vec3(0.0), vec3(maxValueDst)));
+}
+
+u32vec3 srcPixelToDstPixel(u32vec3 srcPixel)
+{
+    // Normalize source data
+    const float maxValueSrc = GetMaxValue(SRC_PICTURE_BIT_DEPTH);
+    vec3 pixel = vec3(srcPixel) / vec3(maxValueSrc);
+
+    // Convert RGB samples to YUV for consistency
+#if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB)
+    const mat3 rgbToYUVMatrix = srcPictureRGBToYUVMatrix;
+    // Preserve range, conversions are handled later
+    const vec3 offsetFullRange = DST_PICTURE_YUV_OFFSET_FULL;
+    pixel = rgbToYUVMatrix * vec3(pixel) + offsetFullRange;
+#endif
+
+#if (SRC_PICTURE_RANGE != DST_PICTURE_RANGE || SRC_PICTURE_YUV_MATRIX != DST_PICTURE_YUV_MATRIX)
+    // Convert to RGB full and from there to whatever is required by dst
+    vec3 rgbFull;
+    {
+        const mat3 yuvToRGBMatrix = srcPictureYUVToRGBMatrix;
+        const vec3 yuvScale = SRC_PICTURE_YUV_SCALE;
+        const vec3 yuvOffset = SRC_PICTURE_YUV_OFFSET;
+        rgbFull = yuvToRGBMatrix * ((pixel - yuvOffset) / yuvScale);
+    }
+
+    // Convert RGB full to YUV dst
+    {
+        const mat3 rgbToYUVMatrix = dstPictureRGBToYUVMatrix;
+        const vec3 yuvScale = DST_PICTURE_YUV_SCALE;
+        const vec3 yuvOffset = DST_PICTURE_YUV_OFFSET;
+        pixel = (rgbToYUVMatrix * rgbFull) * yuvScale + yuvOffset;
+    }
+#endif
+
+    // Scale normalized pixel to dst bitdepth
+    const float maxValueDst = GetMaxValue(DST_PICTURE_BIT_DEPTH);
+    const vec3 scaledPixel = round(pixel * maxValueDst);
+    return u32vec3(clamp(scaledPixel, vec3(0.0), vec3(maxValueDst)));
+}
+
+YUV444Block convertToDstSample(in YUV444Block srcBlock)
+{
+    YUV444Block result;
+    [[unroll]] for (int i = 0; i < BlockSize.x; i += 1) {
+        [[unroll]] for (int j = 0; j < BlockSize.y; j += 1) {
+            const uint blockOffset = j * BlockSize.y + i;
+            u32vec3 srcPixel = u32vec3(srcBlock.ySamples[blockOffset], srcBlock.uSamples[blockOffset], srcBlock.vSamples[blockOffset]);
+            const u32vec3 resultPixel = srcPixelToDstPixel(srcPixel);
+            result.ySamples[blockOffset] = resultPixel.x;
+            result.uSamples[blockOffset] = resultPixel.y;
+            result.vSamples[blockOffset] = resultPixel.z;
+        }
+    }
+    return result;
+}
+
+YUV444Block readNearest(const uvec2 blockCoords)
+{
+    YUV444Block result;
+    const uvec2 srcImageSize = uvec2(SRC_PICTURE_WIDTH, SRC_PICTURE_HEIGHT);
+    const uvec2 dstImageSize = uvec2(DST_PICTURE_WIDTH, DST_PICTURE_HEIGHT);
+    [[unroll]] for (int i = 0; i < BlockSize.x; i += 1) {
+        [[unroll]] for (int j = 0; j < BlockSize.y; j += 1) {
+            const vec2 dstLumaCoords = blockCoords * BlockSize + uvec2(i, j) + vec2(0.5f);
+            const vec2 normalizedLumaCoords = dstLumaCoords / vec2(dstImageSize);
+            const vec2 srcLumaCoords = normalizedLumaCoords * vec2(srcImageSize);
+
+            u32vec3 sampledPixel = readPixel(uvec2(srcLumaCoords));
+            result.ySamples[j * BlockSize.y + i] = sampledPixel.x;
+            result.uSamples[j * BlockSize.y + i] = sampledPixel.y;
+            result.vSamples[j * BlockSize.y + i] = sampledPixel.z;
+        }
+    }
+    return result;
+}
+
+YUV444Block readBilinear(const uvec2 blockCoords)
+{
+    YUV444Block result;
+    const uvec2 srcImageSize = uvec2(SRC_PICTURE_WIDTH, SRC_PICTURE_HEIGHT);
+    const uvec2 dstImageSize = uvec2(DST_PICTURE_WIDTH, DST_PICTURE_HEIGHT);
+    [[unroll]] for (int i = 0; i < BlockSize.x; i += 1) {
+        [[unroll]] for (int j = 0; j < BlockSize.y; j += 1) {
+            const uvec2 dstLumaCoords = blockCoords * BlockSize + uvec2(i, j);
+            const vec2 pixelSize = vec2(1.0) / vec2(dstImageSize);
+            const vec2 normalizedLumaCoords = dstLumaCoords / vec2(dstImageSize);
+            const vec2 srcLumaCoords = normalizedLumaCoords * vec2(srcImageSize);
+            const vec2 pixelDistance = fract(normalizedLumaCoords * srcImageSize);
+
+            const vec2 topLeftCoord = srcLumaCoords;
+            const vec2 topRightCoord = srcLumaCoords + vec2(pixelSize.x, 0.0);
+            const vec2 bottomLeftCoord = srcLumaCoords + vec2(0.0, pixelSize.y);
+            const vec2 bottomRightCoord = srcLumaCoords + pixelSize;
+
+            u32vec3 topLeftPixel = readPixel(uvec2(topLeftCoord));
+            u32vec3 topRightPixel = readPixel(uvec2(topRightCoord));
+            u32vec3 bottomLeftPixel = readPixel(uvec2(bottomLeftCoord));
+            u32vec3 bottomRightPixel = readPixel(uvec2(bottomRightCoord));
+
+            // Interpolate and write Y sample
+            {
+                vec4 ySamples = vec4(float(topLeftPixel.x), float(topRightPixel.x), float(bottomLeftPixel.x), float(bottomRightPixel.x));
+                const float topXInterp = mix(ySamples.x, ySamples.y, pixelDistance.x);
+                const float bottomXInterp = mix(ySamples.z, ySamples.w, pixelDistance.x);
+                result.ySamples[j * BlockSize.y + i] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
+            }
+
+            // Interpolate and write U sample
+            {
+                vec4 uSamples = vec4(float(topLeftPixel.y), float(topRightPixel.y), float(bottomLeftPixel.y), float(bottomRightPixel.y));
+                const float topXInterp = mix(uSamples.x, uSamples.y, pixelDistance.x);
+                const float bottomXInterp = mix(uSamples.z, uSamples.w, pixelDistance.x);
+                result.uSamples[j * BlockSize.y + i] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
+            }
+
+            // Interpolate and write V sample
+            {
+                vec4 vSamples = vec4(float(topLeftPixel.z), float(topRightPixel.z), float(bottomLeftPixel.z), float(bottomRightPixel.z));
+                const float topXInterp = mix(vSamples.x, vSamples.y, pixelDistance.x);
+                const float bottomXInterp = mix(vSamples.z, vSamples.w, pixelDistance.x);
+                result.vSamples[j * BlockSize.y + i] = uint32_t(round(mix(topXInterp, bottomXInterp, pixelDistance.y)));
+            }
+        }
+    }
+    return result;
+}
+
+// Write functions, to store into the result buffer
+// For now, exclusively writes to YUV planar buffers
+
+void write420Sample(const uvec2 blockCoords, in YUV420Block resultBlock)
+{
+    [[unroll]] for (uint y = 0; y < 2; y += 1) {
+        const uvec2 lumaCoords = uvec2(blockCoords.x * 2, blockCoords.y * 2 + y);
+        if (lumaCoords.x < DST_PICTURE_WIDTH && lumaCoords.y < DST_PICTURE_HEIGHT) {
+            const uint dstYBufferIndex = lumaCoords.y * (DST_PICTURE_STRIDE / DST_PICTURE_BYTE_DEPTH) + lumaCoords.x;
+            const uint32_t firstSample = resultBlock.ySamples[y * 2];
+            const uint32_t secondSample = resultBlock.ySamples[y * 2 + 1];
+#if (DST_PICTURE_BIT_DEPTH == 10)
+            DST_PICTURE_BUFFER16[dstYBufferIndex] = uint16_t(firstSample);
+            DST_PICTURE_BUFFER16[dstYBufferIndex + 1] = uint16_t(secondSample);
+#else
+            DST_PICTURE_BUFFER[dstYBufferIndex] = uint8_t(firstSample);
+            DST_PICTURE_BUFFER[dstYBufferIndex + 1] = uint8_t(secondSample);
+#endif
+        }
+    }
+
+    const uvec2 chromaCoords = uvec2(blockCoords.x, blockCoords.y);
+    if (chromaCoords.x < DST_PICTURE_CHROMA_WIDTH && chromaCoords.y < DST_PICTURE_CHROMA_HEIGHT) {
+        const uint dstUBufferIndex = DST_PICTURE_U_OFFSET / DST_PICTURE_BYTE_DEPTH +
+                                     chromaCoords.y * DST_PICTURE_CHROMA_STRIDE / DST_PICTURE_BYTE_DEPTH + chromaCoords.x;
+
+#if (DST_PICTURE_BIT_DEPTH == 10)
+        DST_PICTURE_BUFFER16[dstUBufferIndex] = uint16_t(resultBlock.uSample);
+#else
+        DST_PICTURE_BUFFER[dstUBufferIndex] = uint8_t(resultBlock.uSample);
+#endif
+
+        const uint dstVBufferIndex = DST_PICTURE_V_OFFSET / DST_PICTURE_BYTE_DEPTH +
+                                     chromaCoords.y * DST_PICTURE_CHROMA_STRIDE / DST_PICTURE_BYTE_DEPTH + chromaCoords.x;
+#if (DST_PICTURE_BIT_DEPTH == 10)
+        DST_PICTURE_BUFFER16[dstVBufferIndex] = uint16_t(resultBlock.vSample);
+#else
+        DST_PICTURE_BUFFER[dstVBufferIndex] = uint8_t(resultBlock.vSample);
+#endif
+    }
+}
+
+void write10BitsInWord(inout uint32_t word, const uint32_t value, const uint32_t position)
+{
+    const uint32_t shiftBits = position * 10;
+    const uint32_t mask = uint32_t(0x03FF) << shiftBits;
+    const uint32_t shiftedValue = value << shiftBits;
+    word = word | (shiftedValue & mask);
+}
+
+void write422Sample(const uvec2 blockCoords, in YUV422Block resultBlock)
+{
+#if (DST_PICTURE_FORMAT == PixelFormatInterleaved8BitUYVY)
+    // Write top block
+    const uint topLineIndex = blockCoords.y * 2;
+    const uint rightPixelIndex = blockCoords.x * 2 + 1;
+    if (rightPixelIndex < DST_PICTURE_WIDTH && topLineIndex < DST_PICTURE_HEIGHT) {
+        const uint baseTopLineOffset = topLineIndex * DST_PICTURE_STRIDE;
+        const uint topBlockOffset = baseTopLineOffset + blockCoords.x * 4;
+        DST_PICTURE_BUFFER[topBlockOffset] = uint8_t(resultBlock.uSamples[0]);      // U
+        DST_PICTURE_BUFFER[topBlockOffset + 1] = uint8_t(resultBlock.ySamples[0]);  // Y
+        DST_PICTURE_BUFFER[topBlockOffset + 2] = uint8_t(resultBlock.vSamples[0]);  // V
+        DST_PICTURE_BUFFER[topBlockOffset + 3] = uint8_t(resultBlock.ySamples[1]);  // Y
+    }
+
+    // Write bottom block
+    const uint bottomLineIndex = blockCoords.y * 2 + 1;
+    if (rightPixelIndex < DST_PICTURE_WIDTH && bottomLineIndex < DST_PICTURE_HEIGHT) {
+        const uint baseBottomLineOffset = bottomLineIndex * DST_PICTURE_STRIDE;
+        const uint bottomBlockOffset = baseBottomLineOffset + blockCoords.x * 4;
+        DST_PICTURE_BUFFER[bottomBlockOffset] = uint8_t(resultBlock.uSamples[1]);      // U
+        DST_PICTURE_BUFFER[bottomBlockOffset + 1] = uint8_t(resultBlock.ySamples[2]);  // Y
+        DST_PICTURE_BUFFER[bottomBlockOffset + 2] = uint8_t(resultBlock.vSamples[1]);  // V
+        DST_PICTURE_BUFFER[bottomBlockOffset + 3] = uint8_t(resultBlock.ySamples[3]);  // Y
+    }
+#elif (DST_PICTURE_FORMAT == PixelFormatInterleaved10BitUYVY)
+    // TODO: This results in hazardous writes. Will be disabled for now.
+    for (int i = 0; i < 2; ++i) {
+        const uint topLineIndex = blockCoords.y * 2 + i;
+        const uint rightPixelIndex = blockCoords.x * 2 + 1;
+        if (rightPixelIndex < DST_PICTURE_WIDTH && topLineIndex < DST_PICTURE_HEIGHT) {
+            const uint topLineOffset = topLineIndex * (DST_PICTURE_STRIDE / 4);
+            const uint horizontalOffset = (blockCoords.x / 3) * 4;
+            const uint wordIndex = blockCoords.x % 3;
+
+            if (wordIndex == 0) {
+                uint32_t word0 = 0;
+                write10BitsInWord(word0, resultBlock.uSamples[i], 0);
+                write10BitsInWord(word0, resultBlock.ySamples[i * 2], 1);
+                write10BitsInWord(word0, resultBlock.vSamples[i], 2);
+                DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset] = word0;
+
+                uint32_t word1 = DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 1];
+                word1 = word1 & 0x3FFFFFFF;
+                write10BitsInWord(word1, resultBlock.ySamples[i * 2 + 1], 0);
+                atomicExchange(DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 1], word1);
+            }
+
+            barrier();
+
+            if (wordIndex == 1) {
+                uint32_t word1 = DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 1];
+                word1 = word1 & 0x3FFFFFFF;
+                write10BitsInWord(word1, resultBlock.uSamples[i], 1);
+                write10BitsInWord(word1, resultBlock.ySamples[i * 2], 2);
+                atomicExchange(DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 1], word1);
+
+                uint32_t word2 = DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 2];
+                word2 = word2 & 0x3FFFFFFF;
+                write10BitsInWord(word2, resultBlock.vSamples[i], 0);
+                write10BitsInWord(word2, resultBlock.ySamples[i * 2 + 1], 1);
+                atomicExchange(DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 2], word2);
+            }
+
+            barrier();
+
+            if (wordIndex == 2) {
+                uint32_t word2 = DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 2];
+                word2 = word2 & 0x3FFFFFFF;
+                write10BitsInWord(word2, resultBlock.uSamples[i], 2);
+                atomicExchange(DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 2], word2);
+
+                uint32_t word3 = 0;
+                write10BitsInWord(word3, resultBlock.ySamples[i * 2], 0);
+                write10BitsInWord(word3, resultBlock.vSamples[i], 1);
+                write10BitsInWord(word3, resultBlock.ySamples[i * 2 + 1], 2);
+                DST_PICTURE_BUFFER32[topLineOffset + horizontalOffset + 3] = word3;
+            }
+        }
+    }
+#else
+    [[unroll]] for (uint y = 0; y < 2; y += 1) {
+        const uvec2 lumaCoords = uvec2(blockCoords.x * 2, blockCoords.y * 2 + y);
+        if (lumaCoords.x < DST_PICTURE_WIDTH && lumaCoords.y < DST_PICTURE_HEIGHT) {
+            const uint dstYBufferIndex = lumaCoords.y * DST_PICTURE_STRIDE / DST_PICTURE_BYTE_DEPTH + lumaCoords.x;
+#if (DST_PICTURE_BIT_DEPTH == 10)
+            DST_PICTURE_BUFFER16[dstYBufferIndex] = uint16_t(resultBlock.ySamples[y * 2]);
+            DST_PICTURE_BUFFER16[dstYBufferIndex + 1] = uint16_t(resultBlock.ySamples[y * 2 + 1]);
+#else
+            DST_PICTURE_BUFFER[dstYBufferIndex] = uint8_t(resultBlock.ySamples[y * 2]);
+            DST_PICTURE_BUFFER[dstYBufferIndex + 1] = uint8_t(resultBlock.ySamples[y * 2 + 1]);
+#endif
+        }
+    }
+
+    [[unroll]] for (uint y = 0; y < 2; y += 1) {
+        const uvec2 chromaCoords = uvec2(blockCoords.x, blockCoords.y * 2 + y);
+        if (chromaCoords.x < DST_PICTURE_CHROMA_WIDTH && chromaCoords.y < DST_PICTURE_CHROMA_HEIGHT) {
+            const uint dstUBufferIndex = DST_PICTURE_U_OFFSET / DST_PICTURE_BYTE_DEPTH +
+                                         chromaCoords.y * DST_PICTURE_CHROMA_STRIDE / DST_PICTURE_BYTE_DEPTH + chromaCoords.x;
+#if (DST_PICTURE_BIT_DEPTH == 10)
+            DST_PICTURE_BUFFER16[dstUBufferIndex] = uint16_t(resultBlock.uSamples[y]);
+#else
+            DST_PICTURE_BUFFER[dstUBufferIndex] = uint8_t(resultBlock.uSamples[y]);
+#endif
+        }
+    }
+
+    [[unroll]] for (uint y = 0; y < 2; y += 1) {
+        const uvec2 chromaCoords = uvec2(blockCoords.x, blockCoords.y * 2 + y);
+        if (chromaCoords.x < DST_PICTURE_CHROMA_WIDTH && chromaCoords.y < DST_PICTURE_CHROMA_HEIGHT) {
+            const uint dstVBufferIndex = DST_PICTURE_V_OFFSET / DST_PICTURE_BYTE_DEPTH +
+                                         chromaCoords.y * DST_PICTURE_CHROMA_STRIDE / DST_PICTURE_BYTE_DEPTH + chromaCoords.x;
+#if (DST_PICTURE_BIT_DEPTH == 10)
+            DST_PICTURE_BUFFER16[dstVBufferIndex] = uint16_t(resultBlock.vSamples[y]);
+#else
+            DST_PICTURE_BUFFER[dstVBufferIndex] = uint8_t(resultBlock.vSamples[y]);
+#endif
+        }
+    }
+#endif
+}
+
+void write444Sample(const uvec2 blockCoords, in YUV444Block resultBlock)
+{
+#if (DST_PICTURE_FORMAT == PixelFormatInterleaved8BitBGRA)
+    for (int i = 0; i < 2; i += 1) {
+        for (int j = 0; j < 2; j += 1) {
+            uvec2 lumaCoords = uvec2(blockCoords.x * 2 + i, blockCoords.y * 2 + j);
+            if (lumaCoords.x < DST_PICTURE_WIDTH && lumaCoords.y < DST_PICTURE_HEIGHT) {
+                const uint32_t ySample = resultBlock.ySamples[j * 2 + i];
+                const uint32_t uSample = resultBlock.uSamples[j * 2 + i];
+                const uint32_t vSample = resultBlock.vSamples[j * 2 + i];
+                const u32vec3 rgbSample = yuvToRGB(u32vec3(ySample, uSample, vSample));
+
+                const uint pixelIndex = lumaCoords.y * DST_PICTURE_STRIDE + lumaCoords.x * 4;
+                DST_PICTURE_BUFFER[pixelIndex] = uint8_t(rgbSample.b);
+                DST_PICTURE_BUFFER[pixelIndex + 1] = uint8_t(rgbSample.g);
+                DST_PICTURE_BUFFER[pixelIndex + 2] = uint8_t(rgbSample.r);
+                DST_PICTURE_BUFFER[pixelIndex + 3] = uint8_t(0xFF);
+            }
+        }
+    }
+#elif (DST_PICTURE_FORMAT == PixelFormatInterleaved10BitRGB)
+    for (int i = 0; i < 2; i += 1) {
+        for (int j = 0; j < 2; j += 1) {
+            uvec2 lumaCoords = uvec2(blockCoords.x * 2 + i, blockCoords.y * 2 + j);
+            if (lumaCoords.x < DST_PICTURE_WIDTH && lumaCoords.y < DST_PICTURE_HEIGHT) {
+                const uint32_t ySample = resultBlock.ySamples[j * 2 + i];
+                const uint32_t uSample = resultBlock.uSamples[j * 2 + i];
+                const uint32_t vSample = resultBlock.vSamples[j * 2 + i];
+                const u32vec3 rgbSample = yuvToRGB(u32vec3(ySample, uSample, vSample));
+
+                uint32_t destPixelIndex = lumaCoords.y * (DST_PICTURE_STRIDE / 4) + lumaCoords.x;
+
+                // Initialize as 0, otherwise unwritten bits cause issues down
+                // the line
+                uint32_t destPixel = 0;
+
+                // Write B
+                destPixel |= (rgbSample.b << 24) & (uint32_t(0xFF) << 24);
+                destPixel |= (rgbSample.b << 8) & (uint32_t(0x03) << 16);
+
+                // Write G
+                destPixel |= (rgbSample.g << 18) & (uint32_t(0xFC) << 16);
+                destPixel |= (rgbSample.g << 2) & (uint32_t(0x0F) << 8);
+
+                // Write R
+                destPixel |= (rgbSample.r << 12) & (uint32_t(0xF0) << 8);
+                destPixel |= (rgbSample.r >> 4) & (uint32_t(0x3F) << 0);
+
+                DST_PICTURE_BUFFER32[destPixelIndex] = destPixel;
+            }
+        }
+    }
+#else
+    [[unroll]] for (int i = 0; i < 2; i += 1) {
+        [[unroll]] for (int j = 0; j < 2; j += 1) {
+            uvec2 lumaCoords = uvec2(blockCoords.x * 2 + i, blockCoords.y * 2 + j);
+            if (lumaCoords.x < DST_PICTURE_WIDTH && lumaCoords.y < DST_PICTURE_HEIGHT) {
+                const uint dstYBufferIndex = lumaCoords.y * DST_PICTURE_STRIDE / DST_PICTURE_BYTE_DEPTH + lumaCoords.x;
+#if (DST_PICTURE_BIT_DEPTH == 10)
+                DST_PICTURE_BUFFER16[dstYBufferIndex] = uint16_t(resultBlock.ySamples[j * 2 + i]);
+#else
+                DST_PICTURE_BUFFER[dstYBufferIndex] = uint8_t(resultBlock.ySamples[j * 2 + i]);
+#endif
+            }
+        }
+    }
+
+    [[unroll]] for (int i = 0; i < 2; i += 1) {
+        [[unroll]] for (int j = 0; j < 2; j += 1) {
+            const uvec2 chromaCoords = uvec2(blockCoords.x * 2 + i, blockCoords.y * 2 + j);
+            if (chromaCoords.x < DST_PICTURE_WIDTH && chromaCoords.y < DST_PICTURE_HEIGHT) {
+                const uint dstUBufferIndex = DST_PICTURE_U_OFFSET / DST_PICTURE_BYTE_DEPTH +
+                                             chromaCoords.y * DST_PICTURE_CHROMA_STRIDE / DST_PICTURE_BYTE_DEPTH + chromaCoords.x;
+#if (DST_PICTURE_BIT_DEPTH == 10)
+                DST_PICTURE_BUFFER16[dstUBufferIndex] = uint16_t(resultBlock.uSamples[j * 2 + i]);
+#else
+                DST_PICTURE_BUFFER[dstUBufferIndex] = uint8_t(resultBlock.uSamples[j * 2 + i]);
+#endif
+            }
+        }
+    }
+
+    [[unroll]] for (int i = 0; i < 2; i += 1) {
+        [[unroll]] for (int j = 0; j < 2; j += 1) {
+            const uvec2 chromaCoords = uvec2(blockCoords.x * 2 + i, blockCoords.y * 2 + j);
+            if (chromaCoords.x < DST_PICTURE_WIDTH && chromaCoords.y < DST_PICTURE_HEIGHT) {
+                const uint dstVBufferIndex = DST_PICTURE_V_OFFSET / DST_PICTURE_BYTE_DEPTH +
+                                             chromaCoords.y * DST_PICTURE_CHROMA_STRIDE / DST_PICTURE_BYTE_DEPTH + chromaCoords.x;
+#if (DST_PICTURE_BIT_DEPTH == 10)
+                DST_PICTURE_BUFFER16[dstVBufferIndex] = uint16_t(resultBlock.vSamples[j * 2 + i]);
+#else
+                DST_PICTURE_BUFFER[dstVBufferIndex] = uint8_t(resultBlock.vSamples[j * 2 + i]);
+#endif
+            }
+        }
+    }
+#endif
+}
+
+/*
+    Workflow:
+        -> The shader will read (and convert) any format passed to it. Meaning results always are in the target subsample format.
+   Regardless of input.
+            -> If the source and target subsampling doesn't match, the shader will read as many samples as necessary to go from source
+   subsample -> dst subsample
+                -> The function read422Sample will convert whatever the current input format is to SubsampleType
+                -> It will rely on read422From422 and friends to get the values out of the buffer using the actual source type
+                -> When the subsample method doesn't match it will convert it (example: going from RGB to 444 by converting via YUV
+   matrix)
+            -> Some filtering may be used by calling read422SampleNearest and friends, if necessary
+                -> When using bilinear filtering, custom read methods will be used (see the readPixel function)
+        -> After everything is read, the shader will now have a block of samples in the same subsampling method as the dest. buffer
+        -> The shader will now write into the dst buffer depending on its format (see write420Sample, write422Sample, etc)
+
+        Examples:
+            - No subsampling conversion:
+                read422SampleNearest()
+                    read422Sample()
+                        read422SampleFrom422Buffer()
+                write422Sample()
+            - From 420 buffer to 422 buffer:
+                read422SampleBilinear()
+                    readPixel() <- x16 times
+                    pixels are interpolated
+                write422Sample()
+*/
+void main()
+{
+    const uvec2 blockCoords = gl_GlobalInvocationID.xy;
+    YUV444Block readBlock;
+#if (SRC_PICTURE_WIDTH == DST_PICTURE_WIDTH && SRC_PICTURE_HEIGHT == DST_PICTURE_HEIGHT)
+    readBlock = readNearest(blockCoords);
+#else
+    readBlock = readBilinear(blockCoords);
+#endif
+    readBlock = convertToDstSample(readBlock);
+#if (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV420)
+    write420Sample(blockCoords, convert444To420(readBlock));
+#elif (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV422)
+    write422Sample(blockCoords, convert444To422(readBlock));
+#elif (DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_YUV444 || DST_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB)
+    write444Sample(blockCoords, readBlock);
+#endif
+}

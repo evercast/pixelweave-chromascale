@@ -291,7 +291,7 @@ int main()
         srcFrame.yuvMatrix = PixelWeave::YUVMatrix::BT2020;
         constexpr uint32_t dstWidth = 1920;
         constexpr uint32_t dstHeight = 1080;
-        VideoFrameWrapper dstFrame = GetPlanar444Frame(dstWidth, dstHeight);
+        VideoFrameWrapper dstFrame = GetPlanar420Frame(dstWidth, dstHeight);
 
         const auto videoConverter = device->CreateVideoConverter();
         uint64_t totalTime = 0;

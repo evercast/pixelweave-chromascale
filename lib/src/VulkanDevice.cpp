@@ -3,15 +3,18 @@
 #include <array>
 #include <limits>
 
+#define VMA_IMPLEMENTATION
+#pragma warning(push, 0)
+#include "VulkanMemoryAllocator/include/vk_mem_alloc.h"
+#pragma warning(pop)
+#include "glm/glm.hpp"
+#include "shaderc/shaderc.hpp"
+
 #include "DebugUtils.h"
 #include "ResourceLoader.h"
 #include "VideoFrameWrapper.h"
 #include "VulkanInstance.h"
 #include "VulkanVideoConverter.h"
-#define VMA_IMPLEMENTATION
-#pragma warning(push, 0)
-#include "VulkanMemoryAllocator/include/vk_mem_alloc.h"
-#pragma warning(pop)
 
 namespace PixelWeave
 {
@@ -103,113 +106,48 @@ VulkanBuffer* VulkanDevice::CreateBuffer(
     return VulkanBuffer::Create(this, size, usageFlags, memoryFlags);
 }
 
-struct SpecializationEntries {
-    uint32_t srcPictureWidth;
-    uint32_t srcPictureHeight;
-    uint32_t srcPictureStride;
-    uint32_t srcPictureChromaWidth;
-    uint32_t srcPictureChromaHeight;
-    uint32_t srcPictureChromaStride;
-    uint32_t srcPictureFormat;
-    uint32_t srcPictureSubsampleType;
-    uint32_t srcPictureUOffset;
-    uint32_t srcPictureVOffset;
-    uint32_t srcPictureBitDepth;
-    uint32_t srcPictureByteDepth;
-    uint32_t srcPictureRange;
-    uint32_t srcPictureYUVMatrix;
-
-    uint32_t dstPictureWidth;
-    uint32_t dstPictureHeight;
-    uint32_t dstPictureStride;
-    uint32_t dstPictureChromaWidth;
-    uint32_t dstPictureChromaHeight;
-    uint32_t dstPictureChromaStride;
-    uint32_t dstPictureFormat;
-    uint32_t dstPictureSubsampleType;
-    uint32_t dstPictureUOffset;
-    uint32_t dstPictureVOffset;
-    uint32_t dstPictureBitDepth;
-    uint32_t dstPictureByteDepth;
-    uint32_t dstPictureRange;
-    uint32_t dstPictureYUVMatrix;
-};
-
-struct SpecializationData {
-    using SpecializationBindings = std::array<vk::SpecializationMapEntry, 28>;
-    SpecializationBindings bindings;
-    SpecializationEntries data;
-};
-
-SpecializationData CreateSpecializationInfo(const VideoFrameWrapper& src, const VideoFrameWrapper& dst)
+glm::mat3 GetMatrix(PixelWeave::YUVMatrix matrix)
 {
-    // Load specialization data and write based on current buffer properties
-    SpecializationData specializationInfo;
-    specializationInfo.data = SpecializationEntries{
-        src.width,
-        src.height,
-        src.stride,
-        src.GetChromaWidth(),
-        src.GetChromaHeight(),
-        src.GetChromaStride(),
-        static_cast<uint32_t>(src.pixelFormat),
-        static_cast<uint32_t>(src.GetSubsampleType()),
-        src.GetUOffset(),
-        src.GetVOffset(),
-        src.GetBitDepth(),
-        src.GetByteDepth(),
-        static_cast<uint32_t>(src.range),
-        static_cast<uint32_t>(src.yuvMatrix),
+    constexpr float KR709 = 0.2126f;
+    constexpr float KB709 = 0.0722f;
 
-        dst.width,
-        dst.height,
-        dst.stride,
-        dst.GetChromaWidth(),
-        dst.GetChromaHeight(),
-        dst.GetChromaStride(),
-        static_cast<uint32_t>(dst.pixelFormat),
-        static_cast<uint32_t>(dst.GetSubsampleType()),
-        dst.GetUOffset(),
-        dst.GetVOffset(),
-        dst.GetBitDepth(),
-        dst.GetByteDepth(),
-        static_cast<uint32_t>(dst.range),
-        static_cast<uint32_t>(dst.yuvMatrix),
+    constexpr float KR2020 = 0.2627f;
+    constexpr float KB2020 = 0.0593f;
+    const auto getMatrix = [](float kr, float kb) -> glm::mat3 {
+        float kg = 1.0f - kr - kb;
+        return glm::mat3(
+            kr,
+            -0.5f * (kr / (1.0f - kb)),
+            0.5f,
+            kg,
+            -0.5f * (kg / (1.0f - kb)),
+            -0.5f * (kg / (1.0f - kr)),
+            kb,
+            0.5f,
+            -0.5f * (kb / (1.0f - kr)));
     };
 
-    specializationInfo.bindings = SpecializationData::SpecializationBindings{
-        vk::SpecializationMapEntry(0, offsetof(SpecializationEntries, srcPictureWidth), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(1, offsetof(SpecializationEntries, srcPictureHeight), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(2, offsetof(SpecializationEntries, srcPictureStride), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(3, offsetof(SpecializationEntries, srcPictureChromaWidth), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(4, offsetof(SpecializationEntries, srcPictureChromaHeight), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(5, offsetof(SpecializationEntries, srcPictureChromaStride), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(6, offsetof(SpecializationEntries, srcPictureFormat), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(7, offsetof(SpecializationEntries, srcPictureSubsampleType), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(8, offsetof(SpecializationEntries, srcPictureUOffset), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(9, offsetof(SpecializationEntries, srcPictureVOffset), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(10, offsetof(SpecializationEntries, srcPictureBitDepth), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(11, offsetof(SpecializationEntries, srcPictureByteDepth), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(12, offsetof(SpecializationEntries, srcPictureRange), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(13, offsetof(SpecializationEntries, srcPictureYUVMatrix), sizeof(uint32_t)),
+    switch (matrix) {
+        case YUVMatrix::BT709:
+            return getMatrix(KR709, KB709);
+        case YUVMatrix::BT2020:
+            return getMatrix(KR2020, KB2020);
+    }
+    return glm::mat3();
+}
 
-        vk::SpecializationMapEntry(14, offsetof(SpecializationEntries, dstPictureWidth), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(15, offsetof(SpecializationEntries, dstPictureHeight), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(16, offsetof(SpecializationEntries, dstPictureStride), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(17, offsetof(SpecializationEntries, dstPictureChromaWidth), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(18, offsetof(SpecializationEntries, dstPictureChromaHeight), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(19, offsetof(SpecializationEntries, dstPictureChromaStride), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(20, offsetof(SpecializationEntries, dstPictureFormat), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(21, offsetof(SpecializationEntries, dstPictureSubsampleType), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(22, offsetof(SpecializationEntries, dstPictureUOffset), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(23, offsetof(SpecializationEntries, dstPictureVOffset), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(24, offsetof(SpecializationEntries, dstPictureBitDepth), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(25, offsetof(SpecializationEntries, dstPictureByteDepth), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(26, offsetof(SpecializationEntries, dstPictureRange), sizeof(uint32_t)),
-        vk::SpecializationMapEntry(27, offsetof(SpecializationEntries, dstPictureYUVMatrix), sizeof(uint32_t)),
-    };
+glm::vec3 GetYUVScale(Range range, [[maybe_unused]] uint32_t bitDepth)
+{
+    return range == Range::Limited ? glm::vec3((235.0 - 16.0) / 255.0, (240.0 - 16.0) / 255.0, (240.0 - 16.0) / 255.0) : glm::vec3(1.0);
+}
 
-    return specializationInfo;
+glm::vec3 GetYUVOffset(Range range, uint32_t bitDepth)
+{
+    return glm::vec3(
+               (range == Range::Limited) ? float(1 << (bitDepth - 4)) : 0.0f,
+               float(1 << (bitDepth - 1)),
+               float(1 << (bitDepth - 1))) /
+           glm::vec3(float((1 << bitDepth) - 1));
 }
 
 VulkanDevice::VideoConversionPipelineResources VulkanDevice::CreateVideoConversionPipeline(
@@ -241,25 +179,125 @@ VulkanDevice::VideoConversionPipelineResources VulkanDevice::CreateVideoConversi
     const vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo().setSetLayouts(resources.descriptorLayout);
     resources.pipelineLayout = PW_ASSERT_VK(mLogicalDevice.createPipelineLayout(pipelineLayoutInfo));
 
-    Resource shaderResource = ResourceLoader::Load(Resource::Id::ComputeShader);
-    vk::ShaderModuleCreateInfo shaderCreateInfo = vk::ShaderModuleCreateInfo()
-                                                      .setCodeSize(shaderResource.size * sizeof(uint8_t))
-                                                      .setPCode(reinterpret_cast<const uint32_t*>(shaderResource.buffer));
+    std::vector<uint32_t> compiledShader;
+    {
+        Resource shaderResource = ResourceLoader::Load(Resource::Id::ComputeShader);
+
+        shaderc::Compiler compiler;
+        shaderc::CompileOptions options;
+
+        options.SetOptimizationLevel(shaderc_optimization_level::shaderc_optimization_level_performance);
+
+        const auto encodeMatrix = [](const glm::mat3& matrix) -> std::string {
+            std::ostringstream stringStream;
+            stringStream << "mat3(";
+            for (uint32_t i = 0; i < 3 * 3; ++i) {
+                stringStream << matrix[i % 3][i / 3];
+                if (i < 3 * 3 - 1) {
+                    stringStream << ",";
+                }
+            }
+            stringStream << ")";
+            return stringStream.str();
+        };
+
+        const auto encodeVector = [](const glm::vec3& vector) -> std::string {
+            std::ostringstream stringStream;
+            stringStream << "vec3(";
+            for (uint32_t i = 0; i < 3; ++i) {
+                stringStream << vector[i];
+                if (i < 2) {
+                    stringStream << ",";
+                }
+            }
+            stringStream << ")";
+            return stringStream.str();
+        };
+
+        const glm::mat3 srcMatrix = GetMatrix(src.yuvMatrix);
+        const glm::mat3 srcMatrixInv = glm::inverse(srcMatrix);
+
+        const glm::mat3 dstMatrix = GetMatrix(dst.yuvMatrix);
+        const glm::mat3 dstMatrixInv = glm::inverse(dstMatrix);
+
+        options.AddMacroDefinition("SRC_PICTURE_WIDTH", std::to_string(src.width));
+        options.AddMacroDefinition("SRC_PICTURE_HEIGHT", std::to_string(src.height));
+        options.AddMacroDefinition("SRC_PICTURE_STRIDE", std::to_string(src.stride));
+        options.AddMacroDefinition("SRC_PICTURE_CHROMA_WIDTH", std::to_string(src.GetChromaWidth()));
+        options.AddMacroDefinition("SRC_PICTURE_CHROMA_HEIGHT", std::to_string(src.GetChromaHeight()));
+        options.AddMacroDefinition("SRC_PICTURE_CHROMA_STRIDE", std::to_string(src.GetChromaStride()));
+        options.AddMacroDefinition("SRC_PICTURE_FORMAT", std::to_string(static_cast<uint32_t>(src.pixelFormat)));
+        options.AddMacroDefinition("SRC_PICTURE_SUBSAMPLE_TYPE", std::to_string(static_cast<uint32_t>(src.GetSubsampleType())));
+        options.AddMacroDefinition("SRC_PICTURE_U_OFFSET", std::to_string(src.GetUOffset()));
+        options.AddMacroDefinition("SRC_PICTURE_V_OFFSET", std::to_string(src.GetVOffset()));
+        options.AddMacroDefinition("SRC_PICTURE_BIT_DEPTH", std::to_string(src.GetBitDepth()));
+        options.AddMacroDefinition("SRC_PICTURE_BYTE_DEPTH", std::to_string(src.GetByteDepth()));
+        options.AddMacroDefinition("SRC_PICTURE_RANGE", std::to_string(static_cast<uint32_t>(src.range)));
+        options.AddMacroDefinition("SRC_PICTURE_YUV_MATRIX", std::to_string(static_cast<uint32_t>(src.yuvMatrix)));
+        options.AddMacroDefinition("SRC_PICTURE_RGB_TO_YUV_MATRIX", encodeMatrix(srcMatrix));
+        options.AddMacroDefinition("SRC_PICTURE_YUV_TO_RGB_MATRIX", encodeMatrix(srcMatrixInv));
+        options.AddMacroDefinition("SRC_PICTURE_YUV_OFFSET", encodeVector(GetYUVOffset(src.range, src.GetBitDepth())));
+        options.AddMacroDefinition("SRC_PICTURE_YUV_OFFSET_FULL", encodeVector(GetYUVOffset(Range::Full, src.GetBitDepth())));
+        options.AddMacroDefinition("SRC_PICTURE_YUV_SCALE", encodeVector(GetYUVScale(src.range, src.GetBitDepth())));
+
+        options.AddMacroDefinition("DST_PICTURE_WIDTH", std::to_string(dst.width));
+        options.AddMacroDefinition("DST_PICTURE_HEIGHT", std::to_string(dst.height));
+        options.AddMacroDefinition("DST_PICTURE_STRIDE", std::to_string(dst.stride));
+        options.AddMacroDefinition("DST_PICTURE_CHROMA_WIDTH", std::to_string(dst.GetChromaWidth()));
+        options.AddMacroDefinition("DST_PICTURE_CHROMA_HEIGHT", std::to_string(dst.GetChromaHeight()));
+        options.AddMacroDefinition("DST_PICTURE_CHROMA_STRIDE", std::to_string(dst.GetChromaStride()));
+        options.AddMacroDefinition("DST_PICTURE_FORMAT", std::to_string(static_cast<uint32_t>(dst.pixelFormat)));
+        options.AddMacroDefinition("DST_PICTURE_SUBSAMPLE_TYPE", std::to_string(static_cast<uint32_t>(dst.GetSubsampleType())));
+        options.AddMacroDefinition("DST_PICTURE_U_OFFSET", std::to_string(dst.GetUOffset()));
+        options.AddMacroDefinition("DST_PICTURE_V_OFFSET", std::to_string(dst.GetVOffset()));
+        options.AddMacroDefinition("DST_PICTURE_BIT_DEPTH", std::to_string(dst.GetBitDepth()));
+        options.AddMacroDefinition("DST_PICTURE_BYTE_DEPTH", std::to_string(dst.GetByteDepth()));
+        options.AddMacroDefinition("DST_PICTURE_RANGE", std::to_string(static_cast<uint32_t>(dst.range)));
+        options.AddMacroDefinition("DST_PICTURE_YUV_MATRIX", std::to_string(static_cast<uint32_t>(dst.yuvMatrix)));
+        options.AddMacroDefinition("DST_PICTURE_RGB_TO_YUV_MATRIX", encodeMatrix(dstMatrix));
+        options.AddMacroDefinition("DST_PICTURE_YUV_TO_RGB_MATRIX", encodeMatrix(dstMatrixInv));
+        options.AddMacroDefinition("DST_PICTURE_YUV_OFFSET", encodeVector(GetYUVOffset(dst.range, dst.GetBitDepth())));
+        options.AddMacroDefinition("DST_PICTURE_YUV_OFFSET_FULL", encodeVector(GetYUVOffset(Range::Full, dst.GetBitDepth())));
+        options.AddMacroDefinition("DST_PICTURE_YUV_SCALE", encodeVector(GetYUVScale(dst.range, dst.GetBitDepth())));
+
+        /* {
+                    shaderc::PreprocessedSourceCompilationResult proprocessResult = compiler.PreprocessGlsl(
+                        reinterpret_cast<const char*>(shaderResource.buffer),
+                        shaderResource.size,
+                        shaderc_shader_kind::shaderc_glsl_compute_shader,
+                        "convert.comp",
+                        options);
+                    if (proprocessResult.GetCompilationStatus() != shaderc_compilation_status_success) {
+                        std::cout << "Error building shader: \n" << proprocessResult.GetErrorMessage() << std::endl;
+                    } else {
+                        std::vector<char> preprocessedCode = std::vector<char>(proprocessResult.cbegin(), proprocessResult.cend());
+                        preprocessedCode.push_back('\0');
+                        std::cout << preprocessedCode.data() << std::endl;
+                    }
+                }
+        */
+
+        shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(
+            reinterpret_cast<const char*>(shaderResource.buffer),
+            shaderResource.size,
+            shaderc_shader_kind::shaderc_glsl_compute_shader,
+            "convert.comp",
+            options);
+
+        if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
+            std::cerr << module.GetErrorMessage();
+            __debugbreak();
+        }
+
+        compiledShader = std::vector<uint32_t>(module.cbegin(), module.cend());
+        ResourceLoader::CleanUp(shaderResource);
+    }
+    vk::ShaderModuleCreateInfo shaderCreateInfo =
+        vk::ShaderModuleCreateInfo().setCodeSize(compiledShader.size() * sizeof(uint32_t)).setPCode(compiledShader.data());
     resources.shader = PW_ASSERT_VK(mLogicalDevice.createShaderModule(shaderCreateInfo));
-    ResourceLoader::CleanUp(shaderResource);
 
-    const SpecializationData specializationData = CreateSpecializationInfo(src, dst);
-    const vk::SpecializationInfo specializationInfo = vk::SpecializationInfo()
-                                                          .setDataSize(sizeof(SpecializationEntries))
-                                                          .setPData(&specializationData.data)
-                                                          .setMapEntryCount(static_cast<uint32_t>(specializationData.bindings.size()))
-                                                          .setPMapEntries(specializationData.bindings.data());
-
-    const vk::PipelineShaderStageCreateInfo stageCreateInfo = vk::PipelineShaderStageCreateInfo()
-                                                                  .setStage(vk::ShaderStageFlagBits::eCompute)
-                                                                  .setModule(resources.shader)
-                                                                  .setPName("main")
-                                                                  .setPSpecializationInfo(&specializationInfo);
+    const vk::PipelineShaderStageCreateInfo stageCreateInfo =
+        vk::PipelineShaderStageCreateInfo().setStage(vk::ShaderStageFlagBits::eCompute).setModule(resources.shader).setPName("main");
     const vk::ComputePipelineCreateInfo computePipelineInfo =
         vk::ComputePipelineCreateInfo().setLayout(resources.pipelineLayout).setStage(stageCreateInfo);
     resources.pipeline = PW_ASSERT_VK(mLogicalDevice.createComputePipeline(nullptr, computePipelineInfo));

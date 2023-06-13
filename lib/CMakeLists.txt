@@ -44,7 +44,14 @@ elseif(LINUX)
     )
 endif()
 
-set(SHADER ${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/convert.comp)
+set(SHADERS convert.comp)
+
+set(ALL_SHADERS ${SHADERS})
+foreach(SHADER ${ALL_SHADERS})
+    set(RELATIVE_SHADER_PATH "shaders/${SHADER}")
+    list(APPEND RELATIVE_SHADER_PATHS ${RELATIVE_SHADER_PATH})
+endforeach()
+source_group("Shaders" FILES ${RELATIVE_SHADER_PATHS})
 
 if(APPLE)
     set(RESOURCE_FILES "${SHADER}.spv")
@@ -58,6 +65,7 @@ add_library(${SUBPROJECT_NAME} SHARED
     ${SOURCE}
     ${PLATFORM_SPECIFIC_SOURCES}
     ${RESOURCE_FILES}
+    ${RELATIVE_SHADER_PATHS}
 )
 set_target_properties(${SUBPROJECT_NAME} PROPERTIES PUBLIC_HEADER "${HEADERS}")
 
@@ -79,24 +87,17 @@ find_package(Vulkan REQUIRED)
 target_link_libraries(${SUBPROJECT_NAME} Vulkan::Vulkan)
 include_directories(${Vulkan_INCLUDE_DIRS})
 
-# Add shader compilation build step
-if(WIN32)
-    set(SHADER_COMPILER_PATH "$ENV{VULKAN_SDK}/Bin/glslc.exe")
-elseif(APPLE)
-    set(SHADER_COMPILER_PATH "$ENV{VULKAN_SDK}/bin/glslc")
-elseif(LINUX)
-    set(SHADER_COMPILER_PATH "/usr/bin/glslc")
-endif()
+# Add libshaderc dependency
+set_property(TARGET ${SUBPROJECT_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+add_library(shaderc STATIC IMPORTED)
+set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION "$ENV{VULKAN_SDK}/Lib/shaderc_combined.lib")
+message(STATUS "$ENV{VULKAN_SDK}/Lib/shaderc.lib")
+set_target_properties(shaderc PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "$ENV{VULKAN_SDK}/Include")
 
-set(COMPILED_SHADER "${SHADER}.spv")
-add_custom_command(
-    OUTPUT ${COMPILED_SHADER}
-    COMMAND ${SHADER_COMPILER_PATH} ${SHADER} -o ${COMPILED_SHADER}
-    DEPENDS ${SHADER}
-)
-set(SHADER_DEPENDENCIES "${SUBPROJECT_NAME}Shaders")
-add_custom_target(${SHADER_DEPENDENCIES} DEPENDS ${COMPILED_SHADER})
-add_dependencies(${SUBPROJECT_NAME} ${SHADER_DEPENDENCIES})
+# Add GLM dependency (header only library)
+include_directories(../thirdparty/glm)
+
+target_link_libraries(${SUBPROJECT_NAME} shaderc)
 
 # Set up macOS framework
 if(APPLE)
