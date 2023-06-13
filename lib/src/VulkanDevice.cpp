@@ -119,7 +119,7 @@ std::vector<uint32_t> CompileShader(const VideoFrameWrapper& src, const VideoFra
         std::ostringstream stringStream;
         stringStream << "mat3(";
         for (uint32_t i = 0; i < 3 * 3; ++i) {
-            stringStream << matrix[i % 3][i / 3];
+            stringStream << matrix[i / 3][i % 3];
             if (i < 3 * 3 - 1) {
                 stringStream << ",";
             }
