@@ -3,4 +3,4 @@
 	url = https://github.com/graphitemaster/incbin
 [submodule "thirdparty/vcpkg"]
 	path = thirdparty/vcpkg
-	url = https://github.com/dg0yt/vcpkg
+	url = https://github.com/microsoft/vcpkg/
