@@ -72,6 +72,9 @@ add_compile_definitions(PW_IS_LIB)
 
 # Find Vulkan SDK
 add_compile_definitions(VULKAN_HPP_NO_EXCEPTIONS)
+add_compile_definitions(VMA_VULKAN_VERSION=1002000)
+add_compile_definitions(VMA_STATIC_VULKAN_FUNCTIONS=0)
+add_compile_definitions(VMA_DYNAMIC_VULKAN_FUNCTIONS=1)
 find_package(Vulkan REQUIRED)
 target_link_libraries(${SUBPROJECT_NAME} Vulkan::Vulkan)
 include_directories(${Vulkan_INCLUDE_DIRS})
