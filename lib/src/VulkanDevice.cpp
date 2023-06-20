@@ -58,11 +58,16 @@ VulkanDevice::VulkanDevice(const std::shared_ptr<VulkanInstance>& instance, vk::
         vk::CommandPoolCreateInfo().setQueueFamilyIndex(queueFamilyIndex).setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
     mCommandPool = PW_ASSERT_VK(mLogicalDevice.createCommandPool(commandPoolCreateInfo));
 
+    VmaVulkanFunctions vulkanFunctions = {};
+    vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
+    vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
+
     VmaAllocatorCreateInfo allocatorInfo{};
     allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_2;
     allocatorInfo.physicalDevice = mPhysicalDevice;
     allocatorInfo.device = mLogicalDevice;
     allocatorInfo.instance = mVulkanInstance->GetHandle();
+    allocatorInfo.pVulkanFunctions = &vulkanFunctions;
     vmaCreateAllocator(&allocatorInfo, &mAllocator);
 }
 
