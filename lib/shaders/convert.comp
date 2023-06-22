@@ -517,47 +517,47 @@ u32vec3 readPixelPlanar10Bit(uvec2 lumaCoords)
 }
 // Map generic read function to actual entry as seen above
 #if (SRC_PICTURE_FORMAT == PixelFormatInterleaved8BitUYVY)
-#define READ_SAMPLE readPixelInterleaved8BitUYVY
+    #define READ_SAMPLE readPixelInterleaved8BitUYVY
 #elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved8BitBGRA)
-#define READ_SAMPLE readPixelInterleaved8BitBGRA
+    #define READ_SAMPLE readPixelInterleaved8BitBGRA
 #elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved8BitRGBA)
-#define READ_SAMPLE readPixelInterleaved8BitRGBA
+    #define READ_SAMPLE readPixelInterleaved8BitRGBA
 #elif (SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit420)
-#define READ_SAMPLE readPixelPlanar8Bit
+    #define READ_SAMPLE readPixelPlanar8Bit
 #elif (SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit422)
-#define READ_SAMPLE readPixelPlanar8Bit
+    #define READ_SAMPLE readPixelPlanar8Bit
 #elif (SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit444)
-#define READ_SAMPLE readPixelPlanar8Bit
+    #define READ_SAMPLE readPixelPlanar8Bit
 #elif (SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit420YV12)
-#define READ_SAMPLE readPixelPlanar8Bit420YV12
+    #define READ_SAMPLE readPixelPlanar8Bit420YV12
 #elif (SRC_PICTURE_FORMAT == PixelFormatPlanar8Bit420NV12)
-#define READ_SAMPLE readPixelPlanar8Bit420NV12
+    #define READ_SAMPLE readPixelPlanar8Bit420NV12
 #elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved10BitUYVY)
-#define READ_SAMPLE readPixelInterleaved10BitUYVY
+    #define READ_SAMPLE readPixelInterleaved10BitUYVY
 #elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved10BitRGB)
-#define READ_SAMPLE readPixelInterleaved10BitRGB
+    #define READ_SAMPLE readPixelInterleaved10BitRGB
 #elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved12BitRGB)
-#define READ_SAMPLE readPixelInterleaved12BitRGB
+    #define READ_SAMPLE readPixelInterleaved12BitRGB
 #elif (SRC_PICTURE_FORMAT == PixelFormatPlanar10Bit420)
-#define READ_SAMPLE readPixelPlanar10Bit
+    #define READ_SAMPLE readPixelPlanar10Bit
 #elif (SRC_PICTURE_FORMAT == PixelFormatPlanar10Bit422)
-#define READ_SAMPLE readPixelPlanar10Bit
+    #define READ_SAMPLE readPixelPlanar10Bit
 #elif (SRC_PICTURE_FORMAT == PixelFormatPlanar10Bit444)
-#define READ_SAMPLE readPixelPlanar10Bit
+    #define READ_SAMPLE readPixelPlanar10Bit
 #elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved8BitARGB)
-#define READ_SAMPLE readPixelInterleaved8BitARGB
+    #define READ_SAMPLE readPixelInterleaved8BitARGB
 #elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved12BitRGBLE)
-#define READ_SAMPLE readPixelInterleaved12BitRGB
+    #define READ_SAMPLE readPixelInterleaved12BitRGB
 #elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved12BitRGBLE)
-#define READ_SAMPLE readPixelInterleaved12BitRGB
+    #define READ_SAMPLE readPixelInterleaved12BitRGB
 #elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved10BitRGBX)
-#define READ_SAMPLE readPixelInterleaved10BitRGBX
+    #define READ_SAMPLE readPixelInterleaved10BitRGBX
 #elif (SRC_PICTURE_FORMAT == PixelFormatInterleaved10BitRGBXLE)
-#define READ_SAMPLE readPixelInterleaved10BitRGBX
+    #define READ_SAMPLE readPixelInterleaved10BitRGBX
 #elif (SRC_PICTURE_FORMAT == PixelFormatPlanar16BitP216)
-#define READ_SAMPLE readPixelPlanar16BitP216
+    #define READ_SAMPLE readPixelPlanar16BitP216
 #else
-#error "SRC_PICTURE_FORMAT value not supported."
+    #error "SRC_PICTURE_FORMAT value not supported."
 #endif
 
 #define GetMaxValue(BIT_DEPTH) float((1 << BIT_DEPTH) - 1)
@@ -572,9 +572,8 @@ u32vec3 yuvToRGB(u32vec3 yuv)
 {
     const float maxValueDst = GetMaxValue(DST_PICTURE_BIT_DEPTH);
     const vec3 normalizedYUV = vec3(yuv) / vec3(maxValueDst);
-    const mat3 rgbToYUVMatrix = dstPictureRGBToYUVMatrix;
-    const mat3 yuvToRGBMatrix = inverse(rgbToYUVMatrix);
-    const vec3 offsetFullRange = vec3(0);
+    const mat3 yuvToRGBMatrix = dstPictureYUVToRGBMatrix;
+    const vec3 offsetFullRange = DST_PICTURE_YUV_OFFSET_FULL;
     const vec3 normalizedRGB = yuvToRGBMatrix * (normalizedYUV - offsetFullRange);
     const vec3 scaledPixel = round(normalizedRGB * maxValueDst);
     return u32vec3(clamp(scaledPixel, vec3(0.0), vec3(maxValueDst)));
@@ -590,7 +589,7 @@ u32vec3 srcPixelToDstPixel(u32vec3 srcPixel)
 #if (SRC_PICTURE_SUBSAMPLE_TYPE == SUBSAMPLE_TYPE_RGB)
     const mat3 rgbToYUVMatrix = srcPictureRGBToYUVMatrix;
     // Preserve range, conversions are handled later
-    const vec3 offsetFullRange = DST_PICTURE_YUV_OFFSET_FULL;
+    const vec3 offsetFullRange = SRC_PICTURE_YUV_OFFSET_FULL;
     pixel = rgbToYUVMatrix * vec3(pixel) + offsetFullRange;
 #endif
 
