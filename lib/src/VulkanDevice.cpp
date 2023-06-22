@@ -79,26 +79,7 @@ VideoConverter* VulkanDevice::CreateVideoConverter()
     return new VulkanVideoConverter(this);
 }
 
-vk::DeviceMemory VulkanDevice::AllocateMemory(const vk::MemoryPropertyFlags& memoryFlags, const vk::MemoryRequirements memoryRequirements)
-{
-    // Find suitable memory to allocate the buffer in
-    const vk::PhysicalDeviceMemoryProperties memoryProperties = mPhysicalDevice.getMemoryProperties();
-    uint32_t selectedMemoryIndex = 0;
-    for (uint32_t memoryIndex = 0; memoryIndex < memoryProperties.memoryTypeCount; ++memoryIndex) {
-        if (memoryRequirements.memoryTypeBits & (1 << memoryIndex) &&
-            (memoryProperties.memoryTypes[memoryIndex].propertyFlags & memoryFlags)) {
-            selectedMemoryIndex = memoryIndex;
-            break;
-        }
-    }
-
-    // Allocate memory for the buffer
-    const vk::MemoryAllocateInfo allocateInfo =
-        vk::MemoryAllocateInfo().setAllocationSize(memoryRequirements.size).setMemoryTypeIndex(selectedMemoryIndex);
-    return PW_ASSERT_VK(mLogicalDevice.allocateMemory(allocateInfo));
-}
-
-VulkanBuffer* VulkanDevice::CreateBuffer(
+ResultValue<VulkanBuffer*> VulkanDevice::CreateBuffer(
     const vk::DeviceSize& size,
     const vk::BufferUsageFlags& usageFlags,
     const VmaAllocationCreateFlags& memoryFlags)
@@ -231,7 +212,10 @@ ResultValue<VulkanDevice::VideoConversionPipelineResources> VulkanDevice::Create
     resources.pipelineLayout = PW_ASSERT_VK(mLogicalDevice.createPipelineLayout(pipelineLayoutInfo));
 
     std::vector<uint32_t> compiledShader = CompileShader(src, dst);
-
+    if (compiledShader.empty()) {
+        DestroyVideoConversionPipeline(resources);
+        return {Result::ShaderCompilationFailed, {}};
+    }
     vk::ShaderModuleCreateInfo shaderCreateInfo =
         vk::ShaderModuleCreateInfo().setCodeSize(compiledShader.size() * sizeof(uint32_t)).setPCode(compiledShader.data());
     resources.shader = PW_ASSERT_VK(mLogicalDevice.createShaderModule(shaderCreateInfo));
@@ -272,7 +256,9 @@ ResultValue<VulkanDevice::VideoConversionPipelineResources> VulkanDevice::Create
 
 void VulkanDevice::DestroyVideoConversionPipeline(VideoConversionPipelineResources& pipelineResources)
 {
-    mLogicalDevice.freeDescriptorSets(pipelineResources.descriptorPool, pipelineResources.descriptorSet);
+    if (pipelineResources.descriptorPool) {
+        mLogicalDevice.freeDescriptorSets(pipelineResources.descriptorPool, pipelineResources.descriptorSet);
+    }
     mLogicalDevice.destroyDescriptorPool(pipelineResources.descriptorPool);
     mLogicalDevice.destroyPipeline(pipelineResources.pipeline);
     mLogicalDevice.destroyShaderModule(pipelineResources.shader);

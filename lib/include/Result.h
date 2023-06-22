@@ -14,6 +14,8 @@ enum class Result {
     DriverNotFoundError,
     InvalidDeviceError,
     NoSuitableDeviceError,
+    AllocationFailed,
+    ShaderCompilationFailed,
     UnknownError
 };
 

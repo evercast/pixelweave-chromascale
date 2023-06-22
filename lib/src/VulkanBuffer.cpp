@@ -6,7 +6,7 @@
 namespace PixelWeave
 {
 
-VulkanBuffer* VulkanBuffer::Create(
+ResultValue<VulkanBuffer*> VulkanBuffer::Create(
     VulkanDevice* device,
     const vk::DeviceSize& size,
     const vk::BufferUsageFlags& usageFlags,
@@ -23,17 +23,20 @@ VulkanBuffer* VulkanBuffer::Create(
 
     vk::Buffer bufferHandle;
     VmaAllocation allocation;
-    PW_ASSERT_VK(vmaCreateBuffer(
+    VkResult result = vmaCreateBuffer(
         allocator,
         (VkBufferCreateInfo*)&bufferCreateInfo,
         &allocationInfo,
         (VkBuffer*)&bufferHandle,
         &allocation,
-        &allocInfo));
+        &allocInfo);
+    if (result != VK_SUCCESS) {
+        return {Result::AllocationFailed, nullptr};
+    }
 
     const vk::DescriptorBufferInfo bufferInfo = vk::DescriptorBufferInfo().setBuffer(bufferHandle).setOffset(0).setRange(size);
 
-    return new VulkanBuffer(device, size, bufferHandle, allocation, bufferInfo);
+    return {Result::Success, new VulkanBuffer(device, size, bufferHandle, allocation, bufferInfo)};
 }
 
 VulkanBuffer::VulkanBuffer(
