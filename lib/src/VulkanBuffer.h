@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RefCountPtr.h"
+#include "Result.h"
 #include "VulkanBase.h"
 
 namespace PixelWeave
@@ -10,7 +11,7 @@ class VulkanDevice;
 class VulkanBuffer : public RefCountPtr
 {
 public:
-    static VulkanBuffer* Create(
+    static ResultValue<VulkanBuffer*> Create(
         VulkanDevice* device,
         const vk::DeviceSize& size,
         const vk::BufferUsageFlags& usageFlags,

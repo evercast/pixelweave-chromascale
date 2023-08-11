@@ -17,7 +17,7 @@ extern "C" {
 #include "incbin/incbin.h"
 }
 
-INCBIN(ComputeShader, "convert.comp.spv");
+INCBIN(ComputeShader, "convert.comp");
 #endif
 
 namespace PixelWeave
@@ -65,7 +65,7 @@ Resource LoadMac(const Resource::Id& resourceId)
     ResourceName resourceName;
     switch (resourceId) {
         case Resource::Id::ComputeShader:
-            resourceName = ResourceName{CFSTR("convert.comp"), CFSTR("spv")};
+            resourceName = ResourceName{CFSTR("convert"), CFSTR("comp")};
             break;
         default:
             return {nullptr, 0};

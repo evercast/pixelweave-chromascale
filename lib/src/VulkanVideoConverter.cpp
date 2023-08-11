@@ -7,7 +7,13 @@
 
 namespace PixelWeave
 {
-VulkanVideoConverter::VulkanVideoConverter(VulkanDevice* device) : mDevice(nullptr), mEnableBenchmark(false)
+VulkanVideoConverter::VulkanVideoConverter(VulkanDevice* device)
+    : mDevice(nullptr),
+      mEnableBenchmark(false),
+      mDstDeviceBuffer(nullptr),
+      mDstLocalBuffer(nullptr),
+      mSrcDeviceBuffer(nullptr),
+      mSrcLocalBuffer(nullptr)
 {
     device->AddRef();
     mDevice = device;
@@ -64,32 +70,49 @@ Result VulkanVideoConverter::ValidateInput(const VideoFrameWrapper& src, const V
     return Result::Success;
 }
 
-void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFrameWrapper& dst)
+Result VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFrameWrapper& dst)
 {
     // Create source buffer and copy CPU memory into it
     const vk::DeviceSize srcBufferSize = src.GetBufferSize();
-    mSrcLocalBuffer = mDevice->CreateBuffer(
+    auto [srcLocalBufferResult, srcLocalBuffer] = mDevice->CreateBuffer(
         srcBufferSize,
         vk::BufferUsageFlagBits::eTransferSrc,
         VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
-    mSrcDeviceBuffer = mDevice->CreateBuffer(
+    mSrcLocalBuffer = srcLocalBuffer;
+
+    auto [srcDeviceBufferResult, srcDeviceBuffer] = mDevice->CreateBuffer(
         srcBufferSize,
         vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
         VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+    mSrcDeviceBuffer = srcDeviceBuffer;
 
     // Create CPU readable dest buffer to do conversions in
     const vk::DeviceSize dstBufferSize = dst.GetBufferSize();
-    mDstLocalBuffer = mDevice->CreateBuffer(
+    auto [dstLocalBufferResult, dstLocalBuffer] = mDevice->CreateBuffer(
         dstBufferSize,
         vk::BufferUsageFlagBits::eTransferDst,
         VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
-    mDstDeviceBuffer = mDevice->CreateBuffer(
+    mDstLocalBuffer = dstLocalBuffer;
+
+    auto [dstDeviceBufferResult, dstDeviceBuffer] = mDevice->CreateBuffer(
         dstBufferSize,
         vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferSrc,
         VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+    mDstDeviceBuffer = dstDeviceBuffer;
+
+    if (!(srcLocalBufferResult == Result::Success && srcDeviceBufferResult == Result::Success && dstLocalBufferResult == Result::Success &&
+          dstDeviceBufferResult == Result::Success)) {
+        CleanUp();
+        return Result::AllocationFailed;
+    }
 
     // Create compute pipeline and bindings
-    mPipelineResources = mDevice->CreateVideoConversionPipeline(src, mSrcDeviceBuffer, dst, mDstDeviceBuffer);
+    const auto [pipelineResult, pipelineResources] = mDevice->CreateVideoConversionPipeline(src, mSrcDeviceBuffer, dst, mDstDeviceBuffer);
+    if (pipelineResult != Result::Success) {
+        CleanUp();
+        return Result::ShaderCompilationFailed;
+    }
+    mPipelineResources = pipelineResources;
     mCommand = mDevice->CreateCommandBuffer();
 
     // Record command buffer
@@ -181,24 +204,36 @@ void VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFram
 
         PW_ASSERT_VK(mCommand.end());
     }
+    return Result::Success;
 }
 
 void VulkanVideoConverter::CleanUp()
 {
-    const bool wasInitialized = mPrevSourceFrame.has_value() && mPrevDstFrame.has_value();
-    if (wasInitialized) {
+    if (mDevice != nullptr) {
         mDevice->DestroyCommand(mCommand);
         if (mEnableBenchmark) {
             mDevice->DestroyQueryPool(mTimestampQueryPool);
         }
         mDevice->DestroyVideoConversionPipeline(mPipelineResources);
-        mSrcLocalBuffer->Release();
-        mSrcDeviceBuffer->Release();
-        mDstDeviceBuffer->Release();
-        mDstLocalBuffer->Release();
-        mPrevSourceFrame = std::optional<VideoFrameWrapper>();
-        mPrevDstFrame = std::optional<VideoFrameWrapper>();
+        if (mSrcLocalBuffer != nullptr) {
+            mSrcLocalBuffer->Release();
+            mSrcLocalBuffer = nullptr;
+        }
+        if (mSrcDeviceBuffer != nullptr) {
+            mSrcDeviceBuffer->Release();
+            mSrcDeviceBuffer = nullptr;
+        }
+        if (mDstDeviceBuffer != nullptr) {
+            mDstDeviceBuffer->Release();
+            mDstDeviceBuffer = nullptr;
+        }
+        if (mDstLocalBuffer != nullptr) {
+            mDstLocalBuffer->Release();
+            mDstLocalBuffer = nullptr;
+        }
     }
+    mPrevSourceFrame = std::optional<VideoFrameWrapper>();
+    mPrevDstFrame = std::optional<VideoFrameWrapper>();
 }
 
 Result VulkanVideoConverter::Convert(const VideoFrameWrapper& src, VideoFrameWrapper& dst)
@@ -232,9 +267,14 @@ ResultValue<BenchmarkResult> VulkanVideoConverter::ConvertInternal(
         if (wasInitialized) {
             CleanUp();
         }
-        InitResources(src, dst);
-        mPrevSourceFrame = src;
-        mPrevDstFrame = dst;
+        Result initResult = InitResources(src, dst);
+        if (initResult == Result::Success) {
+            mPrevSourceFrame = src;
+            mPrevDstFrame = dst;
+        } else {
+            CleanUp();
+            return {initResult, {}};
+        }
     }
 
     // Copy src buffer into GPU readable buffer

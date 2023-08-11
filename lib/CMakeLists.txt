@@ -29,7 +29,8 @@ set(SOURCE
     src/VulkanBuffer.cpp
     src/VulkanBase.h
     src/Timer.h
-    ../thirdparty/VulkanMemoryAllocator/include/vk_mem_alloc.h
+    src/ColorSpaceUtils.h
+    src/ColorSpaceUtils.cpp
 )
 
 if(WIN32)
@@ -44,12 +45,19 @@ elseif(LINUX)
     )
 endif()
 
-set(SHADER ${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/convert.comp)
+set(SHADERS convert.comp)
+
+set(ALL_SHADERS ${SHADERS})
+foreach(SHADER ${ALL_SHADERS})
+    set(RELATIVE_SHADER_PATH "shaders/${SHADER}")
+    list(APPEND RELATIVE_SHADER_PATHS ${RELATIVE_SHADER_PATH})
+endforeach()
+source_group("Shaders" FILES ${RELATIVE_SHADER_PATHS})
 
 if(APPLE)
-    set(RESOURCE_FILES "${SHADER}.spv")
+    set(RESOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/${RELATIVE_SHADER_PATH}")
 elseif(LINUX)
-    set(RESOURCE_FILES "${SHADER}.spv")
+    set(RESOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/${RELATIVE_SHADER_PATH}")
     add_compile_options("-Wa,-I${CMAKE_CURRENT_SOURCE_DIR}/src/shaders")
 endif()
 
@@ -58,11 +66,11 @@ add_library(${SUBPROJECT_NAME} SHARED
     ${SOURCE}
     ${PLATFORM_SPECIFIC_SOURCES}
     ${RESOURCE_FILES}
+    ${RELATIVE_SHADER_PATHS}
 )
 set_target_properties(${SUBPROJECT_NAME} PROPERTIES PUBLIC_HEADER "${HEADERS}")
 
 include_directories(include)
-include_directories(../thirdparty)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../CXXUtils.cmake)
 pw_configure_cxx(${SUBPROJECT_NAME})
@@ -76,27 +84,20 @@ add_compile_definitions(VMA_VULKAN_VERSION=1002000)
 add_compile_definitions(VMA_STATIC_VULKAN_FUNCTIONS=0)
 add_compile_definitions(VMA_DYNAMIC_VULKAN_FUNCTIONS=1)
 find_package(Vulkan REQUIRED)
-target_link_libraries(${SUBPROJECT_NAME} Vulkan::Vulkan)
+target_link_libraries(${SUBPROJECT_NAME} PRIVATE Vulkan::Vulkan)
 include_directories(${Vulkan_INCLUDE_DIRS})
 
-# Add shader compilation build step
-if(WIN32)
-    set(SHADER_COMPILER_PATH "$ENV{VULKAN_SDK}/Bin/glslc.exe")
-elseif(APPLE)
-    set(SHADER_COMPILER_PATH "$ENV{VULKAN_SDK}/bin/glslc")
-elseif(LINUX)
-    set(SHADER_COMPILER_PATH "/usr/bin/glslc")
-endif()
+# Find and link VMA
+find_package(unofficial-vulkan-memory-allocator CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::vulkan-memory-allocator::vulkan-memory-allocator)
 
-set(COMPILED_SHADER "${SHADER}.spv")
-add_custom_command(
-    OUTPUT ${COMPILED_SHADER}
-    COMMAND ${SHADER_COMPILER_PATH} ${SHADER} -o ${COMPILED_SHADER}
-    DEPENDS ${SHADER}
-)
-set(SHADER_DEPENDENCIES "${SUBPROJECT_NAME}Shaders")
-add_custom_target(${SHADER_DEPENDENCIES} DEPENDS ${COMPILED_SHADER})
-add_dependencies(${SUBPROJECT_NAME} ${SHADER_DEPENDENCIES})
+# Add libshaderc dependency
+find_package(unofficial-shaderc CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::shaderc::shaderc)
+
+# Find and link GLM
+find_package(glm CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm)
 
 # Set up macOS framework
 if(APPLE)
@@ -126,7 +127,7 @@ if(APPLE)
         XCODE_ATTRIBUTE_GCC_WARN_UNUSED_FUNCTION "YES"
         XCODE_ATTRIBUTE_ENABLE_TESTABILITY "YES"
     )
-    target_link_libraries(${SUBPROJECT_NAME} "-framework CoreFoundation")
+    target_link_libraries(${SUBPROJECT_NAME} PRIVATE "-framework CoreFoundation")
     add_compile_definitions(PW_BUNDLE_ID="${PW_BUNDLE_ID}")
 elseif(LINUX)
     install(TARGETS ${SUBPROJECT_NAME} LIBRARY DESTINATION lib PUBLIC_HEADER DESTINATION include/PixelWeave)
