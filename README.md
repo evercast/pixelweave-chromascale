@@ -1,4 +1,4 @@
-# PixelWeave
+# Pixelweave Chromascale
 
 ## Overview
 
