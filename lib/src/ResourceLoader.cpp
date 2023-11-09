@@ -14,10 +14,10 @@
 
 #ifdef PW_PLATFORM_LINUX
 extern "C" {
-#include "incbin/incbin.h"
+#include "../../thirdparty/incbin/incbin.h"
 }
 
-INCBIN(ComputeShader, "convert.comp");
+INCBIN(ComputeShader, "../shaders/convert.comp");
 #endif
 
 namespace PixelWeave

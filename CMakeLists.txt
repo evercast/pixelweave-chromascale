@@ -9,12 +9,12 @@ if(UNIX AND NOT APPLE)
     set(LINUX YES)
 endif()
 
-# Setup vcpkg linkage
+# Set up vcpkg linkage
 set(VCPKG_TARGET_ARCHITECTURE "x64")
 set(VCPKG_CRT_LINKAGE "static")
 set(VCPKG_LIBRARY_LINKAGE "static")
-if (APPLE)
-    set(VCPKG_OVERLAY_TRIPLETS ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty)
+set(VCPKG_OVERLAY_TRIPLETS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/vcpkg-triplets")
+if(APPLE)
     set(VCPKG_HOST_TRIPLET x64-osx-evercast)
     set(VCPKG_TARGET_TRIPLET x64-osx-evercast)
     set(CMAKE_OSX_ARCHITECTURES x86_64)
