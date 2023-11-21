@@ -88,8 +88,8 @@ target_link_libraries(${SUBPROJECT_NAME} PRIVATE Vulkan::Vulkan)
 include_directories(${Vulkan_INCLUDE_DIRS})
 
 # Find and link VMA
-find_package(unofficial-vulkan-memory-allocator CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::vulkan-memory-allocator::vulkan-memory-allocator)
+find_package(VulkanMemoryAllocator CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE GPUOpen::VulkanMemoryAllocator)
 
 # Add libshaderc dependency
 find_package(unofficial-shaderc CONFIG REQUIRED)
