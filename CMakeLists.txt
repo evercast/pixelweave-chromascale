@@ -9,9 +9,19 @@ if(UNIX AND NOT APPLE)
     set(LINUX YES)
 endif()
 
-# Must be set before invoking project()
-set(CMAKE_OSX_ARCHITECTURES x86_64)
-set(CMAKE_OSX_DEPLOYMENT_TARGET 10.13)
+# Set up vcpkg linkage
+set(VCPKG_TARGET_ARCHITECTURE "x64")
+set(VCPKG_CRT_LINKAGE "static")
+set(VCPKG_LIBRARY_LINKAGE "static")
+set(VCPKG_OVERLAY_TRIPLETS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/vcpkg-triplets")
+if(APPLE)
+    set(VCPKG_HOST_TRIPLET x64-osx-evercast)
+    set(VCPKG_TARGET_TRIPLET x64-osx-evercast)
+    set(CMAKE_OSX_ARCHITECTURES x86_64)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.13)
+endif()
+set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/vcpkg/scripts/buildsystems/vcpkg.cmake")
+set(VCPKG_FEATURE_FLAGS manifests)
 
 # Build files in the top directory
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})

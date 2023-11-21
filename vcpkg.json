@@ -1,0 +1,9 @@
+{
+    "name": "pixelweave",
+    "version-string": "0.0.1",
+    "dependencies": [
+        "glm",
+        "shaderc",
+        "vulkan-memory-allocator"
+    ]
+}

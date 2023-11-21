@@ -22,7 +22,7 @@ private:
 
     Result ValidateInput(const VideoFrameWrapper& src, const VideoFrameWrapper& dst);
 
-    void InitResources(const VideoFrameWrapper& src, VideoFrameWrapper& dst);
+    Result InitResources(const VideoFrameWrapper& src, VideoFrameWrapper& dst);
     void CleanUp();
 
     VulkanDevice* mDevice;

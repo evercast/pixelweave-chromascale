@@ -20,10 +20,7 @@ public:
 
     VideoConverter* CreateVideoConverter() override;
 
-    // Memory handling
-    vk::DeviceMemory AllocateMemory(const vk::MemoryPropertyFlags& memoryFlags, const vk::MemoryRequirements memoryRequirements);
-
-    VulkanBuffer* CreateBuffer(
+    ResultValue<VulkanBuffer*> CreateBuffer(
         const vk::DeviceSize& size,
         const vk::BufferUsageFlags& usageFlags,
         const VmaAllocationCreateFlags& memoryFlags);
@@ -37,7 +34,7 @@ public:
         vk::DescriptorPool descriptorPool;
         vk::DescriptorSet descriptorSet;
     };
-    VideoConversionPipelineResources CreateVideoConversionPipeline(
+    ResultValue<VideoConversionPipelineResources> CreateVideoConversionPipeline(
         const VideoFrameWrapper& src,
         const VulkanBuffer* srcBuffer,
         const VideoFrameWrapper& dst,
