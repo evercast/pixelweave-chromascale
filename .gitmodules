@@ -4,3 +4,5 @@
 [submodule "thirdparty/vcpkg"]
 	path = thirdparty/vcpkg
 	url = https://github.com/microsoft/vcpkg/
+[submodule "thirdparty/VulkanMemoryAllocator"]
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
