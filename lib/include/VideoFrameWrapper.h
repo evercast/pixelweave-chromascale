@@ -5,14 +5,14 @@
 #include "Macros.h"
 #include "PixelFormat.h"
 
-namespace PixelWeave
+namespace Pixelweave
 {
 
 enum class Range { Limited = 0, Full = 1 };
 
 enum class YUVMatrix { BT709 = 0, BT2020 = 1 };
 
-struct PIXEL_WEAVE_LIB_CLASS VideoFrameWrapper {
+struct PIXELWEAVE_LIB_CLASS VideoFrameWrapper {
     uint8_t* buffer = nullptr;
     uint32_t stride = 0;  // Stride in bytes
     uint32_t chromaStride = 0; // Stride in bytes
@@ -49,4 +49,4 @@ struct InOutPictureInfo {
     PictureInfo dstPicture;
 };
 
-}  // namespace PixelWeave
+}  // namespace Pixelweave

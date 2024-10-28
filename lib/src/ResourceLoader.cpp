@@ -3,16 +3,16 @@
 #include <algorithm>
 #include <string>
 
-#ifdef PW_PLATFORM_WINDOWS
+#ifdef PIXELWEAVE_PLATFORM_WINDOWS
 #include <Windows.h>
 #include "ShaderResources.h"
 #endif
 
-#ifdef PW_PLATFORM_MACOS
+#ifdef PIXELWEAVE_PLATFORM_MACOS
 #include <CoreFoundation/CFBundle.h>
 #endif
 
-#ifdef PW_PLATFORM_LINUX
+#ifdef PIXELWEAVE_PLATFORM_LINUX
 extern "C" {
 #include "../../thirdparty/incbin/incbin.h"
 }
@@ -20,16 +20,16 @@ extern "C" {
 INCBIN(ComputeShader, "../shaders/convert.comp");
 #endif
 
-namespace PixelWeave
+namespace Pixelweave
 {
 
-#ifdef PW_PLATFORM_WINDOWS
+#ifdef PIXELWEAVE_PLATFORM_WINDOWS
 Resource LoadWindows(const Resource::Id& resourceId)
 {
     uint32_t actualId = 0;
     switch (resourceId) {
         case Resource::Id::ComputeShader:
-            actualId = PW_RESOURCE_COMPUTE_SHADER;
+            actualId = PIXELWEAVE_RESOURCE_COMPUTE_SHADER;
             break;
         default:
             return {nullptr, 0};
@@ -54,7 +54,7 @@ Resource LoadWindows(const Resource::Id& resourceId)
 }
 #endif
 
-#ifdef PW_PLATFORM_MACOS
+#ifdef PIXELWEAVE_PLATFORM_MACOS
 Resource LoadMac(const Resource::Id& resourceId)
 {
     struct ResourceName {
@@ -70,7 +70,7 @@ Resource LoadMac(const Resource::Id& resourceId)
         default:
             return {nullptr, 0};
     }
-    CFBundleRef libraryBundle = CFBundleGetBundleWithIdentifier(CFSTR(PW_BUNDLE_ID));
+    CFBundleRef libraryBundle = CFBundleGetBundleWithIdentifier(CFSTR(PIXELWEAVE_BUNDLE_ID));
     CFURLRef urlRef = CFBundleCopyResourceURL(libraryBundle, resourceName.name, resourceName.extension, NULL);
     CFStringRef urlString = CFURLCopyFileSystemPath(urlRef, kCFURLPOSIXPathStyle);
     std::string path = CFStringGetCStringPtr(urlString, kCFStringEncodingUTF8);
@@ -88,7 +88,7 @@ Resource LoadMac(const Resource::Id& resourceId)
 }
 #endif
 
-#ifdef PW_PLATFORM_LINUX
+#ifdef PIXELWEAVE_PLATFORM_LINUX
 Resource LoadLinux(const Resource::Id& resourceId)
 {
     const uint8_t* data = nullptr;
@@ -107,22 +107,22 @@ Resource LoadLinux(const Resource::Id& resourceId)
 
 Resource ResourceLoader::Load(const Resource::Id& resourceId)
 {
-#if defined(PW_PLATFORM_WINDOWS)
+#if defined(PIXELWEAVE_PLATFORM_WINDOWS)
     return LoadWindows(resourceId);
-#elif defined(PW_PLATFORM_MACOS)
+#elif defined(PIXELWEAVE_PLATFORM_MACOS)
     return LoadMac(resourceId);
-#elif defined(PW_PLATFORM_LINUX)
+#elif defined(PIXELWEAVE_PLATFORM_LINUX)
     return LoadLinux(resourceId);
 #endif
 }
 
 void ResourceLoader::CleanUp(Resource& resource)
 {
-#ifndef PW_PLATFORM_LINUX
+#ifndef PIXELWEAVE_PLATFORM_LINUX
     delete[] resource.buffer;
 #endif
     resource.buffer = nullptr;
     resource.size = 0;
 }
 
-}  // namespace PixelWeave
+}  // namespace Pixelweave

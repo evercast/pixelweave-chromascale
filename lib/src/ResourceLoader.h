@@ -5,7 +5,7 @@
 
 #include "Macros.h"
 
-namespace PixelWeave
+namespace Pixelweave
 {
 
 struct Resource {
@@ -22,4 +22,4 @@ public:
     static void CleanUp(Resource& resource);
 };
 
-}  // namespace PixelWeave
+}  // namespace Pixelweave

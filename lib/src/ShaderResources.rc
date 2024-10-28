@@ -1,4 +1,4 @@
 #include <windows.h>
 #include "ShaderResources.h"
 
-PW_RESOURCE_COMPUTE_SHADER RCDATA "..\\..\\lib\\shaders\\convert.comp"
+PIXELWEAVE_RESOURCE_COMPUTE_SHADER RCDATA "..\\..\\lib\\shaders\\convert.comp"

@@ -5,7 +5,7 @@
 #include "DebugUtils.h"
 #include "Timer.h"
 
-namespace PixelWeave
+namespace Pixelweave
 {
 VulkanVideoConverter::VulkanVideoConverter(VulkanDevice* device)
     : mDevice(nullptr),
@@ -118,7 +118,7 @@ Result VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFr
     // Record command buffer
     {
         const vk::CommandBufferBeginInfo commandBeginInfo = vk::CommandBufferBeginInfo();
-        PW_ASSERT_VK(mCommand.begin(commandBeginInfo));
+        PIXELWEAVE_ASSERT_VK(mCommand.begin(commandBeginInfo));
 
         if (mEnableBenchmark) {
             mTimestampQueryPool = mDevice->CreateTimestampQueryPool(sTimemestampQueryCount);
@@ -202,7 +202,7 @@ Result VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFr
             }
         }
 
-        PW_ASSERT_VK(mCommand.end());
+        PIXELWEAVE_ASSERT_VK(mCommand.end());
     }
     return Result::Success;
 }
@@ -279,7 +279,7 @@ ResultValue<BenchmarkResult> VulkanVideoConverter::ConvertInternal(
 
     // Copy src buffer into GPU readable buffer
     BenchmarkResult benchmarkResult;
-    PixelWeave::Timer cpuTimer;
+    Pixelweave::Timer cpuTimer;
     cpuTimer.Start();
     const vk::DeviceSize srcBufferSize = src.GetBufferSize();
     uint8_t* mappedSrcBuffer = mSrcLocalBuffer->MapBuffer();
@@ -320,4 +320,4 @@ VulkanVideoConverter::~VulkanVideoConverter()
     mDevice->Release();
 }
 
-}  // namespace PixelWeave
+}  // namespace Pixelweave

@@ -5,7 +5,7 @@
 
 #include "Macros.h"
 
-namespace PixelWeave
+namespace Pixelweave
 {
 class Timer
 {
@@ -22,4 +22,4 @@ public:
 private:
     std::chrono::steady_clock::time_point beginTime;
 };
-}  // namespace PixelWeave
+}  // namespace Pixelweave

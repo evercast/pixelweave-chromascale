@@ -6,7 +6,7 @@
 #include "VulkanBase.h"
 #include "VulkanDevice.h"
 
-namespace PixelWeave
+namespace Pixelweave
 {
 class VulkanVideoConverter : public VideoConverter
 {
@@ -47,4 +47,4 @@ private:
     vk::QueryPool mTimestampQueryPool;
     bool mEnableBenchmark;
 };
-}  // namespace PixelWeave
+}  // namespace Pixelweave

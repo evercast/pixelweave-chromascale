@@ -6,7 +6,7 @@
 #include "Result.h"
 #include "VulkanBase.h"
 
-namespace PixelWeave
+namespace Pixelweave
 {
 class VulkanInstance
 {
@@ -28,8 +28,8 @@ private:
 #else
     vk::DispatchLoaderDynamic mDynamicDispatcher;
 #endif
-#if defined(PW_DEBUG)
+#if defined(PIXELWEAVE_DEBUG)
     vk::DebugUtilsMessengerEXT mDebugMessenger;
 #endif
 };
-}  // namespace PixelWeave
+}  // namespace Pixelweave

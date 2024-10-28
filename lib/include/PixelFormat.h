@@ -3,7 +3,7 @@
 #include <array>
 #include <cstdint>
 
-namespace PixelWeave
+namespace Pixelweave
 {
 
 enum class PixelFormat : uint32_t {
@@ -52,4 +52,4 @@ constexpr std::array<PixelFormat, 19> AllPixelFormats{
 
 enum class SubsampleType : uint32_t { RGB = 0, YUV420 = 1, YUV422 = 2, YUV444 = 3 };
 
-}  // namespace PixelWeave
+}  // namespace Pixelweave

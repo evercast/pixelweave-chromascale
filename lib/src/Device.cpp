@@ -2,10 +2,10 @@
 
 #include "VulkanDevice.h"
 
-namespace PixelWeave
+namespace Pixelweave
 {
 ResultValue<Device*> Device::Create()
 {
     return VulkanDevice::Create();
 }
-}  // namespace PixelWeave
+}  // namespace Pixelweave

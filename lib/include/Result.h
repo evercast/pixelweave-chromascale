@@ -2,7 +2,7 @@
 
 #include <tuple>
 
-namespace PixelWeave
+namespace Pixelweave
 {
 
 enum class Result {
@@ -26,4 +26,4 @@ struct ResultValue {
 
     operator std::tuple<Result&, T&>() { return std::tuple<Result&, T&>(result, value); }
 };
-}  // namespace PixelWeave
+}  // namespace Pixelweave

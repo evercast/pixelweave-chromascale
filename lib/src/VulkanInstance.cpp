@@ -3,18 +3,18 @@
 #include "DebugUtils.h"
 #include "VulkanDevice.h"
 
-namespace PixelWeave
+namespace Pixelweave
 {
 
-#if defined(PW_DEBUG)
+#if defined(PIXELWEAVE_DEBUG)
 static VKAPI_ATTR VkBool32 VKAPI_CALL vkDebugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT,
     const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
     void*)
 {
-    PW_LOG(callbackData->pMessage);
-    PW_ASSERT_MSG(
+    PIXELWEAVE_LOG(callbackData->pMessage);
+    PIXELWEAVE_ASSERT_MSG(
         messageSeverity != VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT &&
             messageSeverity != VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT,
         callbackData->pMessage);
@@ -25,36 +25,36 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL vkDebugCallback(
 ResultValue<std::shared_ptr<VulkanInstance>> VulkanInstance::Create()
 {
     const vk::ApplicationInfo appInfo = vk::ApplicationInfo()
-                                            .setPApplicationName("PixelWeave")
+                                            .setPApplicationName("Pixelweave")
                                             .setApplicationVersion(VK_MAKE_VERSION(0, 0, 1))
-                                            .setPEngineName("PixelWeave")
+                                            .setPEngineName("Pixelweave")
                                             .setEngineVersion(VK_MAKE_VERSION(0, 0, 1))
                                             .setApiVersion(VK_API_VERSION_1_2);
 
     std::vector<const char*> layersToEnable
     {
-#if defined(PW_DEBUG)
+#if defined(PIXELWEAVE_DEBUG)
         "VK_LAYER_KHRONOS_validation"
 #endif
     };
 
     std::vector<const char*> extensionsToEnable
     {
-#if defined(PW_PLATFORM_MACOS)
+#if defined(PIXELWEAVE_PLATFORM_MACOS)
         VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME
 #endif
     };
 
-#if defined(PW_DEBUG)
+#if defined(PIXELWEAVE_DEBUG)
     {
         const std::vector<const char*> debugExtensions{VK_EXT_DEBUG_REPORT_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME};
         extensionsToEnable.insert(extensionsToEnable.end(), debugExtensions.begin(), debugExtensions.end());
     }
 #endif
 
-    std::vector<vk::ExtensionProperties> supportedExtensions = PW_ASSERT_VK(vk::enumerateInstanceExtensionProperties());
+    std::vector<vk::ExtensionProperties> supportedExtensions = PIXELWEAVE_ASSERT_VK(vk::enumerateInstanceExtensionProperties());
 
-    auto supportedLayers = PW_ASSERT_VK(vk::enumerateInstanceLayerProperties());
+    auto supportedLayers = PIXELWEAVE_ASSERT_VK(vk::enumerateInstanceLayerProperties());
 
     bool allExtensionsSupported = true;
     for (const char* extensionName : extensionsToEnable) {
@@ -71,7 +71,7 @@ ResultValue<std::shared_ptr<VulkanInstance>> VulkanInstance::Create()
     }
 
     vk::InstanceCreateFlags createFlags;
-#ifdef PW_PLATFORM_MACOS
+#ifdef PIXELWEAVE_PLATFORM_MACOS
     createFlags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
 #endif
 
@@ -97,7 +97,7 @@ VulkanInstance::VulkanInstance(const vk::Instance& instance) : mInstanceHandle(i
 #endif
     mDynamicDispatcher.init(mInstanceHandle, vkGetInstanceProcAddr);
 
-#if defined(PW_DEBUG)
+#if defined(PIXELWEAVE_DEBUG)
     const vk::DebugUtilsMessengerCreateInfoEXT debugCallbackCreateInfo =
         vk::DebugUtilsMessengerCreateInfoEXT()
             .setMessageSeverity(
@@ -108,7 +108,7 @@ VulkanInstance::VulkanInstance(const vk::Instance& instance) : mInstanceHandle(i
                 vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance)
             .setPfnUserCallback(vkDebugCallback);
 
-    mDebugMessenger = PW_ASSERT_VK(mInstanceHandle.createDebugUtilsMessengerEXT(debugCallbackCreateInfo, nullptr, mDynamicDispatcher));
+    mDebugMessenger = PIXELWEAVE_ASSERT_VK(mInstanceHandle.createDebugUtilsMessengerEXT(debugCallbackCreateInfo, nullptr, mDynamicDispatcher));
 #endif
 }
 
@@ -123,7 +123,7 @@ ResultValue<Device*> VulkanInstance::CreateDevice(const std::shared_ptr<VulkanIn
 
 ResultValue<vk::PhysicalDevice> VulkanInstance::FindSuitablePhysicalDevice()
 {
-    const std::vector<vk::PhysicalDevice> physicalDevices = PW_ASSERT_VK(mInstanceHandle.enumeratePhysicalDevices());
+    const std::vector<vk::PhysicalDevice> physicalDevices = PIXELWEAVE_ASSERT_VK(mInstanceHandle.enumeratePhysicalDevices());
     vk::PhysicalDevice chosenDevice = nullptr;
     uint32_t chosenDeviceScore = 0;
     for (const vk::PhysicalDevice& physicalDevice : physicalDevices) {
@@ -168,10 +168,10 @@ ResultValue<vk::PhysicalDevice> VulkanInstance::FindSuitablePhysicalDevice()
 
 VulkanInstance::~VulkanInstance()
 {
-#if defined(PW_DEBUG)
+#if defined(PIXELWEAVE_DEBUG)
     mInstanceHandle.destroyDebugUtilsMessengerEXT(mDebugMessenger, nullptr, mDynamicDispatcher);
 #endif
     mInstanceHandle.destroy();
 }
 
-}  // namespace PixelWeave
+}  // namespace Pixelweave

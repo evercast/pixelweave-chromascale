@@ -1,6 +1,6 @@
 # Pixelweave Chromascale
 
-Pixelweave is a multi-platform library that leverages GPU computing to perform video frame conversions. Pixelweave is based on the graphics library Vulkan, allowing for a single implementation of GPU kernels that is compatible with most modern graphics hardware. It supports multiple pixel formats such as RGBA and chroma-subsampled YUV, using up to 16 bits per channel. The implemented compute shaders use a novel generic approach that samples 2x2 pixel windows, making the rest of the code easily extensible and independent of the source and destination formats. Initial tests show that Pixelweave provides significant speedups when compared to the state-of-the-art CPU-based libraries, allowing real-time streaming applications to offload resource-demanding tasks from the CPU and therefore improve overall performance. 
+Pixelweave is a multi-platform library that leverages GPU computing to perform video frame conversions. Pixelweave is based on the graphics library Vulkan, allowing for a single implementation of GPU kernels that is compatible with most modern graphics hardware. It supports multiple pixel formats such as RGBA and chroma-subsampled YUV, using up to 16 bits per channel. The implemented compute shaders use a novel generic approach that samples 2x2 pixel windows, making the rest of the code easily extensible and independent of the source and destination formats. Initial tests show that Pixelweave provides significant speedups when compared to the state-of-the-art CPU-based libraries, allowing real-time streaming applications to offload resource-demanding tasks from the CPU and therefore improve overall performance.
 
 ## How to cite
 
@@ -41,35 +41,35 @@ Pixelweave is a multi-platform library that leverages GPU computing to perform v
     - macOS: `cmake -G Xcode -S . -B build`
     - Linux: `cmake -G "Unix Makefiles" -S . -B build`
 3. Open the project. You'll see two projects:
-    - `PixelWeave`: The main library project. Compiling it generates the distributable `.dll` or `.framework`.
+    - `Pixelweave`: The main library project. Compiling it generates the distributable `.dll` or `.framework`.
     - `Tests`: A set of helper functions that can aide in quick testing while developing (don't rely on them, though).
 4. Run `Tests` to check your environment was correctly set up.
 
 ## Usage
 
-After linking the binaries for your platform, use PixelWeave as shown below:
+After linking the binaries for your platform, use Pixelweave as shown below:
 
 ```cpp
-auto [result, device] = PixelWeave::Device::Create();
-if (result == PixelWeave::Result::Success) {
+auto [result, device] = Pixelweave::Device::Create();
+if (result == Pixelweave::Result::Success) {
     // Generate wrapper around source frame buffer
-    auto srcBuffer = PixelWeave::VideoFrameWrapper{ 
+    auto srcBuffer = Pixelweave::VideoFrameWrapper{
         srcBuffer,
         bytesPerLine,
         srcWidth,
         srcHeight,
-        PixelWeave::PixelFormat::Interleaved8BitUYVY};
+        Pixelweave::PixelFormat::Interleaved8BitUYVY};
 
     // Generate wrapper around dst frame buffer (application controls allocation)
-    auto dstBuffer = PixelWeave::VideoFrameWrapper{
+    auto dstBuffer = Pixelweave::VideoFrameWrapper{
         dstBuffer,
         dstStride,
         dstWidth,
         dstHeight,
-        PixelWeave::PixelFormat::Planar8Bit444};
+        Pixelweave::PixelFormat::Planar8Bit444};
 
     // Create converter and call
-    PixelWeave::VideoConverter* videoConverter = videoConversionDevice->CreateVideoConverter();
+    Pixelweave::VideoConverter* videoConverter = videoConversionDevice->CreateVideoConverter();
     videoConverter->Convert(srcBuffer, dstBuffer);
 
     // Release both converter and device

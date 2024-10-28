@@ -3,7 +3,7 @@
 #include "DebugUtils.h"
 #include "VulkanDevice.h"
 
-namespace PixelWeave
+namespace Pixelweave
 {
 
 ResultValue<VulkanBuffer*> VulkanBuffer::Create(
@@ -54,7 +54,7 @@ uint8_t* VulkanBuffer::MapBuffer()
 {
     VmaAllocator allocator = mDevice->GetAllocator();
     uint8_t* mappedResult = nullptr;
-    PW_ASSERT_VK(vmaMapMemory(allocator, mAllocation, (void**)&mappedResult));
+    PIXELWEAVE_ASSERT_VK(vmaMapMemory(allocator, mAllocation, (void**)&mappedResult));
     return mappedResult;
 }
 
@@ -71,4 +71,4 @@ VulkanBuffer::~VulkanBuffer()
     mDevice->Release();
 }
 
-}  // namespace PixelWeave
+}  // namespace Pixelweave

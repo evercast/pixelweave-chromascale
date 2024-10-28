@@ -1,6 +1,6 @@
 #include "RefCountPtr.h"
 
-namespace PixelWeave
+namespace Pixelweave
 {
 RefCountPtr::RefCountPtr() : refCount(1) {}
 
@@ -18,4 +18,4 @@ uint32_t RefCountPtr::Release()
     return refCount;
 }
 
-}  // namespace PixelWeave
+}  // namespace Pixelweave

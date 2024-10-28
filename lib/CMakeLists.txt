@@ -1,4 +1,4 @@
-set(SUBPROJECT_NAME "PixelWeave")
+set(SUBPROJECT_NAME "Pixelweave")
 
 # Public headers
 set(HEADERS
@@ -76,7 +76,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/../CXXUtils.cmake)
 pw_configure_cxx(${SUBPROJECT_NAME})
 
 # Set up DLL export macro
-add_compile_definitions(PW_IS_LIB)
+add_compile_definitions(PIXELWEAVE_IS_LIB)
 
 # Find Vulkan SDK
 add_compile_definitions(VULKAN_HPP_NO_EXCEPTIONS)
@@ -101,17 +101,17 @@ target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm)
 
 # Set up macOS framework
 if(APPLE)
-    set(PW_BUNDLE_ID us.evercast.pixelweave)
+    set(PIXELWEAVE_BUNDLE_ID us.evercast.pixelweave)
     set_target_properties(${SUBPROJECT_NAME} PROPERTIES
         FRAMEWORK TRUE
         FRAMEWORK_VERSION A
         MACOSX_BUNDLE TRUE
-        MACOSX_FRAMEWORK_IDENTIFIER ${PW_BUNDLE_ID}
+        MACOSX_FRAMEWORK_IDENTIFIER ${PIXELWEAVE_BUNDLE_ID}
         VERSION 1.0.0
         SOVERSION 1.0.0
         PUBLIC_HEADER "${HEADERS}"
         RESOURCE "${RESOURCE_FILES}"
-        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER ${PW_BUNDLE_ID}
+        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER ${PIXELWEAVE_BUNDLE_ID}
         XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT "dwarf-with-dsym"
         XCODE_ATTRIBUTE_INSTALL_PATH "@rpath"
         XCODE_ATTRIBUTE_SKIP_INSTALL "YES"
@@ -128,7 +128,7 @@ if(APPLE)
         XCODE_ATTRIBUTE_ENABLE_TESTABILITY "YES"
     )
     target_link_libraries(${SUBPROJECT_NAME} PRIVATE "-framework CoreFoundation")
-    add_compile_definitions(PW_BUNDLE_ID="${PW_BUNDLE_ID}")
+    add_compile_definitions(PIXELWEAVE_BUNDLE_ID="${PIXELWEAVE_BUNDLE_ID}")
 elseif(LINUX)
-    install(TARGETS ${SUBPROJECT_NAME} LIBRARY DESTINATION lib PUBLIC_HEADER DESTINATION include/PixelWeave)
+    install(TARGETS ${SUBPROJECT_NAME} LIBRARY DESTINATION lib PUBLIC_HEADER DESTINATION include/Pixelweave)
 endif()

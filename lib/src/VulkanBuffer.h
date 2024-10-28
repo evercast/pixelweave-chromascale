@@ -4,7 +4,7 @@
 #include "Result.h"
 #include "VulkanBase.h"
 
-namespace PixelWeave
+namespace Pixelweave
 {
 class VulkanDevice;
 
@@ -40,4 +40,4 @@ private:
     VmaAllocation mAllocation;
     vk::DescriptorBufferInfo mDescriptorInfo;
 };
-}  // namespace PixelWeave
+}  // namespace Pixelweave

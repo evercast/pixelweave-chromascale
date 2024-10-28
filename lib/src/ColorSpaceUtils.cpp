@@ -1,6 +1,6 @@
 #include "ColorSpaceUtils.h"
 
-namespace PixelWeave
+namespace Pixelweave
 {
 glm::mat3 GetMatrix(YUVMatrix matrix)
 {
@@ -46,4 +46,4 @@ glm::vec3 GetYUVOffset(Range range, uint32_t bitDepth)
                static_cast<float>(1 << (bitDepth - 1))) /
            glm::vec3(static_cast<float>((1 << bitDepth) - 1));
 }
-}  // namespace PixelWeave
+}  // namespace Pixelweave

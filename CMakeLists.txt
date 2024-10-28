@@ -2,14 +2,14 @@ cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 
 cmake_policy(SET CMP0126 NEW)
 
-set(PROJECT_NAME PixelWeave)
+set(PROJECT_NAME Pixelweave)
 set(VERSION 0.1.0)
 
 if(UNIX AND NOT APPLE)
     set(LINUX ON)
 endif()
 
-set(PIXELWEAVE_ARCH x86_64 CACHE STRING "PixelWeave build architecture (may be `arm64` or `x86_64`).")
+set(PIXELWEAVE_ARCH x86_64 CACHE STRING "Pixelweave build architecture (may be `arm64` or `x86_64`).")
 
 # Set up vcpkg
 set(VCPKG_OVERLAY_TRIPLETS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/vcpkg-triplets")

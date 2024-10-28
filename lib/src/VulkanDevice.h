@@ -6,7 +6,7 @@
 #include "VulkanBase.h"
 #include "VulkanBuffer.h"
 
-namespace PixelWeave
+namespace Pixelweave
 {
 
 class VulkanInstance;
@@ -70,4 +70,4 @@ private:
     VmaAllocator mAllocator;
 };
 
-}  // namespace PixelWeave
+}  // namespace Pixelweave

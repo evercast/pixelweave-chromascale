@@ -14,5 +14,5 @@ add_executable(${SUBPROJECT_NAME} ${HEADERS} ${SOURCES})
 include(${CMAKE_CURRENT_SOURCE_DIR}/../CXXUtils.cmake)
 pw_configure_cxx(${SUBPROJECT_NAME})
 
-add_dependencies(${SUBPROJECT_NAME} PixelWeave)
-target_link_libraries(${SUBPROJECT_NAME} PixelWeave)
+add_dependencies(${SUBPROJECT_NAME} Pixelweave)
+target_link_libraries(${SUBPROJECT_NAME} Pixelweave)

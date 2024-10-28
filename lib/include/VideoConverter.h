@@ -5,7 +5,7 @@
 #include "Result.h"
 #include "VideoFrameWrapper.h"
 
-namespace PixelWeave
+namespace Pixelweave
 {
 
 struct BenchmarkResult {
@@ -17,7 +17,7 @@ struct BenchmarkResult {
     uint64_t copyDeviceVisibleToHostLocalTimeMicros = 0;
 };
 
-class PIXEL_WEAVE_LIB_CLASS VideoConverter : public RefCountPtr
+class PIXELWEAVE_LIB_CLASS VideoConverter : public RefCountPtr
 {
 public:
     VideoConverter() = default;
@@ -26,4 +26,4 @@ public:
     virtual ResultValue<BenchmarkResult> ConvertWithBenchmark(const VideoFrameWrapper& src, VideoFrameWrapper& dst) = 0;
     virtual ~VideoConverter() override = default;
 };
-}  // namespace PixelWeave
+}  // namespace Pixelweave

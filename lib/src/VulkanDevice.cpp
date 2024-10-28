@@ -16,7 +16,7 @@
 #include "VulkanInstance.h"
 #include "VulkanVideoConverter.h"
 
-namespace PixelWeave
+namespace Pixelweave
 {
 
 ResultValue<Device*> VulkanDevice::Create()
@@ -40,7 +40,7 @@ VulkanDevice::VulkanDevice(const std::shared_ptr<VulkanInstance>& instance, vk::
         }
         queueFamilyIndex += 1;
     }
-    PW_ASSERT(queueFamilyIndex < static_cast<uint32_t>(queueFamiliesProperties.size()));
+    PIXELWEAVE_ASSERT(queueFamilyIndex < static_cast<uint32_t>(queueFamiliesProperties.size()));
     const std::vector<float> queuePriorities{1.0f};
     vk::DeviceQueueCreateInfo queueCreateInfo =
         vk::DeviceQueueCreateInfo().setQueueFamilyIndex(queueFamilyIndex).setQueuePriorities(queuePriorities);
@@ -53,13 +53,13 @@ VulkanDevice::VulkanDevice(const std::shared_ptr<VulkanInstance>& instance, vk::
 
     const vk::DeviceCreateInfo deviceCreateInfo =
         vk::DeviceCreateInfo().setQueueCreateInfos(queueCreateInfo).setPNext(&physicalDeviceFeatures);
-    mLogicalDevice = PW_ASSERT_VK(mPhysicalDevice.createDevice(deviceCreateInfo));
+    mLogicalDevice = PIXELWEAVE_ASSERT_VK(mPhysicalDevice.createDevice(deviceCreateInfo));
 
     mComputeQueue = mLogicalDevice.getQueue(queueFamilyIndex, 0);
 
     const vk::CommandPoolCreateInfo commandPoolCreateInfo =
         vk::CommandPoolCreateInfo().setQueueFamilyIndex(queueFamilyIndex).setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
-    mCommandPool = PW_ASSERT_VK(mLogicalDevice.createCommandPool(commandPoolCreateInfo));
+    mCommandPool = PIXELWEAVE_ASSERT_VK(mLogicalDevice.createCommandPool(commandPoolCreateInfo));
 
     VmaVulkanFunctions vulkanFunctions = {};
     vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
@@ -122,7 +122,7 @@ std::vector<uint32_t> CompileShader(const VideoFrameWrapper& src, const VideoFra
         return stringStream.str();
     };
 
-    const glm::mat3 srcRGBToYUVMatrix = PixelWeave::GetMatrix(src.yuvMatrix);
+    const glm::mat3 srcRGBToYUVMatrix = Pixelweave::GetMatrix(src.yuvMatrix);
     const glm::mat3 srcYUVToRGBMatrix = glm::inverse(srcRGBToYUVMatrix);
 
     options.AddMacroDefinition("SRC_PICTURE_WIDTH", std::to_string(src.width));
@@ -141,9 +141,9 @@ std::vector<uint32_t> CompileShader(const VideoFrameWrapper& src, const VideoFra
     options.AddMacroDefinition("SRC_PICTURE_YUV_MATRIX", std::to_string(static_cast<uint32_t>(src.yuvMatrix)));
     options.AddMacroDefinition("SRC_PICTURE_RGB_TO_YUV_MATRIX", encodeMatrix(srcRGBToYUVMatrix));
     options.AddMacroDefinition("SRC_PICTURE_YUV_TO_RGB_MATRIX", encodeMatrix(srcYUVToRGBMatrix));
-    options.AddMacroDefinition("SRC_PICTURE_YUV_OFFSET", encodeVector(PixelWeave::GetYUVOffset(src.range, src.GetBitDepth())));
-    options.AddMacroDefinition("SRC_PICTURE_YUV_OFFSET_FULL", encodeVector(PixelWeave::GetYUVOffset(Range::Full, src.GetBitDepth())));
-    options.AddMacroDefinition("SRC_PICTURE_YUV_SCALE", encodeVector(PixelWeave::GetYUVScale(src.range, src.GetBitDepth())));
+    options.AddMacroDefinition("SRC_PICTURE_YUV_OFFSET", encodeVector(Pixelweave::GetYUVOffset(src.range, src.GetBitDepth())));
+    options.AddMacroDefinition("SRC_PICTURE_YUV_OFFSET_FULL", encodeVector(Pixelweave::GetYUVOffset(Range::Full, src.GetBitDepth())));
+    options.AddMacroDefinition("SRC_PICTURE_YUV_SCALE", encodeVector(Pixelweave::GetYUVScale(src.range, src.GetBitDepth())));
 
     const glm::mat3 dstRGBToYUVMatrix = GetMatrix(dst.yuvMatrix);
     const glm::mat3 dstYUVToRGBMatrix = glm::inverse(dstRGBToYUVMatrix);
@@ -164,9 +164,9 @@ std::vector<uint32_t> CompileShader(const VideoFrameWrapper& src, const VideoFra
     options.AddMacroDefinition("DST_PICTURE_YUV_MATRIX", std::to_string(static_cast<uint32_t>(dst.yuvMatrix)));
     options.AddMacroDefinition("DST_PICTURE_RGB_TO_YUV_MATRIX", encodeMatrix(dstRGBToYUVMatrix));
     options.AddMacroDefinition("DST_PICTURE_YUV_TO_RGB_MATRIX", encodeMatrix(dstYUVToRGBMatrix));
-    options.AddMacroDefinition("DST_PICTURE_YUV_OFFSET", encodeVector(PixelWeave::GetYUVOffset(dst.range, dst.GetBitDepth())));
-    options.AddMacroDefinition("DST_PICTURE_YUV_OFFSET_FULL", encodeVector(PixelWeave::GetYUVOffset(Range::Full, dst.GetBitDepth())));
-    options.AddMacroDefinition("DST_PICTURE_YUV_SCALE", encodeVector(PixelWeave::GetYUVScale(dst.range, dst.GetBitDepth())));
+    options.AddMacroDefinition("DST_PICTURE_YUV_OFFSET", encodeVector(Pixelweave::GetYUVOffset(dst.range, dst.GetBitDepth())));
+    options.AddMacroDefinition("DST_PICTURE_YUV_OFFSET_FULL", encodeVector(Pixelweave::GetYUVOffset(Range::Full, dst.GetBitDepth())));
+    options.AddMacroDefinition("DST_PICTURE_YUV_SCALE", encodeVector(Pixelweave::GetYUVScale(dst.range, dst.GetBitDepth())));
 
     shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(
         reinterpret_cast<const char*>(shaderResource.buffer),
@@ -205,11 +205,11 @@ ResultValue<VulkanDevice::VideoConversionPipelineResources> VulkanDevice::Create
 
     const vk::DescriptorSetLayoutCreateInfo descriptorLayoutInfo =
         vk::DescriptorSetLayoutCreateInfo().setBindings(descriptorLayoutBindings);
-    resources.descriptorLayout = PW_ASSERT_VK(mLogicalDevice.createDescriptorSetLayout(descriptorLayoutInfo));
+    resources.descriptorLayout = PIXELWEAVE_ASSERT_VK(mLogicalDevice.createDescriptorSetLayout(descriptorLayoutInfo));
 
     // Create pipeline including layout, shader (loaded from file), and pipeline itself
     const vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo().setSetLayouts(resources.descriptorLayout);
-    resources.pipelineLayout = PW_ASSERT_VK(mLogicalDevice.createPipelineLayout(pipelineLayoutInfo));
+    resources.pipelineLayout = PIXELWEAVE_ASSERT_VK(mLogicalDevice.createPipelineLayout(pipelineLayoutInfo));
 
     std::vector<uint32_t> compiledShader = CompileShader(src, dst);
     if (compiledShader.empty()) {
@@ -218,25 +218,25 @@ ResultValue<VulkanDevice::VideoConversionPipelineResources> VulkanDevice::Create
     }
     vk::ShaderModuleCreateInfo shaderCreateInfo =
         vk::ShaderModuleCreateInfo().setCodeSize(compiledShader.size() * sizeof(uint32_t)).setPCode(compiledShader.data());
-    resources.shader = PW_ASSERT_VK(mLogicalDevice.createShaderModule(shaderCreateInfo));
+    resources.shader = PIXELWEAVE_ASSERT_VK(mLogicalDevice.createShaderModule(shaderCreateInfo));
 
     const vk::PipelineShaderStageCreateInfo stageCreateInfo =
         vk::PipelineShaderStageCreateInfo().setStage(vk::ShaderStageFlagBits::eCompute).setModule(resources.shader).setPName("main");
     const vk::ComputePipelineCreateInfo computePipelineInfo =
         vk::ComputePipelineCreateInfo().setLayout(resources.pipelineLayout).setStage(stageCreateInfo);
-    resources.pipeline = PW_ASSERT_VK(mLogicalDevice.createComputePipeline(nullptr, computePipelineInfo));
+    resources.pipeline = PIXELWEAVE_ASSERT_VK(mLogicalDevice.createComputePipeline(nullptr, computePipelineInfo));
 
     // Write descriptor sets for each buffer
     const vk::DescriptorPoolSize poolSize = vk::DescriptorPoolSize().setDescriptorCount(2).setType(vk::DescriptorType::eStorageBuffer);
     const vk::DescriptorPoolCreateInfo poolInfo =
         vk::DescriptorPoolCreateInfo().setPoolSizes(poolSize).setMaxSets(1).setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
-    resources.descriptorPool = PW_ASSERT_VK(mLogicalDevice.createDescriptorPool(poolInfo));
+    resources.descriptorPool = PIXELWEAVE_ASSERT_VK(mLogicalDevice.createDescriptorPool(poolInfo));
 
     const vk::DescriptorSetAllocateInfo descriptorAllocInfo = vk::DescriptorSetAllocateInfo()
                                                                   .setDescriptorPool(resources.descriptorPool)
                                                                   .setSetLayouts(resources.descriptorLayout)
                                                                   .setDescriptorSetCount(1);
-    resources.descriptorSet = PW_ASSERT_VK(mLogicalDevice.allocateDescriptorSets(descriptorAllocInfo))[0];
+    resources.descriptorSet = PIXELWEAVE_ASSERT_VK(mLogicalDevice.allocateDescriptorSets(descriptorAllocInfo))[0];
 
     const std::vector<vk::WriteDescriptorSet> imageWriteDescriptorSet{
         vk::WriteDescriptorSet()
@@ -270,13 +270,13 @@ vk::CommandBuffer VulkanDevice::CreateCommandBuffer()
 {
     vk::CommandBufferAllocateInfo commandInfo =
         vk::CommandBufferAllocateInfo().setCommandBufferCount(1).setCommandPool(mCommandPool).setLevel(vk::CommandBufferLevel::ePrimary);
-    return PW_ASSERT_VK(mLogicalDevice.allocateCommandBuffers(commandInfo))[0];
+    return PIXELWEAVE_ASSERT_VK(mLogicalDevice.allocateCommandBuffers(commandInfo))[0];
 }
 
 void VulkanDevice::SubmitCommand(const vk::CommandBuffer& commandBuffer, const vk::Fence& fence)
 {
     const vk::SubmitInfo submitInfo = vk::SubmitInfo().setCommandBuffers(commandBuffer);
-    PW_ASSERT_VK(mComputeQueue.submit(submitInfo, fence));
+    PIXELWEAVE_ASSERT_VK(mComputeQueue.submit(submitInfo, fence));
 }
 
 void VulkanDevice::DestroyCommand(vk::CommandBuffer& commandBuffer)
@@ -294,7 +294,7 @@ vk::QueryPool VulkanDevice::CreateTimestampQueryPool(const uint32_t queryCount)
 {
     vk::QueryPoolCreateInfo queryPoolCreateInfo =
         vk::QueryPoolCreateInfo().setQueryType(vk::QueryType::eTimestamp).setQueryCount(queryCount);
-    vk::QueryPool queryPool = PW_ASSERT_VK(mLogicalDevice.createQueryPool(queryPoolCreateInfo));
+    vk::QueryPool queryPool = PIXELWEAVE_ASSERT_VK(mLogicalDevice.createQueryPool(queryPoolCreateInfo));
     mLogicalDevice.resetQueryPool(queryPool, 0, queryCount);
     return queryPool;
 }
@@ -306,7 +306,7 @@ void VulkanDevice::ResetQueryPool(vk::QueryPool& queryPool, const uint32_t query
 
 std::vector<uint64_t> VulkanDevice::GetTimestampQueryResults(vk::QueryPool queryPool, const uint32_t queryCount)
 {
-    std::vector<uint64_t> results = PW_ASSERT_VK(mLogicalDevice.getQueryPoolResults<uint64_t>(
+    std::vector<uint64_t> results = PIXELWEAVE_ASSERT_VK(mLogicalDevice.getQueryPoolResults<uint64_t>(
         queryPool,
         0,
         queryCount,
@@ -328,12 +328,12 @@ void VulkanDevice::DestroyQueryPool(vk::QueryPool& queryPool)
 vk::Fence VulkanDevice::CreateFence()
 {
     const vk::FenceCreateInfo fenceInfo = vk::FenceCreateInfo();
-    return PW_ASSERT_VK(mLogicalDevice.createFence(fenceInfo));
+    return PIXELWEAVE_ASSERT_VK(mLogicalDevice.createFence(fenceInfo));
 }
 
 void VulkanDevice::WaitForFence(vk::Fence& fence)
 {
-    PW_ASSERT_VK(mLogicalDevice.waitForFences(fence, true, (std::numeric_limits<uint64_t>::max)()));
+    PIXELWEAVE_ASSERT_VK(mLogicalDevice.waitForFences(fence, true, (std::numeric_limits<uint64_t>::max)()));
 }
 
 void VulkanDevice::DestroyFence(vk::Fence& fence)
@@ -349,4 +349,4 @@ VulkanDevice::~VulkanDevice()
     mVulkanInstance = nullptr;
 }
 
-}  // namespace PixelWeave
+}  // namespace Pixelweave

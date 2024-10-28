@@ -4,9 +4,9 @@
 
 #include "Macros.h"
 
-namespace PixelWeave
+namespace Pixelweave
 {
-class PIXEL_WEAVE_LIB_CLASS RefCountPtr
+class PIXELWEAVE_LIB_CLASS RefCountPtr
 {
 public:
     RefCountPtr();
@@ -20,4 +20,4 @@ protected:
 private:
     uint32_t refCount;
 };
-}  // namespace PixelWeave
+}  // namespace Pixelweave

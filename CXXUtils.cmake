@@ -1,7 +1,6 @@
-cmake_minimum_required(VERSION 3.19.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 
 function(pw_configure_cxx SUBPROJECT_NAME)
-
     # Configure C++ compiler
     set_property(TARGET ${SUBPROJECT_NAME} PROPERTY CXX_STANDARD 17)
     set_property(TARGET ${SUBPROJECT_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
@@ -24,11 +23,10 @@ function(pw_configure_cxx SUBPROJECT_NAME)
     endif()
 
     if(MSVC)
-        add_compile_definitions(PW_PLATFORM_WINDOWS)
+        add_compile_definitions(PIXELWEAVE_PLATFORM_WINDOWS)
     elseif(APPLE)
-        add_compile_definitions(PW_PLATFORM_MACOS)
+        add_compile_definitions(PIXELWEAVE_PLATFORM_MACOS)
     elseif(LINUX)
-        add_compile_definitions(PW_PLATFORM_LINUX)
+        add_compile_definitions(PIXELWEAVE_PLATFORM_LINUX)
     endif()
-
 endfunction()

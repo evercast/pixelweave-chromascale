@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-namespace PixelWeave
+namespace Pixelweave
 {
 
 uint64_t VideoFrameWrapper::GetBufferSize() const
@@ -208,4 +208,4 @@ bool VideoFrameWrapper::AreFramePropertiesEqual(const VideoFrameWrapper& other) 
            range == other.range && yuvMatrix == other.yuvMatrix;
 }
 
-}  // namespace PixelWeave
+}  // namespace Pixelweave

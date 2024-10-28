@@ -5,9 +5,9 @@
 #include "Result.h"
 #include "VideoConverter.h"
 
-namespace PixelWeave
+namespace Pixelweave
 {
-class PIXEL_WEAVE_LIB_CLASS Device : public RefCountPtr
+class PIXELWEAVE_LIB_CLASS Device : public RefCountPtr
 {
 public:
     static ResultValue<Device*> Create();
@@ -16,4 +16,4 @@ public:
 
     virtual ~Device() = default;
 };
-}  // namespace PixelWeave
+}  // namespace Pixelweave
