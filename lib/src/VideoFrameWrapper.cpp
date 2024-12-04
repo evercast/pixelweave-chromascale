@@ -9,13 +9,11 @@ uint64_t VideoFrameWrapper::GetBufferSize() const
 {
     static_assert(AllPixelFormats.size() == 19);
     switch (pixelFormat) {
-        case PixelFormat::Interleaved8BitUYVY: {
-            return static_cast<uint64_t>(stride) * height;
-        }
+        case PixelFormat::Interleaved8BitUYVY:
         case PixelFormat::Interleaved8BitRGBA:
         case PixelFormat::Interleaved8BitBGRA:
         case PixelFormat::Interleaved8BitARGB: {
-            return static_cast<uint64_t>(width) * height * 4;
+            return static_cast<uint64_t>(stride) * height;
         }
         case PixelFormat::Planar8Bit420:
         case PixelFormat::Planar8Bit422:
