@@ -15,14 +15,19 @@ public:
     static ResultValue<Device*> CreateDevice(const std::shared_ptr<VulkanInstance>& instance);
 
     VulkanInstance(const vk::Instance& instance);
-    vk::Instance GetHandle() { return mInstanceHandle; }
     ~VulkanInstance();
+
+    vk::Instance GetHandle() { return mInstanceHandle; }
 
 private:
     ResultValue<vk::PhysicalDevice> FindSuitablePhysicalDevice();
 
     vk::Instance mInstanceHandle;
+#if VK_HEADER_VERSION >= 301
+    vk::detail::DispatchLoaderDynamic mDynamicDispatcher;
+#else
     vk::DispatchLoaderDynamic mDynamicDispatcher;
+#endif
 #if defined(PW_DEBUG)
     vk::DebugUtilsMessengerEXT mDebugMessenger;
 #endif

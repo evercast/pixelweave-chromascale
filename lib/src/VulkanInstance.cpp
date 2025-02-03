@@ -90,7 +90,11 @@ ResultValue<std::shared_ptr<VulkanInstance>> VulkanInstance::Create()
 
 VulkanInstance::VulkanInstance(const vk::Instance& instance) : mInstanceHandle(instance)
 {
+#if VK_HEADER_VERSION >= 301
+    mDynamicDispatcher = vk::detail::DispatchLoaderDynamic(mInstanceHandle, vkGetInstanceProcAddr);
+#else
     mDynamicDispatcher = vk::DispatchLoaderDynamic(mInstanceHandle, vkGetInstanceProcAddr);
+#endif
     mDynamicDispatcher.init(mInstanceHandle, vkGetInstanceProcAddr);
 
 #if defined(PW_DEBUG)
