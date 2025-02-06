@@ -21,8 +21,9 @@ preferred-citation:
       given-names: Damien
   title: Using GPU-Accelerated Pixel Format Conversions for Efficient Real-Time Video Streaming
   doi: 10.5594/JMI.2024/YPJG9446
-  type: article-journal
+  type: article
   pages: 60-70
-  year: '2024'
+  year: 2024
   conference: {}
-  publisher: {SMPTE Motion Imaging Journal Vol. 133}
+  journal: {SMPTE Motion Imaging Journal}
+  volume: 133
