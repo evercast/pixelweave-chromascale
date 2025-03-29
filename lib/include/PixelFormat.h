@@ -15,7 +15,7 @@ enum class PixelFormat : uint32_t {
     Planar8Bit444 = 5,
     Planar8Bit420YV12 = 6,     // YVU, 3 planes
     Planar8Bit420NV12 = 7,     // A Y plane followed by a UV plane
-    Interleaved10BitUYVY = 8,  // UYVY in 32 bits (2 bits unused) - Blackmagic
+    Interleaved10BitUYVY = 8,  // V210: UYVY in 32 bits (2 bits unused)
     Interleaved10BitRGB = 9,   // RGB in 32 bits (2 bits unused) - Blackmagic
     Interleaved12BitRGB = 10,  // Blocks of 8 pixels (see bmdFormat12BitRGB)
     Planar10Bit420 = 11,
