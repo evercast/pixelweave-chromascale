@@ -2,6 +2,9 @@
 
 Pixelweave is a multi-platform library that leverages GPU computing to perform video frame conversions. Pixelweave is based on the graphics library Vulkan, allowing for a single implementation of GPU kernels that is compatible with most modern graphics hardware. It supports multiple pixel formats such as RGBA and chroma-subsampled YUV, using up to 16 bits per channel. The implemented compute shaders use a novel generic approach that samples 2x2 pixel windows, making the rest of the code easily extensible and independent of the source and destination formats. Initial tests show that Pixelweave provides significant speedups when compared to the state-of-the-art CPU-based libraries, allowing real-time streaming applications to offload resource-demanding tasks from the CPU and therefore improve overall performance. 
 
+## How to cite
+
+> Aguerre, J., Sena, B., & Stolarz, D. (2024). Using GPU-Accelerated Pixel Format Conversions for Efficient Real-Time Video Streaming. SMPTE Motion Imaging Journal, 133. https://doi.org/10.5594/JMI.2024/YPJG9446
 
 ## Overview
 
