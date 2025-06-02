@@ -23,7 +23,7 @@ struct Timer {
     std::chrono::steady_clock::time_point beginTime;
 };
 
-Pixelweave::VideoFrameWrapper GetUYVYFrame(uint32_t width, uint32_t height)
+VideoFrameWrapper GetUYVYFrame(uint32_t width, uint32_t height)
 {
     const uint32_t stride = width * 2;
     const uint32_t bufferSize = height * stride;
@@ -37,10 +37,10 @@ Pixelweave::VideoFrameWrapper GetUYVYFrame(uint32_t width, uint32_t height)
             buffer[baseIndex + 3] = 0xFF;  // Y
         }
     }
-    return VideoFrameWrapper{buffer, stride, 0, width, height, Pixelweave::PixelFormat::Interleaved8BitUYVY};
+    return VideoFrameWrapper{buffer, stride, 0, width, height, PixelFormat::YCC8Bit422InterleavedUYVY};
 }
 
-Pixelweave::VideoFrameWrapper GetPlanar420Frame(uint32_t width, uint32_t height)
+VideoFrameWrapper GetPlanar420Frame(uint32_t width, uint32_t height)
 {
     const uint32_t chromaWidth = (width + 1) / 2;
     const uint32_t stride = width + 8;
@@ -71,11 +71,11 @@ Pixelweave::VideoFrameWrapper GetPlanar420Frame(uint32_t width, uint32_t height)
         chromaStride,
         width,
         height,
-        Pixelweave::PixelFormat::Planar8Bit420,
-        Pixelweave::Range::Limited};
+        PixelFormat::YCC8Bit420Planar,
+        VideoRange::Legal};
 }
 
-Pixelweave::VideoFrameWrapper GetPlanar422Frame(uint32_t width, uint32_t height)
+VideoFrameWrapper GetPlanar422Frame(uint32_t width, uint32_t height)
 {
     const uint32_t stride = width;
     const uint32_t bufferSize = height * stride * 2;
@@ -83,10 +83,10 @@ Pixelweave::VideoFrameWrapper GetPlanar422Frame(uint32_t width, uint32_t height)
     for (uint32_t bufferIndex = 0; bufferIndex < bufferSize; ++bufferIndex) {
         buffer[bufferIndex] = 0xFF;
     }
-    return VideoFrameWrapper{buffer, stride, (width + 1) / 2, width, height, Pixelweave::PixelFormat::Planar8Bit422};
+    return VideoFrameWrapper{buffer, stride, (width + 1) / 2, width, height, PixelFormat::YCC8Bit422Planar};
 }
 
-Pixelweave::VideoFrameWrapper GetPlanar444Frame(uint32_t width, uint32_t height)
+VideoFrameWrapper GetPlanar444Frame(uint32_t width, uint32_t height)
 {
     const uint32_t stride = width;
     const uint32_t bufferSize = height * stride * 3;
@@ -94,10 +94,10 @@ Pixelweave::VideoFrameWrapper GetPlanar444Frame(uint32_t width, uint32_t height)
     for (uint32_t bufferIndex = 0; bufferIndex < bufferSize; ++bufferIndex) {
         buffer[bufferIndex] = 0xFF;
     }
-    return VideoFrameWrapper{buffer, stride, stride, width, height, Pixelweave::PixelFormat::Planar8Bit444};
+    return VideoFrameWrapper{buffer, stride, stride, width, height, PixelFormat::YCC8Bit444Planar};
 }
 
-Pixelweave::VideoFrameWrapper GetPlanarYV12Frame(uint32_t width, uint32_t height)
+VideoFrameWrapper GetPlanarYV12Frame(uint32_t width, uint32_t height)
 {
     const uint32_t chromaWidth = (width + 1) / 2;
     const uint32_t chromaHeight = (height + 1) / 2;
@@ -115,10 +115,10 @@ Pixelweave::VideoFrameWrapper GetPlanarYV12Frame(uint32_t width, uint32_t height
     for (uint32_t uSampleIndex = 0; uSampleIndex < chromaWidth * chromaHeight; ++uSampleIndex) {
         buffer[uSampleOffset + uSampleIndex] = 0xB0;
     }
-    return VideoFrameWrapper{buffer, width, (width + 1) / 2, width, height, Pixelweave::PixelFormat::Planar8Bit420YV12};
+    return VideoFrameWrapper{buffer, width, (width + 1) / 2, width, height, PixelFormat::YCC8Bit420PlanarYV12};
 }
 
-Pixelweave::VideoFrameWrapper GetPlanarNV12Frame(uint32_t width, uint32_t height)
+VideoFrameWrapper GetPlanarNV12Frame(uint32_t width, uint32_t height)
 {
     const uint32_t chromaWidth = (width + 1) / 2;
     const uint32_t chromaHeight = (height + 1) / 2;
@@ -132,10 +132,10 @@ Pixelweave::VideoFrameWrapper GetPlanarNV12Frame(uint32_t width, uint32_t height
         buffer[uvSampleOffset + uvSampleIndex] = 0xB0;
         buffer[uvSampleOffset + uvSampleIndex + 1] = 0xC0;
     }
-    return VideoFrameWrapper{buffer, width, (width + 1) / 2, width, height, Pixelweave::PixelFormat::Planar8Bit420NV12};
+    return VideoFrameWrapper{buffer, width, (width + 1) / 2, width, height, PixelFormat::YCC8Bit420BiplanarNV12};
 }
 
-Pixelweave::VideoFrameWrapper GetRGBAFrame(uint32_t width, uint32_t height)
+VideoFrameWrapper GetRGBAFrame(uint32_t width, uint32_t height)
 {
     const uint32_t bufferSize = (height * width) * 4;
     uint8_t* buffer = new uint8_t[bufferSize];
@@ -145,10 +145,17 @@ Pixelweave::VideoFrameWrapper GetRGBAFrame(uint32_t width, uint32_t height)
         buffer[sampleIndex * 4 + 2] = 0xFF;
         buffer[sampleIndex * 4 + 3] = 0xFF;
     }
-    return VideoFrameWrapper{buffer, width * 4, 0, width, height, Pixelweave::PixelFormat::Interleaved8BitRGBA, Pixelweave::Range::Full};
+    return VideoFrameWrapper{
+        buffer,
+        width * 4,
+        0,
+        width,
+        height,
+        PixelFormat::RGB8BitInterleavedRGBA,
+        VideoRange::Full};
 }
 
-Pixelweave::VideoFrameWrapper GetBGRAFrame(uint32_t width, uint32_t height)
+VideoFrameWrapper GetBGRAFrame(uint32_t width, uint32_t height)
 {
     const uint32_t bufferSize = (height * width) * 4;
     uint8_t* buffer = new uint8_t[bufferSize];
@@ -158,10 +165,17 @@ Pixelweave::VideoFrameWrapper GetBGRAFrame(uint32_t width, uint32_t height)
         buffer[sampleIndex * 4 + 2] = 0xFF;
         buffer[sampleIndex * 4 + 3] = 0xFF;
     }
-    return VideoFrameWrapper{buffer, width * 4, 0, width, height, Pixelweave::PixelFormat::Interleaved8BitBGRA, Pixelweave::Range::Full};
+    return VideoFrameWrapper{
+        buffer,
+        width * 4,
+        0,
+        width,
+        height,
+        PixelFormat::RGB8BitInterleavedBGRA,
+        VideoRange::Full};
 }
 
-Pixelweave::VideoFrameWrapper GetPlanar42010BitFrame(uint32_t width, uint32_t height)
+VideoFrameWrapper GetPlanar42010BitFrame(uint32_t width, uint32_t height)
 {
     const uint32_t chromaWidth = (width + 1) / 2;
     const uint32_t chromaHeight = (height + 1) / 2;
@@ -184,11 +198,11 @@ Pixelweave::VideoFrameWrapper GetPlanar42010BitFrame(uint32_t width, uint32_t he
         ((width + 1) / 2) * 2,
         width,
         height,
-        Pixelweave::PixelFormat::Planar10Bit420,
-        Pixelweave::Range::Full};
+        PixelFormat::YCC10Bit420Planar,
+        VideoRange::Full};
 }
 
-Pixelweave::VideoFrameWrapper GetPlanar42210BitFrame(uint32_t width, uint32_t height)
+VideoFrameWrapper GetPlanar42210BitFrame(uint32_t width, uint32_t height)
 {
     const uint32_t chromaWidth = (width + 1) / 2;
     const uint32_t chromaHeight = height;
@@ -211,10 +225,10 @@ Pixelweave::VideoFrameWrapper GetPlanar42210BitFrame(uint32_t width, uint32_t he
         ((width + 1) / 2) * 2,
         width,
         height,
-        Pixelweave::PixelFormat::Planar10Bit422};
+        PixelFormat::YCC10Bit422Planar};
 }
 
-Pixelweave::VideoFrameWrapper GetPlanar44410BitFrame(uint32_t width, uint32_t height)
+VideoFrameWrapper GetPlanar44410BitFrame(uint32_t width, uint32_t height)
 {
     const uint32_t chromaWidth = width;
     const uint32_t chromaHeight = height;
@@ -237,20 +251,26 @@ Pixelweave::VideoFrameWrapper GetPlanar44410BitFrame(uint32_t width, uint32_t he
         width * 2,
         width,
         height,
-        Pixelweave::PixelFormat::Planar10Bit444};
+        PixelFormat::YCC10Bit444Planar};
 }
 
-Pixelweave::VideoFrameWrapper Get10BitRGBBuffer(uint32_t width, uint32_t height)
+VideoFrameWrapper Get10BitXRGBBEBuffer(uint32_t width, uint32_t height)
 {
     const uint32_t bufferSize = width * height;
     uint32_t* buffer = new uint32_t[bufferSize];
     for (uint32_t bufferIndex = 0; bufferIndex < bufferSize; ++bufferIndex) {
         buffer[bufferIndex] = 0;
     }
-    return VideoFrameWrapper{reinterpret_cast<uint8_t*>(buffer), width * 4, 0, width, height, Pixelweave::PixelFormat::Interleaved10BitRGB};
+    return VideoFrameWrapper{
+        reinterpret_cast<uint8_t*>(buffer),
+        width * 4,
+        0,
+        width,
+        height,
+        PixelFormat::RGB10BitInterleavedXRGBBE};
 }
 
-Pixelweave::VideoFrameWrapper GetPlanarP126Frame(uint32_t width, uint32_t height)
+VideoFrameWrapper GetPlanarP216Frame(uint32_t width, uint32_t height)
 {
     const uint32_t chromaWidth = (width + 1) / 2;
     const uint32_t chromaHeight = height;
@@ -270,10 +290,16 @@ Pixelweave::VideoFrameWrapper GetPlanarP126Frame(uint32_t width, uint32_t height
         }
     }
 
-    return VideoFrameWrapper{reinterpret_cast<uint8_t*>(buffer), width * 2, 0, width, height, Pixelweave::PixelFormat::Planar16BitP216};
+    return VideoFrameWrapper{
+        reinterpret_cast<uint8_t*>(buffer),
+        width * 2,
+        0,
+        width,
+        height,
+        PixelFormat::YCC16Bit422BiplanarP216};
 }
 
-Pixelweave::VideoFrameWrapper Get10BitUYVYBuffer(uint32_t width, uint32_t height)
+VideoFrameWrapper Get10BitUYVYBuffer(uint32_t width, uint32_t height)
 {
     const uint32_t stride = ((width + 47) / 48) * 128;
     const uint32_t bufferSize = stride * height;
@@ -281,156 +307,136 @@ Pixelweave::VideoFrameWrapper Get10BitUYVYBuffer(uint32_t width, uint32_t height
     for (uint32_t bufferIndex = 0; bufferIndex < bufferSize; ++bufferIndex) {
         buffer[bufferIndex] = 0;
     }
-    return VideoFrameWrapper{reinterpret_cast<uint8_t*>(buffer), stride, 0, width, height, Pixelweave::PixelFormat::Interleaved10BitUYVY};
+    return VideoFrameWrapper{
+        reinterpret_cast<uint8_t*>(buffer),
+        stride,
+        0,
+        width,
+        height,
+        PixelFormat::YCC10Bit422InterleavedV210};
 }
 
 VideoFrameWrapper CreateFrame(PixelFormat pixelFormat, uint32_t width, uint32_t height)
 {
     switch (pixelFormat) {
-        case PixelFormat::Interleaved8BitUYVY: {
-            return GetUYVYFrame(width, height);
-        } break;
-        case PixelFormat::Interleaved8BitBGRA: {
+        case PixelFormat::RGB8BitInterleavedBGRA:
             return GetBGRAFrame(width, height);
-        } break;
-        case PixelFormat::Interleaved8BitRGBA: {
+        case PixelFormat::RGB8BitInterleavedRGBA:
             return GetRGBAFrame(width, height);
-        } break;
-        case PixelFormat::Planar8Bit420: {
+        case PixelFormat::RGB8BitInterleavedARGB:
+            // TODO
+            return VideoFrameWrapper{};
+        case PixelFormat::YCC8Bit420Planar:
             return GetPlanar420Frame(width, height);
-        } break;
-        case PixelFormat::Planar8Bit422: {
-            return GetPlanar422Frame(width, height);
-        } break;
-        case PixelFormat::Planar8Bit444: {
-            return GetPlanar444Frame(width, height);
-        } break;
-        case PixelFormat::Planar8Bit420YV12: {
+        case PixelFormat::YCC8Bit420PlanarYV12:
             return GetPlanarYV12Frame(width, height);
-        } break;
-        case PixelFormat::Planar8Bit420NV12: {
+        case PixelFormat::YCC8Bit422Planar:
+            return GetPlanar422Frame(width, height);
+        case PixelFormat::YCC8Bit444Planar:
+            return GetPlanar444Frame(width, height);
+        case PixelFormat::YCC8Bit420BiplanarNV12:
             return GetPlanarNV12Frame(width, height);
-        } break;
-        case PixelFormat::Interleaved10BitUYVY: {
-            return Get10BitUYVYBuffer(width, height);
-        } break;
-        case PixelFormat::Interleaved10BitRGB: {
-            return Get10BitRGBBuffer(width, height);
-        } break;
-        case PixelFormat::Interleaved12BitRGB: {
-            //
-        } break;
-        case PixelFormat::Planar10Bit420: {
+        case PixelFormat::YCC8Bit422InterleavedUYVY:
+            return GetUYVYFrame(width, height);
+        case PixelFormat::RGB10BitInterleavedRGBXBE:
+            // TODO
+            return VideoFrameWrapper{};
+        case PixelFormat::RGB10BitInterleavedRGBXLE:
+            // TODO
+            return VideoFrameWrapper{};
+        case PixelFormat::RGB10BitInterleavedXRGBBE:
+            return Get10BitXRGBBEBuffer(width, height);
+        case PixelFormat::RGB10BitInterleavedXRGBLE:
+            // TODO
+            return VideoFrameWrapper{};
+        case PixelFormat::YCC10Bit420Planar:
             return GetPlanar42010BitFrame(width, height);
-        } break;
-        case PixelFormat::Planar10Bit422: {
+        case PixelFormat::YCC10Bit422Planar:
             return GetPlanar42210BitFrame(width, height);
-        } break;
-        case PixelFormat::Planar10Bit444: {
+        case PixelFormat::YCC10Bit444Planar:
             return GetPlanar44410BitFrame(width, height);
-        } break;
-        case PixelFormat::Interleaved8BitARGB: {
-            //
-        } break;
-        case PixelFormat::Interleaved12BitRGBLE: {
-            //
-        } break;
-        case PixelFormat::Interleaved10BitRGBX: {
-            //
-        } break;
-        case PixelFormat::Interleaved10BitRGBXLE: {
-            //
-        } break;
-        case PixelFormat::Planar16BitP216: {
-            return GetPlanarP126Frame(width, height);
-        } break;
+        case PixelFormat::YCC10Bit422InterleavedV210:
+            return Get10BitUYVYBuffer(width, height);
+        case PixelFormat::RGB12BitInterleavedBGRBE:
+            // TODO
+            return VideoFrameWrapper{};
+        case PixelFormat::RGB12BitInterleavedBGRLE:
+            // TODO
+            return VideoFrameWrapper{};
+        case PixelFormat::YCC16Bit422BiplanarP216:
+            return GetPlanarP216Frame(width, height);
+        default:
+            return VideoFrameWrapper{};
     }
-    return Pixelweave::VideoFrameWrapper{};
 }
 
 std::string GetFormatName(PixelFormat pixelFormat)
 {
     switch (pixelFormat) {
-        case PixelFormat::Interleaved8BitUYVY: {
-            return "Interleaved8BitUYVY";
-        } break;
-        case PixelFormat::Interleaved8BitBGRA: {
-            return "Interleaved8BitBGRA";
-        } break;
-        case PixelFormat::Interleaved8BitRGBA: {
-            return "Interleaved8BitRGBA";
-        } break;
-        case PixelFormat::Planar8Bit420: {
-            return "Planar8Bit420";
-        } break;
-        case PixelFormat::Planar8Bit422: {
-            return "Planar8Bit422";
-        } break;
-        case PixelFormat::Planar8Bit444: {
-            return "Planar8Bit444";
-        } break;
-        case PixelFormat::Planar8Bit420YV12: {
-            return "Planar8Bit420YV12";
-        } break;
-        case PixelFormat::Planar8Bit420NV12: {
-            return "Planar8Bit420NV12";
-        } break;
-        case PixelFormat::Interleaved10BitUYVY: {
-            return "Interleaved10BitUYVY";
-        } break;
-        case PixelFormat::Interleaved10BitRGB: {
-            return "Interleaved10BitRGB";
-        } break;
-        case PixelFormat::Interleaved12BitRGB: {
-            return "Interleaved12BitRGB";
-        } break;
-        case PixelFormat::Planar10Bit420: {
-            return "Planar10Bit420";
-        } break;
-        case PixelFormat::Planar10Bit422: {
-            return "Planar10Bit422";
-        } break;
-        case PixelFormat::Planar10Bit444: {
-            return "Planar10Bit444";
-        } break;
-        case PixelFormat::Interleaved8BitARGB: {
-            return "Interleaved8BitARGB";
-        } break;
-        case PixelFormat::Interleaved12BitRGBLE: {
-            return "Interleaved12BitRGBLE";
-        } break;
-        case PixelFormat::Interleaved10BitRGBX: {
-            return "Interleaved10BitRGBX";
-        } break;
-        case PixelFormat::Interleaved10BitRGBXLE: {
-            return "Interleaved10BitRGBXLE";
-        } break;
-        case PixelFormat::Planar16BitP216: {
-            return "Planar16BitP216";
-        } break;
+        case PixelFormat::RGB8BitInterleavedBGRA:
+            return "RGB8BitInterleavedBGRA";
+        case PixelFormat::RGB8BitInterleavedRGBA:
+            return "RGB8BitInterleavedRGBA";
+        case PixelFormat::RGB8BitInterleavedARGB:
+            return "RGB8BitInterleavedARGB";
+        case PixelFormat::YCC8Bit420Planar:
+            return "YCC8Bit420Planar";
+        case PixelFormat::YCC8Bit420PlanarYV12:
+            return "YCC8Bit420PlanarYV12";
+        case PixelFormat::YCC8Bit422Planar:
+            return "YCC8Bit422Planar";
+        case PixelFormat::YCC8Bit444Planar:
+            return "YCC8Bit444Planar";
+        case PixelFormat::YCC8Bit420BiplanarNV12:
+            return "YCC8Bit420BiplanarNV12";
+        case PixelFormat::YCC8Bit422InterleavedUYVY:
+            return "YCC8Bit422InterleavedUYVY";
+        case PixelFormat::RGB10BitInterleavedRGBXBE:
+            return "RGB10BitInterleavedRGBXBE";
+        case PixelFormat::RGB10BitInterleavedRGBXLE:
+            return "RGB10BitInterleavedRGBXLE";
+        case PixelFormat::RGB10BitInterleavedXRGBBE:
+            return "RGB10BitInterleavedXRGBBE";
+        case PixelFormat::RGB10BitInterleavedXRGBLE:
+            return "RGB10BitInterleavedXRGBLE";
+        case PixelFormat::YCC10Bit420Planar:
+            return "YCC10Bit420Planar";
+        case PixelFormat::YCC10Bit422Planar:
+            return "YCC10Bit422Planar";
+        case PixelFormat::YCC10Bit444Planar:
+            return "YCC10Bit444Planar";
+        case PixelFormat::YCC10Bit422InterleavedV210:
+            return "YCC10Bit422InterleavedV210";
+        case PixelFormat::RGB12BitInterleavedBGRBE:
+            return "RGB12BitInterleavedBGRBE";
+        case PixelFormat::RGB12BitInterleavedBGRLE:
+            return "RGB12BitInterleavedBGRLE";
+        case PixelFormat::YCC16Bit422BiplanarP216:
+            return "YCC16Bit422BiplanarP216";
+        default:
+            return "";
     }
-    return "";
 }
 
-std::string GetRangeName(Range range)
+std::string GetRangeName(VideoRange range)
 {
     switch (range) {
-        case Range::Limited:
-            return "Limited";
-        case Range::Full:
+        case VideoRange::Legal:
+            return "Legal";
+        case VideoRange::Full:
             return "Full";
         default:
             return "";
     }
 }
 
-std::string GetYUVMatrixName(YUVMatrix matrix)
+std::string GetYUVMatrixName(LumaChromaMatrix matrix)
 {
     switch (matrix) {
-        case YUVMatrix::BT709:
-            return "BT709";
-        case YUVMatrix::BT2020:
-            return "BT2020";
+        case LumaChromaMatrix::BT709:
+            return "BT.709";
+        case LumaChromaMatrix::BT2020NCL:
+            return "BT.2020 NCL";
         default:
             return "";
     }
@@ -438,73 +444,81 @@ std::string GetYUVMatrixName(YUVMatrix matrix)
 
 int main()
 {
-    auto [result, device] = Pixelweave::Device::Create();
-    if (result == Pixelweave::Result::Success) {
+    auto [result, device] = Device::Create();
+    if (result == Result::Success) {
         std::vector<PixelFormat> validInputFormats{
-            PixelFormat::Interleaved8BitUYVY,
-            PixelFormat::Interleaved8BitBGRA,
-            PixelFormat::Interleaved8BitRGBA,
-            PixelFormat::Planar8Bit420,
-            PixelFormat::Planar8Bit420YV12,
-            PixelFormat::Planar8Bit420NV12,
-            PixelFormat::Interleaved10BitRGB,
-            PixelFormat::Planar16BitP216,
-            PixelFormat::Planar8Bit422,
-            PixelFormat::Planar8Bit444,
-            PixelFormat::Planar10Bit420,
-            PixelFormat::Planar10Bit422,
-            PixelFormat::Planar10Bit444,
+            PixelFormat::RGB8BitInterleavedBGRA,
+            PixelFormat::RGB8BitInterleavedRGBA,
+            PixelFormat::YCC8Bit420Planar,
+            PixelFormat::YCC8Bit420PlanarYV12,
+            PixelFormat::YCC8Bit422Planar,
+            PixelFormat::YCC8Bit444Planar,
+            PixelFormat::YCC8Bit420BiplanarNV12,
+            PixelFormat::YCC8Bit422InterleavedUYVY,
+            PixelFormat::RGB10BitInterleavedXRGBBE,
+            PixelFormat::YCC10Bit420Planar,
+            PixelFormat::YCC10Bit422Planar,
+            PixelFormat::YCC10Bit444Planar,
+            PixelFormat::YCC16Bit422BiplanarP216,
         };
 
         std::vector<PixelFormat> validOutputFormats{
-            PixelFormat::Planar8Bit420,
-            PixelFormat::Planar8Bit422,
-            PixelFormat::Planar8Bit444,
-            PixelFormat::Planar10Bit420,
-            PixelFormat::Planar10Bit422,
-            PixelFormat::Planar10Bit444,
-            PixelFormat::Interleaved8BitUYVY,
-            PixelFormat::Interleaved8BitBGRA,
-            PixelFormat::Interleaved10BitRGB,
+            PixelFormat::RGB8BitInterleavedBGRA,
+            PixelFormat::YCC8Bit420Planar,
+            PixelFormat::YCC8Bit422Planar,
+            PixelFormat::YCC8Bit444Planar,
+            PixelFormat::YCC8Bit422InterleavedUYVY,
+            PixelFormat::RGB10BitInterleavedXRGBBE,
+            PixelFormat::YCC10Bit420Planar,
+            PixelFormat::YCC10Bit422Planar,
+            PixelFormat::YCC10Bit444Planar,
         };
 
         struct Resolution {
             uint32_t width, height;
         };
-        std::vector<Resolution> resolutions{Resolution{3840, 2160}, Resolution{2560, 1440}, Resolution{1920, 1080}, Resolution{1280, 720}};
+        std::vector<Resolution> resolutions{
+            Resolution{3840, 2160},
+            Resolution{2560, 1440},
+            Resolution{1920, 1080},
+            Resolution{1280, 720},
+        };
 
-        std::vector<Pixelweave::Range> ranges{Pixelweave::Range::Limited, Pixelweave::Range::Full};
+        std::vector<VideoRange> ranges{VideoRange::Legal, VideoRange::Full};
 
-        std::vector<Pixelweave::YUVMatrix> matrices{Pixelweave::YUVMatrix::BT709, Pixelweave::YUVMatrix::BT2020};
+        std::vector<LumaChromaMatrix> matrices{LumaChromaMatrix::BT709, LumaChromaMatrix::BT2020NCL};
 
         const auto videoConverter = device->CreateVideoConverter();
 
         // Iterates over all possible types of conversions
         for (Resolution inputResolution : resolutions) {
             for (PixelFormat inputFormat : validInputFormats) {
-                for (Range inputRange : ranges) {
-                    for (YUVMatrix inputMatrix : matrices) {
-                        Pixelweave::VideoFrameWrapper inputFrame = CreateFrame(inputFormat, inputResolution.width, inputResolution.height);
+                for (VideoRange inputRange : ranges) {
+                    for (LumaChromaMatrix inputMatrix : matrices) {
+                        VideoFrameWrapper inputFrame =
+                            CreateFrame(inputFormat, inputResolution.width, inputResolution.height);
                         inputFrame.range = inputRange;
-                        inputFrame.yuvMatrix = inputMatrix;
+                        inputFrame.lumaChromaMatrix = inputMatrix;
                         for (Resolution outputResolution : resolutions) {
                             for (PixelFormat outputFormat : validOutputFormats) {
-                                for (Range outputRange : ranges) {
-                                    for (YUVMatrix outputMatrix : matrices) {
-                                        Pixelweave::VideoFrameWrapper outputFrame =
+                                for (VideoRange outputRange : ranges) {
+                                    for (LumaChromaMatrix outputMatrix : matrices) {
+                                        VideoFrameWrapper outputFrame =
                                             CreateFrame(outputFormat, outputResolution.width, outputResolution.height);
                                         outputFrame.range = outputRange;
-                                        outputFrame.yuvMatrix = outputMatrix;
+                                        outputFrame.lumaChromaMatrix = outputMatrix;
 
                                         std::cout << "Testing:" << std::endl
                                                   << "\t Input: " << inputFrame.width << "x" << inputFrame.height << "("
-                                                  << GetFormatName(inputFrame.pixelFormat) << "," << GetRangeName(inputFrame.range) << ","
-                                                  << GetYUVMatrixName(inputFrame.yuvMatrix) << ")" << std::endl
-                                                  << "\t Output: " << outputFrame.width << "x" << outputFrame.height << "("
-                                                  << GetFormatName(outputFrame.pixelFormat) << "," << GetRangeName(outputFrame.range) << ","
-                                                  << GetYUVMatrixName(outputFrame.yuvMatrix) << ")" << std::endl;
+                                                  << GetFormatName(inputFrame.pixelFormat) << ","
+                                                  << GetRangeName(inputFrame.range) << ","
+                                                  << GetYUVMatrixName(inputFrame.lumaChromaMatrix) << ")" << std::endl
+                                                  << "\t Output: " << outputFrame.width << "x" << outputFrame.height
+                                                  << "(" << GetFormatName(outputFrame.pixelFormat) << ","
+                                                  << GetRangeName(outputFrame.range) << ","
+                                                  << GetYUVMatrixName(outputFrame.lumaChromaMatrix) << ")" << std::endl;
 
-                                        if (videoConverter->Convert(inputFrame, outputFrame) != Pixelweave::Result::Success) {
+                                        if (videoConverter->Convert(inputFrame, outputFrame) != Result::Success) {
                                             std::cout << "Error converting" << std::endl;
                                             return -1;
                                         }
@@ -535,12 +549,13 @@ int main()
 
         for (Resolution inputResolution : resolutions) {
             for (PixelFormat format : validInputOutputFormats) {
-                Pixelweave::VideoFrameWrapper inputFrame = CreateFrame(format, inputResolution.width, inputResolution.height);
-                Pixelweave::VideoFrameWrapper outputFrame = CreateFrame(format, inputResolution.width, inputResolution.height);
+                VideoFrameWrapper inputFrame = CreateFrame(format, inputResolution.width, inputResolution.height);
+                VideoFrameWrapper outputFrame = CreateFrame(format, inputResolution.width, inputResolution.height);
                 std::cout << "Testing comparison:" << std::endl
-                          << "\t Input: " << inputFrame.width << "x" << inputFrame.height << "(" << GetFormatName(inputFrame.pixelFormat)
-                          << "," << GetRangeName(inputFrame.range) << "," << GetYUVMatrixName(inputFrame.yuvMatrix) << ")" << std::endl;
-                if (videoConverter->Convert(inputFrame, outputFrame) != Pixelweave::Result::Success) {
+                          << "\t Input: " << inputFrame.width << "x" << inputFrame.height << "("
+                          << GetFormatName(inputFrame.pixelFormat) << "," << GetRangeName(inputFrame.range) << ","
+                          << GetYUVMatrixName(inputFrame.lumaChromaMatrix) << ")" << std::endl;
+                if (videoConverter->Convert(inputFrame, outputFrame) != Result::Success) {
                     std::cout << "Error converting" << std::endl;
                     return -1;
                 }

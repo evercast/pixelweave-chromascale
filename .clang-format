@@ -5,7 +5,7 @@ Language: Cpp
 IndentWidth: 4
 TabWidth: 4
 UseTab: Never
-ColumnLimit: 140
+ColumnLimit: 120
 BinPackArguments: false
 BinPackParameters: false
 AllowAllArgumentsOnNextLine: false

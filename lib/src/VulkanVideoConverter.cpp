@@ -25,49 +25,70 @@ Result VulkanVideoConverter::ValidateInput(const VideoFrameWrapper& src, const V
     if (src.width == 0 || src.height == 0) {
         return Result::InvalidInputResolutionError;
     }
-
     if (dst.width == 0 || dst.height == 0) {
         return Result::InvalidInputResolutionError;
     }
 
     // Validate input format
-    static_assert(AllPixelFormats.size() == 19);
-    std::vector<PixelFormat> validInputFormats{
-        PixelFormat::Interleaved8BitUYVY,    PixelFormat::Interleaved8BitBGRA,   PixelFormat::Interleaved8BitRGBA,
-        PixelFormat::Planar8Bit420,          PixelFormat::Planar8Bit420YV12,     PixelFormat::Planar8Bit420NV12,
-        PixelFormat::Interleaved10BitUYVY,   PixelFormat::Interleaved10BitRGB,   PixelFormat::Interleaved12BitRGB,
-        PixelFormat::Interleaved8BitARGB,    PixelFormat::Interleaved12BitRGBLE, PixelFormat::Interleaved10BitRGBX,
-        PixelFormat::Interleaved10BitRGBXLE, PixelFormat::Planar16BitP216,       PixelFormat::Planar8Bit422,
-        PixelFormat::Planar8Bit444,          PixelFormat::Planar10Bit420,        PixelFormat::Planar10Bit422,
-        PixelFormat::Planar10Bit444,
-    };
-    const bool isInputFormatSupported = std::any_of(validInputFormats.begin(), validInputFormats.end(), [&src](const PixelFormat& format) {
-        return src.pixelFormat == format;
-    });
-    if (!isInputFormatSupported) {
+    if (!IsInputFormatSupported(src.pixelFormat)) {
         return Result::InvalidInputFormatError;
     }
 
     // Validate output format
-    std::vector<PixelFormat> validOutputFormats{
-        PixelFormat::Planar8Bit420,
-        PixelFormat::Planar8Bit422,
-        PixelFormat::Planar8Bit444,
-        PixelFormat::Planar10Bit420,
-        PixelFormat::Planar10Bit422,
-        PixelFormat::Planar10Bit444,
-        PixelFormat::Interleaved8BitUYVY,
-        PixelFormat::Interleaved8BitBGRA,
-        PixelFormat::Interleaved10BitRGB,
-    };
-    const bool isOutputFormatSupported =
-        std::any_of(validOutputFormats.begin(), validOutputFormats.end(), [&dst](const PixelFormat& format) {
-            return dst.pixelFormat == format;
-        });
-    if (!isOutputFormatSupported) {
+    if (!IsOutputFormatSupported(dst.pixelFormat)) {
         return Result::InvalidOutputFormatError;
     }
+
     return Result::Success;
+}
+
+bool VulkanVideoConverter::IsInputFormatSupported(PixelFormat inputFormat)
+{
+    static_assert(AllPixelFormats.size() == 20);
+    std::vector<PixelFormat> validInputFormats{
+        PixelFormat::RGB8BitInterleavedBGRA,
+        PixelFormat::RGB8BitInterleavedRGBA,
+        PixelFormat::RGB8BitInterleavedARGB,
+        PixelFormat::YCC8Bit420Planar,
+        PixelFormat::YCC8Bit420PlanarYV12,
+        PixelFormat::YCC8Bit422Planar,
+        PixelFormat::YCC8Bit444Planar,
+        PixelFormat::YCC8Bit420BiplanarNV12,
+        PixelFormat::YCC8Bit422InterleavedUYVY,
+        PixelFormat::RGB10BitInterleavedRGBXBE,
+        PixelFormat::RGB10BitInterleavedRGBXLE,
+        PixelFormat::RGB10BitInterleavedXRGBBE,
+        PixelFormat::RGB10BitInterleavedXRGBLE,
+        PixelFormat::YCC10Bit420Planar,
+        PixelFormat::YCC10Bit422Planar,
+        PixelFormat::YCC10Bit444Planar,
+        PixelFormat::YCC10Bit422InterleavedV210,
+        PixelFormat::RGB12BitInterleavedBGRBE,
+        PixelFormat::RGB12BitInterleavedBGRLE,
+        PixelFormat::YCC16Bit422BiplanarP216,
+    };
+    return std::any_of(validInputFormats.begin(), validInputFormats.end(), [&](const PixelFormat& format) {
+        return inputFormat == format;
+    });
+}
+
+bool VulkanVideoConverter::IsOutputFormatSupported(PixelFormat outputFormat)
+{
+    static_assert(AllPixelFormats.size() == 20);
+    std::vector<PixelFormat> validOutputFormats{
+        PixelFormat::RGB8BitInterleavedBGRA,
+        PixelFormat::YCC8Bit420Planar,
+        PixelFormat::YCC8Bit422Planar,
+        PixelFormat::YCC8Bit444Planar,
+        PixelFormat::YCC8Bit422InterleavedUYVY,
+        PixelFormat::RGB10BitInterleavedXRGBBE,
+        PixelFormat::YCC10Bit420Planar,
+        PixelFormat::YCC10Bit422Planar,
+        PixelFormat::YCC10Bit444Planar,
+    };
+    return std::any_of(validOutputFormats.begin(), validOutputFormats.end(), [&](const PixelFormat& format) {
+        return outputFormat == format;
+    });
 }
 
 Result VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFrameWrapper& dst)
@@ -100,14 +121,15 @@ Result VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFr
         VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
     mDstDeviceBuffer = dstDeviceBuffer;
 
-    if (!(srcLocalBufferResult == Result::Success && srcDeviceBufferResult == Result::Success && dstLocalBufferResult == Result::Success &&
-          dstDeviceBufferResult == Result::Success)) {
+    if (!(srcLocalBufferResult == Result::Success && srcDeviceBufferResult == Result::Success &&
+          dstLocalBufferResult == Result::Success && dstDeviceBufferResult == Result::Success)) {
         CleanUp();
         return Result::AllocationFailed;
     }
 
     // Create compute pipeline and bindings
-    const auto [pipelineResult, pipelineResources] = mDevice->CreateVideoConversionPipeline(src, mSrcDeviceBuffer, dst, mDstDeviceBuffer);
+    const auto [pipelineResult, pipelineResources] =
+        mDevice->CreateVideoConversionPipeline(src, mSrcDeviceBuffer, dst, mDstDeviceBuffer);
     if (pipelineResult != Result::Success) {
         CleanUp();
         return Result::ShaderCompilationFailed;
@@ -127,7 +149,10 @@ Result VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFr
         // Copy local memory into VRAM and add barrier for next stage
         {
             if (mEnableBenchmark) {
-                mCommand.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, mTimestampQueryPool, sTimestampStartIndex);
+                mCommand.writeTimestamp(
+                    vk::PipelineStageFlagBits::eTopOfPipe,
+                    mTimestampQueryPool,
+                    sTimestampStartIndex);
             }
             mCommand.copyBuffer(
                 mSrcLocalBuffer->GetBufferHandle(),
@@ -146,7 +171,10 @@ Result VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFr
                 bufferBarrier,
                 {});
             if (mEnableBenchmark) {
-                mCommand.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, mTimestampQueryPool, sTimestampSrcTransferDoneIndex);
+                mCommand.writeTimestamp(
+                    vk::PipelineStageFlagBits::eBottomOfPipe,
+                    mTimestampQueryPool,
+                    sTimestampSrcTransferDoneIndex);
             }
         }
 
@@ -168,14 +196,17 @@ Result VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFr
         const uint32_t blockCountX = ((dst.width + (blockSizeX - 1)) / blockSizeX);
         const uint32_t blockCountY = ((dst.height + (blockSizeY - 1)) / blockSizeY);
 
-        // Add additional execution blocks if dimensions aren't divisible by dispatchSize. The shader will handle graceful reading/writing
-        // for now.
+        // Add additional execution blocks if dimensions aren't divisible by dispatchSize. The shader will handle
+        // graceful reading/writing for now.
         const uint32_t groupCountX = (blockCountX / dispatchSizeX) + (dispatchSizeX - (blockCountX % dispatchSizeX));
         const uint32_t groupCountY = (blockCountY / dispatchSizeY) + (dispatchSizeY - (blockCountY % dispatchSizeY));
         mCommand.dispatch(groupCountX, groupCountY, 1);
 
         if (mEnableBenchmark) {
-            mCommand.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, mTimestampQueryPool, sTimestampConvertIndex);
+            mCommand.writeTimestamp(
+                vk::PipelineStageFlagBits::eBottomOfPipe,
+                mTimestampQueryPool,
+                sTimestampConvertIndex);
         }
 
         // Wait for compute stage and copy results back to local memory
@@ -198,7 +229,10 @@ Result VulkanVideoConverter::InitResources(const VideoFrameWrapper& src, VideoFr
                 mDstLocalBuffer->GetBufferHandle(),
                 vk::BufferCopy().setSize(mDstDeviceBuffer->GetBufferSize()).setDstOffset(0).setSrcOffset(0));
             if (mEnableBenchmark) {
-                mCommand.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, mTimestampQueryPool, sTimestampDstTransferDoneIndex);
+                mCommand.writeTimestamp(
+                    vk::PipelineStageFlagBits::eBottomOfPipe,
+                    mTimestampQueryPool,
+                    sTimestampDstTransferDoneIndex);
             }
         }
 
@@ -242,7 +276,9 @@ Result VulkanVideoConverter::Convert(const VideoFrameWrapper& src, VideoFrameWra
     return withBenchmarkResult.result;
 }
 
-ResultValue<BenchmarkResult> VulkanVideoConverter::ConvertWithBenchmark(const VideoFrameWrapper& src, VideoFrameWrapper& dst)
+ResultValue<BenchmarkResult> VulkanVideoConverter::ConvertWithBenchmark(
+    const VideoFrameWrapper& src,
+    VideoFrameWrapper& dst)
 {
     return ConvertInternal(src, dst, true);
 }
@@ -263,7 +299,8 @@ ResultValue<BenchmarkResult> VulkanVideoConverter::ConvertInternal(
 
     // Initialize resources and cache shaders, buffers, etc
     const bool wasInitialized = mPrevSourceFrame.has_value() && mPrevDstFrame.has_value();
-    if (!wasInitialized || !src.AreFramePropertiesEqual(mPrevSourceFrame.value()) || !dst.AreFramePropertiesEqual(mPrevDstFrame.value())) {
+    if (!wasInitialized || !src.AreFramePropertiesEqual(mPrevSourceFrame.value()) ||
+        !dst.AreFramePropertiesEqual(mPrevDstFrame.value())) {
         if (wasInitialized) {
             CleanUp();
         }
@@ -294,7 +331,8 @@ ResultValue<BenchmarkResult> VulkanVideoConverter::ConvertInternal(
     mDevice->WaitForFence(computeFence);
     mDevice->DestroyFence(computeFence);
     if (mEnableBenchmark) {
-        std::vector<uint64_t> queryResult = mDevice->GetTimestampQueryResults(mTimestampQueryPool, sTimemestampQueryCount);
+        std::vector<uint64_t> queryResult =
+            mDevice->GetTimestampQueryResults(mTimestampQueryPool, sTimemestampQueryCount);
         mDevice->ResetQueryPool(mTimestampQueryPool, sTimemestampQueryCount);
         benchmarkResult.transferDeviceVisibleToDeviceLocalTimeMicros = queryResult[1] - queryResult[0];
         benchmarkResult.computeConversionTimeMicros = queryResult[2] - queryResult[1];

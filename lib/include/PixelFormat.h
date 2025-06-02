@@ -7,49 +7,59 @@ namespace Pixelweave
 {
 
 enum class PixelFormat : uint32_t {
-    Interleaved8BitUYVY = 0,
-    Interleaved8BitBGRA = 1,
-    Interleaved8BitRGBA = 2,
-    Planar8Bit420 = 3,
-    Planar8Bit422 = 4,
-    Planar8Bit444 = 5,
-    Planar8Bit420YV12 = 6,     // YVU, 3 planes
-    Planar8Bit420NV12 = 7,     // A Y plane followed by a UV plane
-    Interleaved10BitUYVY = 8,  // V210: UYVY in 32 bits (2 bits unused)
-    Interleaved10BitRGB = 9,   // RGB in 32 bits (2 bits unused) - Blackmagic
-    Interleaved12BitRGB = 10,  // Blocks of 8 pixels (see bmdFormat12BitRGB)
-    Planar10Bit420 = 11,
-    Planar10Bit422 = 12,
-    Planar10Bit444 = 13,
-    Interleaved8BitARGB = 14,
-    Interleaved12BitRGBLE = 15,
-    Interleaved10BitRGBX = 16,
-    Interleaved10BitRGBXLE = 17,
-    Planar16BitP216 = 18
+    RGB8BitInterleavedBGRA = 0,
+    RGB8BitInterleavedRGBA,
+    RGB8BitInterleavedARGB,
+    YCC8Bit420Planar,      // Plane order YCbCr
+    YCC8Bit420PlanarYV12,  // Plane order YCrCb
+    YCC8Bit422Planar,
+    YCC8Bit444Planar,
+    YCC8Bit420BiplanarNV12,  // One Y plane, one interleaved CbCr plane
+    YCC8Bit422InterleavedUYVY,
+    RGB10BitInterleavedRGBXBE,
+    RGB10BitInterleavedRGBXLE,
+    RGB10BitInterleavedXRGBBE,
+    RGB10BitInterleavedXRGBLE,
+    YCC10Bit420Planar,
+    YCC10Bit422Planar,
+    YCC10Bit444Planar,
+    YCC10Bit422InterleavedV210,  // Six pixels in 16 bytes, upper two bits of each 32-bit block unused
+    RGB12BitInterleavedBGRBE,    // Eight pixels in 36 bytes
+    RGB12BitInterleavedBGRLE,
+    YCC16Bit422BiplanarP216,
+    ValueCount,  // Convenience value
 };
 
-constexpr std::array<PixelFormat, 19> AllPixelFormats{
-    PixelFormat::Interleaved8BitUYVY,
-    PixelFormat::Interleaved8BitBGRA,
-    PixelFormat::Interleaved8BitRGBA,
-    PixelFormat::Planar8Bit420,
-    PixelFormat::Planar8Bit422,
-    PixelFormat::Planar8Bit444,
-    PixelFormat::Planar8Bit420YV12,
-    PixelFormat::Planar8Bit420NV12,
-    PixelFormat::Interleaved10BitUYVY,
-    PixelFormat::Interleaved10BitRGB,
-    PixelFormat::Interleaved12BitRGB,
-    PixelFormat::Planar10Bit420,
-    PixelFormat::Planar10Bit422,
-    PixelFormat::Planar10Bit444,
-    PixelFormat::Interleaved8BitARGB,
-    PixelFormat::Interleaved12BitRGBLE,
-    PixelFormat::Interleaved10BitRGBX,
-    PixelFormat::Interleaved10BitRGBXLE,
-    PixelFormat::Planar16BitP216
+constexpr size_t PixelFormatCount = static_cast<size_t>(PixelFormat::ValueCount);
+
+constexpr std::array<PixelFormat, PixelFormatCount> AllPixelFormats{
+    PixelFormat::RGB8BitInterleavedBGRA,
+    PixelFormat::RGB8BitInterleavedRGBA,
+    PixelFormat::RGB8BitInterleavedARGB,
+    PixelFormat::YCC8Bit420Planar,
+    PixelFormat::YCC8Bit420PlanarYV12,
+    PixelFormat::YCC8Bit422Planar,
+    PixelFormat::YCC8Bit444Planar,
+    PixelFormat::YCC8Bit420BiplanarNV12,
+    PixelFormat::YCC8Bit422InterleavedUYVY,
+    PixelFormat::RGB10BitInterleavedRGBXBE,
+    PixelFormat::RGB10BitInterleavedRGBXLE,
+    PixelFormat::RGB10BitInterleavedXRGBBE,
+    PixelFormat::RGB10BitInterleavedXRGBLE,
+    PixelFormat::YCC10Bit420Planar,
+    PixelFormat::YCC10Bit422Planar,
+    PixelFormat::YCC10Bit444Planar,
+    PixelFormat::YCC10Bit422InterleavedV210,
+    PixelFormat::RGB12BitInterleavedBGRBE,
+    PixelFormat::RGB12BitInterleavedBGRLE,
+    PixelFormat::YCC16Bit422BiplanarP216,
 };
 
-enum class SubsampleType : uint32_t { RGB = 0, YUV420 = 1, YUV422 = 2, YUV444 = 3 };
+enum class ChromaSubsampling : uint32_t {
+    None = 0,
+    _444,
+    _422,
+    _420,
+};
 
 }  // namespace Pixelweave
