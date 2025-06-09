@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 
 function(pw_configure_cxx SUBPROJECT_NAME)
     # Configure C++ compiler
-    set_property(TARGET ${SUBPROJECT_NAME} PROPERTY CXX_STANDARD 17)
+    set_property(TARGET ${SUBPROJECT_NAME} PROPERTY CXX_STANDARD 20)
     set_property(TARGET ${SUBPROJECT_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 
     # Make compiler extra pedantic for now

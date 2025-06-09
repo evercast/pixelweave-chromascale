@@ -43,6 +43,10 @@ VideoFrameLayout VideoFrameWrapper::GetLayoutType() const
 
 uint64_t VideoFrameWrapper::GetBufferSize() const
 {
+    if (bufferSize != 0) {
+        return bufferSize;
+    }
+
     switch (GetLayoutType()) {
         case VideoFrameLayout::Interleaved:
             return static_cast<uint64_t>(stride) * height;
@@ -52,6 +56,24 @@ uint64_t VideoFrameWrapper::GetBufferSize() const
             const uint64_t chromaSize = GetChromaStride() * GetChromaHeight();
             return lumaSize + chromaSize * 2;
         }
+        default:
+            return 0;
+    }
+}
+
+size_t VideoFrameWrapper::GetPlaneOffset(size_t index) const
+{
+    if (planeOffsets.size() > index) {
+        return planeOffsets[index];
+    }
+
+    switch (index) {
+        case 0:
+            return 0;
+        case 1:
+            return height * stride;
+        case 2:
+            return GetPlaneOffset(1) + GetChromaHeight() * GetChromaStride();
         default:
             return 0;
     }
@@ -130,7 +152,7 @@ uint32_t VideoFrameWrapper::GetChromaOffset() const
     switch (GetLayoutType()) {
         case VideoFrameLayout::Planar:
         case VideoFrameLayout::Biplanar:
-            return height * stride;
+            return GetPlaneOffset(1);
         default:
         case VideoFrameLayout::Interleaved:
             return 0;
@@ -152,9 +174,9 @@ uint32_t VideoFrameWrapper::GetCbOffset() const
         case PixelFormat::YCC10Bit420BiplanarP010:
         case PixelFormat::YCC10Bit444BiplanarP410:
         case PixelFormat::YCC16Bit422BiplanarP216:
-            return GetChromaOffset();
+            return GetPlaneOffset(1);
         case PixelFormat::YCC8Bit420PlanarYV12:
-            return GetChromaOffset() + GetChromaHeight() * GetChromaStride();
+            return GetPlaneOffset(2);
         default:
             return 0;
     }
@@ -170,14 +192,14 @@ uint32_t VideoFrameWrapper::GetCrOffset() const
         case PixelFormat::YCC10Bit420Planar:
         case PixelFormat::YCC10Bit422Planar:
         case PixelFormat::YCC10Bit444Planar:
-            return GetChromaOffset() + GetChromaHeight() * GetChromaStride();
+            return GetPlaneOffset(2);
         case PixelFormat::YCC8Bit420PlanarYV12:
         case PixelFormat::YCC8Bit420BiplanarNV12:
         case PixelFormat::YCC10Bit420BiplanarP010:
         case PixelFormat::YCC10Bit422BiplanarP210:
         case PixelFormat::YCC10Bit444BiplanarP410:
         case PixelFormat::YCC16Bit422BiplanarP216:
-            return GetChromaOffset();
+            return GetPlaneOffset(1);
         default:
             return 0;
     }

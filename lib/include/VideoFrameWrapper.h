@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
 #include "Macros.h"
 #include "PixelFormat.h"
@@ -28,8 +29,10 @@ enum class VideoFrameLayout {
 
 struct PIXELWEAVE_LIB_CLASS VideoFrameWrapper {
     uint8_t* buffer = nullptr;
-    uint32_t stride = 0;        // Stride in bytes
-    uint32_t chromaStride = 0;  // Stride in bytes
+    size_t bufferSize = 0;             // Buffer size in bytes: set to zero to calculate based on stride and height
+    std::vector<size_t> planeOffsets;  // Plane offsets in bytes: leave empty to calculate based on stride and height
+    uint32_t stride = 0;               // Luma/interleaved stride in bytes
+    uint32_t chromaStride = 0;         // Chroma stride in bytes
     uint32_t width = 0;
     uint32_t height = 0;
     PixelFormat pixelFormat = PixelFormat::RGB8BitInterleavedRGBA;
@@ -38,15 +41,18 @@ struct PIXELWEAVE_LIB_CLASS VideoFrameWrapper {
 
     VideoFrameLayout GetLayoutType() const;
     uint64_t GetBufferSize() const;
-    ChromaSubsampling GetChromaSubsampling() const;
-    uint32_t GetChromaWidth() const;
-    uint32_t GetChromaHeight() const;
-    uint32_t GetChromaStride() const;
+    size_t GetPlaneOffset(size_t index) const;
+
+    uint32_t GetBitDepth() const;
+    uint32_t GetByteDepth() const;
+
     uint32_t GetChromaOffset() const;
     uint32_t GetCbOffset() const;
     uint32_t GetCrOffset() const;
-    uint32_t GetBitDepth() const;
-    uint32_t GetByteDepth() const;
+    uint32_t GetChromaStride() const;
+    ChromaSubsampling GetChromaSubsampling() const;
+    uint32_t GetChromaWidth() const;
+    uint32_t GetChromaHeight() const;
 
     bool AreFramePropertiesEqual(const VideoFrameWrapper& other) const;
 };

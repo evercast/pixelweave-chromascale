@@ -195,10 +195,10 @@ std::vector<uint32_t> CompileShader(const VideoFrameWrapper& src, const VideoFra
         shaderc_shader_kind::shaderc_glsl_compute_shader,
         "convert.comp",
         options);
-
     if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
         return {};
     }
+
     ResourceLoader::CleanUp(shaderResource);
     return std::vector<uint32_t>(module.cbegin(), module.cend());
 }

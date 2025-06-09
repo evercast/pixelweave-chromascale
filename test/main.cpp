@@ -37,7 +37,14 @@ VideoFrameWrapper GetUYVYFrame(uint32_t width, uint32_t height)
             buffer[baseIndex + 3] = 0xFF;  // Y
         }
     }
-    return VideoFrameWrapper{buffer, stride, 0, width, height, PixelFormat::YCC8Bit422InterleavedUYVY};
+    return VideoFrameWrapper{
+        .buffer = buffer,
+        .stride = stride,
+        .chromaStride = 0,
+        .width = width,
+        .height = height,
+        .pixelFormat = PixelFormat::YCC8Bit422InterleavedUYVY,
+    };
 }
 
 VideoFrameWrapper GetPlanar420Frame(uint32_t width, uint32_t height)
@@ -66,13 +73,14 @@ VideoFrameWrapper GetPlanar420Frame(uint32_t width, uint32_t height)
         }
     }
     return VideoFrameWrapper{
-        buffer,
-        stride,
-        chromaStride,
-        width,
-        height,
-        PixelFormat::YCC8Bit420Planar,
-        VideoRange::Legal};
+        .buffer = buffer,
+        .stride = stride,
+        .chromaStride = chromaStride,
+        .width = width,
+        .height = height,
+        .pixelFormat = PixelFormat::YCC8Bit420Planar,
+        .range = VideoRange::Legal,
+    };
 }
 
 VideoFrameWrapper GetPlanar422Frame(uint32_t width, uint32_t height)
@@ -83,7 +91,14 @@ VideoFrameWrapper GetPlanar422Frame(uint32_t width, uint32_t height)
     for (uint32_t bufferIndex = 0; bufferIndex < bufferSize; ++bufferIndex) {
         buffer[bufferIndex] = 0xFF;
     }
-    return VideoFrameWrapper{buffer, stride, (width + 1) / 2, width, height, PixelFormat::YCC8Bit422Planar};
+    return VideoFrameWrapper{
+        .buffer = buffer,
+        .stride = stride,
+        .chromaStride = (width + 1) / 2,
+        .width = width,
+        .height = height,
+        .pixelFormat = PixelFormat::YCC8Bit422Planar,
+    };
 }
 
 VideoFrameWrapper GetPlanar444Frame(uint32_t width, uint32_t height)
@@ -94,7 +109,14 @@ VideoFrameWrapper GetPlanar444Frame(uint32_t width, uint32_t height)
     for (uint32_t bufferIndex = 0; bufferIndex < bufferSize; ++bufferIndex) {
         buffer[bufferIndex] = 0xFF;
     }
-    return VideoFrameWrapper{buffer, stride, stride, width, height, PixelFormat::YCC8Bit444Planar};
+    return VideoFrameWrapper{
+        .buffer = buffer,
+        .stride = stride,
+        .chromaStride = stride,
+        .width = width,
+        .height = height,
+        .pixelFormat = PixelFormat::YCC8Bit444Planar,
+    };
 }
 
 VideoFrameWrapper GetYV12Frame(uint32_t width, uint32_t height)
@@ -115,7 +137,14 @@ VideoFrameWrapper GetYV12Frame(uint32_t width, uint32_t height)
     for (uint32_t uSampleIndex = 0; uSampleIndex < chromaWidth * chromaHeight; ++uSampleIndex) {
         buffer[uSampleOffset + uSampleIndex] = 0xB0;
     }
-    return VideoFrameWrapper{buffer, width, (width + 1) / 2, width, height, PixelFormat::YCC8Bit420PlanarYV12};
+    return VideoFrameWrapper{
+        .buffer = buffer,
+        .stride = width,
+        .chromaStride = (width + 1) / 2,
+        .width = width,
+        .height = height,
+        .pixelFormat = PixelFormat::YCC8Bit420PlanarYV12,
+    };
 }
 
 VideoFrameWrapper GetNV12Frame(uint32_t width, uint32_t height)
@@ -132,7 +161,14 @@ VideoFrameWrapper GetNV12Frame(uint32_t width, uint32_t height)
         buffer[uvSampleOffset + uvSampleIndex] = 0xB0;
         buffer[uvSampleOffset + uvSampleIndex + 1] = 0xC0;
     }
-    return VideoFrameWrapper{buffer, width, (width + 1) / 2, width, height, PixelFormat::YCC8Bit420BiplanarNV12};
+    return VideoFrameWrapper{
+        .buffer = buffer,
+        .stride = width,
+        .chromaStride = (width + 1) / 2,
+        .width = width,
+        .height = height,
+        .pixelFormat = PixelFormat::YCC8Bit420BiplanarNV12,
+    };
 }
 
 VideoFrameWrapper GetRGBAFrame(uint32_t width, uint32_t height)
@@ -146,13 +182,14 @@ VideoFrameWrapper GetRGBAFrame(uint32_t width, uint32_t height)
         buffer[sampleIndex * 4 + 3] = 0xFF;
     }
     return VideoFrameWrapper{
-        buffer,
-        width * 4,
-        0,
-        width,
-        height,
-        PixelFormat::RGB8BitInterleavedRGBA,
-        VideoRange::Full};
+        .buffer = buffer,
+        .stride = width * 4,
+        .chromaStride = 0,
+        .width = width,
+        .height = height,
+        .pixelFormat = PixelFormat::RGB8BitInterleavedRGBA,
+        .range = VideoRange::Full,
+    };
 }
 
 VideoFrameWrapper GetBGRAFrame(uint32_t width, uint32_t height)
@@ -166,13 +203,14 @@ VideoFrameWrapper GetBGRAFrame(uint32_t width, uint32_t height)
         buffer[sampleIndex * 4 + 3] = 0xFF;
     }
     return VideoFrameWrapper{
-        buffer,
-        width * 4,
-        0,
-        width,
-        height,
-        PixelFormat::RGB8BitInterleavedBGRA,
-        VideoRange::Full};
+        .buffer = buffer,
+        .stride = width * 4,
+        .chromaStride = 0,
+        .width = width,
+        .height = height,
+        .pixelFormat = PixelFormat::RGB8BitInterleavedBGRA,
+        .range = VideoRange::Full,
+    };
 }
 
 VideoFrameWrapper GetPlanar42010BitFrame(uint32_t width, uint32_t height)
@@ -193,13 +231,14 @@ VideoFrameWrapper GetPlanar42010BitFrame(uint32_t width, uint32_t height)
         buffer[vSampleOffset + vSampleIndex] = 0x3FF;
     }
     return VideoFrameWrapper{
-        reinterpret_cast<uint8_t*>(buffer),
-        width * 2,
-        ((width + 1) / 2) * 2,
-        width,
-        height,
-        PixelFormat::YCC10Bit420Planar,
-        VideoRange::Full};
+        .buffer = reinterpret_cast<uint8_t*>(buffer),
+        .stride = width * 2,
+        .chromaStride = ((width + 1) / 2) * 2,
+        .width = width,
+        .height = height,
+        .pixelFormat = PixelFormat::YCC10Bit420Planar,
+        .range = VideoRange::Full,
+    };
 }
 
 VideoFrameWrapper GetPlanar42210BitFrame(uint32_t width, uint32_t height)
@@ -220,12 +259,13 @@ VideoFrameWrapper GetPlanar42210BitFrame(uint32_t width, uint32_t height)
         buffer[vSampleOffset + vSampleIndex] = 0x03FF;
     }
     return VideoFrameWrapper{
-        reinterpret_cast<uint8_t*>(buffer),
-        width * 2,
-        ((width + 1) / 2) * 2,
-        width,
-        height,
-        PixelFormat::YCC10Bit422Planar};
+        .buffer = reinterpret_cast<uint8_t*>(buffer),
+        .stride = width * 2,
+        .chromaStride = ((width + 1) / 2) * 2,
+        .width = width,
+        .height = height,
+        .pixelFormat = PixelFormat::YCC10Bit422Planar,
+    };
 }
 
 VideoFrameWrapper GetPlanar44410BitFrame(uint32_t width, uint32_t height)
@@ -246,12 +286,13 @@ VideoFrameWrapper GetPlanar44410BitFrame(uint32_t width, uint32_t height)
         buffer[vSampleOffset + vSampleIndex] = 0x3FF;
     }
     return VideoFrameWrapper{
-        reinterpret_cast<uint8_t*>(buffer),
-        width * 2,
-        width * 2,
-        width,
-        height,
-        PixelFormat::YCC10Bit444Planar};
+        .buffer = reinterpret_cast<uint8_t*>(buffer),
+        .stride = width * 2,
+        .chromaStride = width * 2,
+        .width = width,
+        .height = height,
+        .pixelFormat = PixelFormat::YCC10Bit444Planar,
+    };
 }
 
 VideoFrameWrapper Get10BitXRGBBEBuffer(uint32_t width, uint32_t height)
@@ -262,12 +303,13 @@ VideoFrameWrapper Get10BitXRGBBEBuffer(uint32_t width, uint32_t height)
         buffer[bufferIndex] = 0;
     }
     return VideoFrameWrapper{
-        reinterpret_cast<uint8_t*>(buffer),
-        width * 4,
-        0,
-        width,
-        height,
-        PixelFormat::RGB10BitInterleavedXRGBBE};
+        .buffer = reinterpret_cast<uint8_t*>(buffer),
+        .stride = width * 4,
+        .chromaStride = 0,
+        .width = width,
+        .height = height,
+        .pixelFormat = PixelFormat::RGB10BitInterleavedXRGBBE,
+    };
 }
 
 VideoFrameWrapper GetP216Frame(uint32_t width, uint32_t height)
@@ -291,12 +333,13 @@ VideoFrameWrapper GetP216Frame(uint32_t width, uint32_t height)
     }
 
     return VideoFrameWrapper{
-        reinterpret_cast<uint8_t*>(buffer),
-        width * 2,
-        0,
-        width,
-        height,
-        PixelFormat::YCC16Bit422BiplanarP216};
+        .buffer = reinterpret_cast<uint8_t*>(buffer),
+        .stride = width * 2,
+        .chromaStride = 0,
+        .width = width,
+        .height = height,
+        .pixelFormat = PixelFormat::YCC16Bit422BiplanarP216,
+    };
 }
 
 VideoFrameWrapper GetV210Buffer(uint32_t width, uint32_t height)
@@ -308,12 +351,13 @@ VideoFrameWrapper GetV210Buffer(uint32_t width, uint32_t height)
         buffer[bufferIndex] = 0;
     }
     return VideoFrameWrapper{
-        reinterpret_cast<uint8_t*>(buffer),
-        stride,
-        0,
-        width,
-        height,
-        PixelFormat::YCC10Bit422InterleavedV210};
+        .buffer = buffer,
+        .stride = stride,
+        .chromaStride = 0,
+        .width = width,
+        .height = height,
+        .pixelFormat = PixelFormat::YCC10Bit422InterleavedV210,
+    };
 }
 
 VideoFrameWrapper CreateFrame(PixelFormat pixelFormat, uint32_t width, uint32_t height)
@@ -472,132 +516,133 @@ std::string GetYUVMatrixName(LumaChromaMatrix matrix)
 int main()
 {
     auto [result, device] = Device::Create();
-    if (result == Result::Success) {
-        std::vector<PixelFormat> validInputFormats{
-            PixelFormat::RGB8BitInterleavedBGRA,
-            PixelFormat::RGB8BitInterleavedRGBA,
-            PixelFormat::YCC8Bit420Planar,
-            PixelFormat::YCC8Bit420PlanarYV12,
-            PixelFormat::YCC8Bit422Planar,
-            PixelFormat::YCC8Bit444Planar,
-            PixelFormat::YCC8Bit420BiplanarNV12,
-            PixelFormat::YCC8Bit422InterleavedUYVY,
-            PixelFormat::RGB10BitInterleavedXRGBBE,
-            PixelFormat::YCC10Bit420Planar,
-            PixelFormat::YCC10Bit422Planar,
-            PixelFormat::YCC10Bit444Planar,
-            PixelFormat::YCC16Bit422BiplanarP216,
-        };
+    if (result != Result::Success) {
+        return -1;
+    }
 
-        std::vector<PixelFormat> validOutputFormats{
-            PixelFormat::RGB8BitInterleavedBGRA,
-            PixelFormat::YCC8Bit420Planar,
-            PixelFormat::YCC8Bit422Planar,
-            PixelFormat::YCC8Bit444Planar,
-            PixelFormat::YCC8Bit422InterleavedUYVY,
-            PixelFormat::RGB10BitInterleavedXRGBBE,
-            PixelFormat::YCC10Bit420Planar,
-            PixelFormat::YCC10Bit422Planar,
-            PixelFormat::YCC10Bit444Planar,
-        };
+    std::vector<PixelFormat> validInputFormats{
+        PixelFormat::RGB8BitInterleavedBGRA,
+        PixelFormat::RGB8BitInterleavedRGBA,
+        PixelFormat::YCC8Bit420Planar,
+        PixelFormat::YCC8Bit420PlanarYV12,
+        PixelFormat::YCC8Bit422Planar,
+        PixelFormat::YCC8Bit444Planar,
+        PixelFormat::YCC8Bit420BiplanarNV12,
+        PixelFormat::YCC8Bit422InterleavedUYVY,
+        PixelFormat::RGB10BitInterleavedXRGBBE,
+        PixelFormat::YCC10Bit420Planar,
+        PixelFormat::YCC10Bit422Planar,
+        PixelFormat::YCC10Bit444Planar,
+        PixelFormat::YCC16Bit422BiplanarP216,
+    };
 
-        struct Resolution {
-            uint32_t width, height;
-        };
-        std::vector<Resolution> resolutions{
-            Resolution{3840, 2160},
-            Resolution{2560, 1440},
-            Resolution{1920, 1080},
-            Resolution{1280, 720},
-        };
+    std::vector<PixelFormat> validOutputFormats{
+        PixelFormat::RGB8BitInterleavedBGRA,
+        PixelFormat::YCC8Bit420Planar,
+        PixelFormat::YCC8Bit422Planar,
+        PixelFormat::YCC8Bit444Planar,
+        PixelFormat::YCC8Bit422InterleavedUYVY,
+        PixelFormat::RGB10BitInterleavedXRGBBE,
+        PixelFormat::YCC10Bit420Planar,
+        PixelFormat::YCC10Bit422Planar,
+        PixelFormat::YCC10Bit444Planar,
+    };
 
-        std::vector<VideoRange> ranges{VideoRange::Legal, VideoRange::Full};
+    struct Resolution {
+        uint32_t width, height;
+    };
+    std::vector<Resolution> resolutions{
+        Resolution{3840, 2160},
+        Resolution{2560, 1440},
+        Resolution{1920, 1080},
+        Resolution{1280, 720},
+    };
 
-        std::vector<LumaChromaMatrix> matrices{LumaChromaMatrix::BT709, LumaChromaMatrix::BT2020NCL};
+    std::vector<VideoRange> ranges{VideoRange::Legal, VideoRange::Full};
 
-        const auto videoConverter = device->CreateVideoConverter();
+    std::vector<LumaChromaMatrix> matrices{LumaChromaMatrix::BT709, LumaChromaMatrix::BT2020NCL};
 
-        // Iterates over all possible types of conversions
-        for (Resolution inputResolution : resolutions) {
-            for (PixelFormat inputFormat : validInputFormats) {
-                for (VideoRange inputRange : ranges) {
-                    for (LumaChromaMatrix inputMatrix : matrices) {
-                        VideoFrameWrapper inputFrame =
-                            CreateFrame(inputFormat, inputResolution.width, inputResolution.height);
-                        inputFrame.range = inputRange;
-                        inputFrame.lumaChromaMatrix = inputMatrix;
-                        for (Resolution outputResolution : resolutions) {
-                            for (PixelFormat outputFormat : validOutputFormats) {
-                                for (VideoRange outputRange : ranges) {
-                                    for (LumaChromaMatrix outputMatrix : matrices) {
-                                        VideoFrameWrapper outputFrame =
-                                            CreateFrame(outputFormat, outputResolution.width, outputResolution.height);
-                                        outputFrame.range = outputRange;
-                                        outputFrame.lumaChromaMatrix = outputMatrix;
+    const auto videoConverter = device->CreateVideoConverter();
 
-                                        std::cout << "Testing:" << std::endl
-                                                  << "\t Input: " << inputFrame.width << "x" << inputFrame.height << "("
-                                                  << GetFormatName(inputFrame.pixelFormat) << ","
-                                                  << GetRangeName(inputFrame.range) << ","
-                                                  << GetYUVMatrixName(inputFrame.lumaChromaMatrix) << ")" << std::endl
-                                                  << "\t Output: " << outputFrame.width << "x" << outputFrame.height
-                                                  << "(" << GetFormatName(outputFrame.pixelFormat) << ","
-                                                  << GetRangeName(outputFrame.range) << ","
-                                                  << GetYUVMatrixName(outputFrame.lumaChromaMatrix) << ")" << std::endl;
+    // Iterates over all possible types of conversions
+    for (Resolution inputResolution : resolutions) {
+        for (PixelFormat inputFormat : validInputFormats) {
+            for (VideoRange inputRange : ranges) {
+                for (LumaChromaMatrix inputMatrix : matrices) {
+                    VideoFrameWrapper inputFrame =
+                        CreateFrame(inputFormat, inputResolution.width, inputResolution.height);
+                    inputFrame.range = inputRange;
+                    inputFrame.lumaChromaMatrix = inputMatrix;
+                    for (Resolution outputResolution : resolutions) {
+                        for (PixelFormat outputFormat : validOutputFormats) {
+                            for (VideoRange outputRange : ranges) {
+                                for (LumaChromaMatrix outputMatrix : matrices) {
+                                    VideoFrameWrapper outputFrame =
+                                        CreateFrame(outputFormat, outputResolution.width, outputResolution.height);
+                                    outputFrame.range = outputRange;
+                                    outputFrame.lumaChromaMatrix = outputMatrix;
 
-                                        if (videoConverter->Convert(inputFrame, outputFrame) != Result::Success) {
-                                            std::cout << "Error converting" << std::endl;
-                                            return -1;
-                                        }
-                                        delete[] outputFrame.buffer;
+                                    std::cout << "Testing:" << std::endl
+                                              << "\t Input: " << inputFrame.width << "x" << inputFrame.height << "("
+                                              << GetFormatName(inputFrame.pixelFormat) << ","
+                                              << GetRangeName(inputFrame.range) << ","
+                                              << GetYUVMatrixName(inputFrame.lumaChromaMatrix) << ")" << std::endl
+                                              << "\t Output: " << outputFrame.width << "x" << outputFrame.height << "("
+                                              << GetFormatName(outputFrame.pixelFormat) << ","
+                                              << GetRangeName(outputFrame.range) << ","
+                                              << GetYUVMatrixName(outputFrame.lumaChromaMatrix) << ")" << std::endl;
+
+                                    if (videoConverter->Convert(inputFrame, outputFrame) != Result::Success) {
+                                        std::cout << "Error converting" << std::endl;
+                                        return -1;
                                     }
+                                    delete[] outputFrame.buffer;
                                 }
                             }
                         }
-                        delete[] inputFrame.buffer;
                     }
+                    delete[] inputFrame.buffer;
                 }
             }
         }
-
-        // Sanity check, compare 'copy'
-        std::vector<PixelFormat> validInputOutputFormats;
-        {
-            std::set<PixelFormat> inputFormatSet(validInputFormats.begin(), validInputFormats.end());
-            std::set<PixelFormat> outputFormatSet(validOutputFormats.begin(), validOutputFormats.end());
-            std::set_intersection(
-                inputFormatSet.begin(),
-                inputFormatSet.end(),
-                outputFormatSet.begin(),
-                outputFormatSet.end(),
-                std::back_inserter(validInputOutputFormats));
-        }
-        resolutions = std::vector<Resolution>{Resolution{64, 64}};
-
-        for (Resolution inputResolution : resolutions) {
-            for (PixelFormat format : validInputOutputFormats) {
-                VideoFrameWrapper inputFrame = CreateFrame(format, inputResolution.width, inputResolution.height);
-                VideoFrameWrapper outputFrame = CreateFrame(format, inputResolution.width, inputResolution.height);
-                std::cout << "Testing comparison:" << std::endl
-                          << "\t Input: " << inputFrame.width << "x" << inputFrame.height << "("
-                          << GetFormatName(inputFrame.pixelFormat) << "," << GetRangeName(inputFrame.range) << ","
-                          << GetYUVMatrixName(inputFrame.lumaChromaMatrix) << ")" << std::endl;
-                if (videoConverter->Convert(inputFrame, outputFrame) != Result::Success) {
-                    std::cout << "Error converting" << std::endl;
-                    return -1;
-                }
-                if (memcmp(inputFrame.buffer, outputFrame.buffer, inputFrame.GetBufferSize()) != 0) {
-                    std::cout << "Frames aren't equal" << std::endl;
-                    return -1;
-                }
-                delete[] outputFrame.buffer;
-                delete[] inputFrame.buffer;
-            }
-        }
-
-        videoConverter->Release();
-        device->Release();
-        return 0;
     }
-    return -1;
+
+    // Sanity check, compare 'copy'
+    std::vector<PixelFormat> validInputOutputFormats;
+    {
+        std::set<PixelFormat> inputFormatSet(validInputFormats.begin(), validInputFormats.end());
+        std::set<PixelFormat> outputFormatSet(validOutputFormats.begin(), validOutputFormats.end());
+        std::set_intersection(
+            inputFormatSet.begin(),
+            inputFormatSet.end(),
+            outputFormatSet.begin(),
+            outputFormatSet.end(),
+            std::back_inserter(validInputOutputFormats));
+    }
+    resolutions = std::vector<Resolution>{Resolution{64, 64}};
+
+    for (Resolution inputResolution : resolutions) {
+        for (PixelFormat format : validInputOutputFormats) {
+            VideoFrameWrapper inputFrame = CreateFrame(format, inputResolution.width, inputResolution.height);
+            VideoFrameWrapper outputFrame = CreateFrame(format, inputResolution.width, inputResolution.height);
+            std::cout << "Testing comparison:" << std::endl
+                      << "\t Input: " << inputFrame.width << "x" << inputFrame.height << "("
+                      << GetFormatName(inputFrame.pixelFormat) << "," << GetRangeName(inputFrame.range) << ","
+                      << GetYUVMatrixName(inputFrame.lumaChromaMatrix) << ")" << std::endl;
+            if (videoConverter->Convert(inputFrame, outputFrame) != Result::Success) {
+                std::cout << "Error converting" << std::endl;
+                return -1;
+            }
+            if (memcmp(inputFrame.buffer, outputFrame.buffer, inputFrame.GetBufferSize()) != 0) {
+                std::cout << "Frames aren't equal" << std::endl;
+                return -1;
+            }
+            delete[] outputFrame.buffer;
+            delete[] inputFrame.buffer;
+        }
+    }
+
+    videoConverter->Release();
+    device->Release();
+    return 0;
 }
