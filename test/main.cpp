@@ -97,7 +97,7 @@ VideoFrameWrapper GetPlanar444Frame(uint32_t width, uint32_t height)
     return VideoFrameWrapper{buffer, stride, stride, width, height, PixelFormat::YCC8Bit444Planar};
 }
 
-VideoFrameWrapper GetPlanarYV12Frame(uint32_t width, uint32_t height)
+VideoFrameWrapper GetYV12Frame(uint32_t width, uint32_t height)
 {
     const uint32_t chromaWidth = (width + 1) / 2;
     const uint32_t chromaHeight = (height + 1) / 2;
@@ -118,7 +118,7 @@ VideoFrameWrapper GetPlanarYV12Frame(uint32_t width, uint32_t height)
     return VideoFrameWrapper{buffer, width, (width + 1) / 2, width, height, PixelFormat::YCC8Bit420PlanarYV12};
 }
 
-VideoFrameWrapper GetPlanarNV12Frame(uint32_t width, uint32_t height)
+VideoFrameWrapper GetNV12Frame(uint32_t width, uint32_t height)
 {
     const uint32_t chromaWidth = (width + 1) / 2;
     const uint32_t chromaHeight = (height + 1) / 2;
@@ -270,7 +270,7 @@ VideoFrameWrapper Get10BitXRGBBEBuffer(uint32_t width, uint32_t height)
         PixelFormat::RGB10BitInterleavedXRGBBE};
 }
 
-VideoFrameWrapper GetPlanarP216Frame(uint32_t width, uint32_t height)
+VideoFrameWrapper GetP216Frame(uint32_t width, uint32_t height)
 {
     const uint32_t chromaWidth = (width + 1) / 2;
     const uint32_t chromaHeight = height;
@@ -299,7 +299,7 @@ VideoFrameWrapper GetPlanarP216Frame(uint32_t width, uint32_t height)
         PixelFormat::YCC16Bit422BiplanarP216};
 }
 
-VideoFrameWrapper Get10BitUYVYBuffer(uint32_t width, uint32_t height)
+VideoFrameWrapper GetV210Buffer(uint32_t width, uint32_t height)
 {
     const uint32_t stride = ((width + 47) / 48) * 128;
     const uint32_t bufferSize = stride * height;
@@ -318,6 +318,7 @@ VideoFrameWrapper Get10BitUYVYBuffer(uint32_t width, uint32_t height)
 
 VideoFrameWrapper CreateFrame(PixelFormat pixelFormat, uint32_t width, uint32_t height)
 {
+    static_assert(AllPixelFormats.size() == 25);
     switch (pixelFormat) {
         case PixelFormat::RGB8BitInterleavedBGRA:
             return GetBGRAFrame(width, height);
@@ -329,13 +330,13 @@ VideoFrameWrapper CreateFrame(PixelFormat pixelFormat, uint32_t width, uint32_t 
         case PixelFormat::YCC8Bit420Planar:
             return GetPlanar420Frame(width, height);
         case PixelFormat::YCC8Bit420PlanarYV12:
-            return GetPlanarYV12Frame(width, height);
+            return GetYV12Frame(width, height);
         case PixelFormat::YCC8Bit422Planar:
             return GetPlanar422Frame(width, height);
         case PixelFormat::YCC8Bit444Planar:
             return GetPlanar444Frame(width, height);
         case PixelFormat::YCC8Bit420BiplanarNV12:
-            return GetPlanarNV12Frame(width, height);
+            return GetNV12Frame(width, height);
         case PixelFormat::YCC8Bit422InterleavedUYVY:
             return GetUYVYFrame(width, height);
         case PixelFormat::RGB10BitInterleavedRGBXBE:
@@ -349,14 +350,29 @@ VideoFrameWrapper CreateFrame(PixelFormat pixelFormat, uint32_t width, uint32_t 
         case PixelFormat::RGB10BitInterleavedXRGBLE:
             // TODO
             return VideoFrameWrapper{};
+        case PixelFormat::RGB10BitInterleavedXBGRBE:
+            // TODO
+            return VideoFrameWrapper{};
+        case PixelFormat::RGB10BitInterleavedXBGRLE:
+            // TODO
+            return VideoFrameWrapper{};
         case PixelFormat::YCC10Bit420Planar:
             return GetPlanar42010BitFrame(width, height);
         case PixelFormat::YCC10Bit422Planar:
             return GetPlanar42210BitFrame(width, height);
         case PixelFormat::YCC10Bit444Planar:
             return GetPlanar44410BitFrame(width, height);
+        case PixelFormat::YCC10Bit420BiplanarP010:
+            // TODO
+            return VideoFrameWrapper{};
+        case PixelFormat::YCC10Bit422BiplanarP210:
+            // TODO
+            return VideoFrameWrapper{};
+        case PixelFormat::YCC10Bit444BiplanarP410:
+            // TODO
+            return VideoFrameWrapper{};
         case PixelFormat::YCC10Bit422InterleavedV210:
-            return Get10BitUYVYBuffer(width, height);
+            return GetV210Buffer(width, height);
         case PixelFormat::RGB12BitInterleavedBGRBE:
             // TODO
             return VideoFrameWrapper{};
@@ -364,7 +380,7 @@ VideoFrameWrapper CreateFrame(PixelFormat pixelFormat, uint32_t width, uint32_t 
             // TODO
             return VideoFrameWrapper{};
         case PixelFormat::YCC16Bit422BiplanarP216:
-            return GetPlanarP216Frame(width, height);
+            return GetP216Frame(width, height);
         default:
             return VideoFrameWrapper{};
     }
@@ -372,6 +388,7 @@ VideoFrameWrapper CreateFrame(PixelFormat pixelFormat, uint32_t width, uint32_t 
 
 std::string GetFormatName(PixelFormat pixelFormat)
 {
+    static_assert(AllPixelFormats.size() == 25);
     switch (pixelFormat) {
         case PixelFormat::RGB8BitInterleavedBGRA:
             return "RGB8BitInterleavedBGRA";
@@ -399,12 +416,22 @@ std::string GetFormatName(PixelFormat pixelFormat)
             return "RGB10BitInterleavedXRGBBE";
         case PixelFormat::RGB10BitInterleavedXRGBLE:
             return "RGB10BitInterleavedXRGBLE";
+        case PixelFormat::RGB10BitInterleavedXBGRBE:
+            return "RGB10BitInterleavedXBGRBE";
+        case PixelFormat::RGB10BitInterleavedXBGRLE:
+            return "RGB10BitInterleavedXBGRLE";
         case PixelFormat::YCC10Bit420Planar:
             return "YCC10Bit420Planar";
         case PixelFormat::YCC10Bit422Planar:
             return "YCC10Bit422Planar";
         case PixelFormat::YCC10Bit444Planar:
             return "YCC10Bit444Planar";
+        case PixelFormat::YCC10Bit420BiplanarP010:
+            return "YCC10Bit420BiplanarP010";
+        case PixelFormat::YCC10Bit422BiplanarP210:
+            return "YCC10Bit422BiplanarP210";
+        case PixelFormat::YCC10Bit444BiplanarP410:
+            return "YCC10Bit444BiplanarP410";
         case PixelFormat::YCC10Bit422InterleavedV210:
             return "YCC10Bit422InterleavedV210";
         case PixelFormat::RGB12BitInterleavedBGRBE:

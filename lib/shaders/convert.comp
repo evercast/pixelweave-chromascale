@@ -22,13 +22,18 @@
 #define PixelFormatRGB10BitInterleavedRGBXLE    10
 #define PixelFormatRGB10BitInterleavedXRGBBE    11
 #define PixelFormatRGB10BitInterleavedXRGBLE    12
-#define PixelFormatYCC10Bit420Planar            13
-#define PixelFormatYCC10Bit422Planar            14
-#define PixelFormatYCC10Bit444Planar            15
-#define PixelFormatYCC10Bit422InterleavedV210   16
-#define PixelFormatRGB12BitInterleavedBGRBE     17
-#define PixelFormatRGB12BitInterleavedBGRLE     18
-#define PixelFormatYCC16Bit422BiplanarP216      19
+#define PixelFormatRGB10BitInterleavedXBGRBE    13
+#define PixelFormatRGB10BitInterleavedXBGRLE    14
+#define PixelFormatYCC10Bit420Planar            15
+#define PixelFormatYCC10Bit422Planar            16
+#define PixelFormatYCC10Bit444Planar            17
+#define PixelFormatYCC10Bit420BiplanarP010      18
+#define PixelFormatYCC10Bit422BiplanarP210      19
+#define PixelFormatYCC10Bit444BiplanarP410      20
+#define PixelFormatYCC10Bit422InterleavedV210   21
+#define PixelFormatRGB12BitInterleavedBGRBE     22
+#define PixelFormatRGB12BitInterleavedBGRLE     23
+#define PixelFormatYCC16Bit422BiplanarP216      24
 
 // The values here must match the `ChromaSubsampling` enum values in `PixelFormat.h`
 #define CHROMA_SUBSAMPLING_NONE 0
@@ -279,11 +284,43 @@ u32vec3 readPixelYCC8Bit420BiplanarNV12(uvec2 lumaCoords)
     u32vec3 result;
     result.x = SRC_PICTURE_BUFFER[srcYBufferIndex];
     // Fetch UV sample from UV plane
-    const uvec2 chromaCoords = lumaCoords / BlockSize;
+    const uvec2 chromaCoords = lumaCoords / uvec2(2, 2);
     const uint actualChromaStride = SRC_PICTURE_CHROMA_STRIDE * 2;
     const uint srcBufferUVIndex = SRC_PICTURE_CHROMA_OFFSET + chromaCoords.y * actualChromaStride + chromaCoords.x * 2;
     result.y = SRC_PICTURE_BUFFER[srcBufferUVIndex];
     result.z = SRC_PICTURE_BUFFER[srcBufferUVIndex + 1];
+    return result;
+}
+
+u32vec3 readPixelYCC10BitBiplanar(uvec2 lumaCoords)
+{
+    const uint srcYBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE / 2 + lumaCoords.x;
+    u32vec3 result;
+    result.x = SRC_PICTURE_BUFFER16[srcYBufferIndex] >> 6;
+#if (SRC_PICTURE_FORMAT == PixelFormatYCC10Bit420BiplanarP010)
+    const uvec2 chromaSamplerSize = uvec2(2, 2);
+#elif (SRC_PICTURE_FORMAT == PixelFormatYCC10Bit422BiplanarP210)
+    const uvec2 chromaSamplerSize = uvec2(2, 1);
+#else  // SRC_PICTURE_FORMAT == PixelFormatYCC10Bit444BiplanarP410)
+    const uvec2 chromaSamplerSize = uvec2(1, 1);
+#endif
+    const uvec2 chromaCoords = lumaCoords / chromaSamplerSize;
+    const uint srcBufferUVIndex = (SRC_PICTURE_CHROMA_OFFSET / 2) + (chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE) + (chromaCoords.x * 2);
+    result.y = SRC_PICTURE_BUFFER16[srcBufferUVIndex] >> 6;
+    result.z = SRC_PICTURE_BUFFER16[srcBufferUVIndex + 1] >> 6;
+    return result;
+}
+
+u32vec3 readPixelYCC16Bit422BiplanarP216(uvec2 lumaCoords)
+{
+    const uint srcYBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE / 2 + lumaCoords.x;
+    u32vec3 result;
+    result.x = SRC_PICTURE_BUFFER16[srcYBufferIndex];
+    const uvec2 chromaCoords = lumaCoords / uvec2(2, 1);
+    // Account for: Color buffer offset, current video line, horizonal sample offset (uv sample)
+    const uint srcBufferUVIndex = (SRC_PICTURE_CHROMA_OFFSET / 2) + (chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE) + (chromaCoords.x * 2);
+    result.y = SRC_PICTURE_BUFFER16[srcBufferUVIndex];
+    result.z = SRC_PICTURE_BUFFER16[srcBufferUVIndex + 1];
     return result;
 }
 
@@ -380,6 +417,28 @@ u32vec3 readPixelRGB10BitInterleavedXRGB(uvec2 lumaCoords)
 
     pixel.b = uint32_t((word & (0xFF << 24)) >> 24);
     pixel.b = pixel.b | uint32_t((word & (0x03 << 16)) >> 8);
+
+    return pixel;
+}
+
+u32vec3 readPixelRGB10BitInterleavedXBGR(uvec2 lumaCoords)
+{
+    const uint verticalOffset = (lumaCoords.y * SRC_PICTURE_STRIDE) / 4;  // Each pixel takes 4 bytes
+    uint32_t word = SRC_PICTURE_BUFFER32[verticalOffset + lumaCoords.x];
+#if (SRC_PICTURE_FORMAT == PixelFormatRGB10BitInterleavedXBGRLE)
+    word = SwapEndianness(word);
+#endif
+
+    u32vec3 pixel;
+
+    pixel.b = uint32_t((word & 0x3F) << 4);
+    pixel.b = pixel.b | uint32_t((word & (0xF0 << 8)) >> 12);
+
+    pixel.g = uint32_t((word & (0xFC << 16)) >> 18);
+    pixel.g = pixel.g | uint32_t((word & (0x0F << 8)) >> 2);
+
+    pixel.r = uint32_t((word & (0xFF << 24)) >> 24);
+    pixel.r = pixel.r | uint32_t((word & (0x03 << 16)) >> 8);
 
     return pixel;
 }
@@ -492,19 +551,6 @@ u32vec3 readPixelRGB12BitInterleavedBGR(uvec2 lumaCoords)
     return pixel;
 }
 
-u32vec3 readPixelYCC16Bit422BiplanarP216(uvec2 lumaCoords)
-{
-    const uint srcYBufferIndex = lumaCoords.y * SRC_PICTURE_STRIDE / 2 + lumaCoords.x;
-    u32vec3 result;
-    result.x = SRC_PICTURE_BUFFER16[srcYBufferIndex];
-    const uvec2 chromaCoords = lumaCoords / uvec2(2, 1);
-    // Account for: Color buffer offset, current video line, horizonal sample offset (uv sample)
-    const uint srcBufferUVIndex = (SRC_PICTURE_CHROMA_OFFSET / 2) + (chromaCoords.y * SRC_PICTURE_CHROMA_STRIDE) + (chromaCoords.x * 2);
-    result.y = SRC_PICTURE_BUFFER16[srcBufferUVIndex];
-    result.z = SRC_PICTURE_BUFFER16[srcBufferUVIndex + 1];
-    return result;
-}
-
 // Map generic read function to actual entry as seen above
 #if (SRC_PICTURE_FORMAT == PixelFormatRGB8BitInterleavedBGRA)
     #define READ_SAMPLE readPixelRGB8BitInterleavedBGRA
@@ -532,12 +578,22 @@ u32vec3 readPixelYCC16Bit422BiplanarP216(uvec2 lumaCoords)
     #define READ_SAMPLE readPixelRGB10BitInterleavedXRGB
 #elif (SRC_PICTURE_FORMAT == PixelFormatRGB10BitInterleavedXRGBLE)
     #define READ_SAMPLE readPixelRGB10BitInterleavedXRGB
+#elif (SRC_PICTURE_FORMAT == PixelFormatRGB10BitInterleavedXBGRBE)
+    #define READ_SAMPLE readPixelRGB10BitInterleavedXBGR
+#elif (SRC_PICTURE_FORMAT == PixelFormatRGB10BitInterleavedXBGRLE)
+    #define READ_SAMPLE readPixelRGB10BitInterleavedXBGR
 #elif (SRC_PICTURE_FORMAT == PixelFormatYCC10Bit420Planar)
     #define READ_SAMPLE readPixelYCC10BitPlanar
 #elif (SRC_PICTURE_FORMAT == PixelFormatYCC10Bit422Planar)
     #define READ_SAMPLE readPixelYCC10BitPlanar
 #elif (SRC_PICTURE_FORMAT == PixelFormatYCC10Bit444Planar)
     #define READ_SAMPLE readPixelYCC10BitPlanar
+#elif (SRC_PICTURE_FORMAT == PixelFormatYCC10Bit420BiplanarP010)
+    #define READ_SAMPLE readPixelYCC10BitBiplanar
+#elif (SRC_PICTURE_FORMAT == PixelFormatYCC10Bit422BiplanarP210)
+    #define READ_SAMPLE readPixelYCC10BitBiplanar
+#elif (SRC_PICTURE_FORMAT == PixelFormatYCC10Bit444BiplanarP410)
+    #define READ_SAMPLE readPixelYCC10BitBiplanar
 #elif (SRC_PICTURE_FORMAT == PixelFormatYCC10Bit422InterleavedV210)
     #define READ_SAMPLE readPixelYCC10Bit422InterleavedV210
 #elif (SRC_PICTURE_FORMAT == PixelFormatRGB12BitInterleavedBGRBE)
@@ -547,7 +603,7 @@ u32vec3 readPixelYCC16Bit422BiplanarP216(uvec2 lumaCoords)
 #elif (SRC_PICTURE_FORMAT == PixelFormatYCC16Bit422BiplanarP216)
     #define READ_SAMPLE readPixelYCC16Bit422BiplanarP216
 #else
-    #error "SRC_PICTURE_FORMAT value not supported."
+    #error "SRC_PICTURE_FORMAT value not supported"
 #endif
 
 #define GetMaxValue(BIT_DEPTH) float((1 << BIT_DEPTH) - 1)
@@ -695,8 +751,7 @@ YUV444Block readBilinear(const uvec2 blockCoords)
     return result;
 }
 
-// Write functions, to store into the result buffer
-// For now, exclusively writes to YUV planar buffers
+// Write functions to store in result buffer (for now exclusively writes to YUV planar buffers)
 
 void write420Sample(const uvec2 blockCoords, in YUV420Block resultBlock)
 {

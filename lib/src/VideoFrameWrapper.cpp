@@ -7,7 +7,7 @@ namespace Pixelweave
 
 VideoFrameLayout VideoFrameWrapper::GetLayoutType() const
 {
-    static_assert(AllPixelFormats.size() == 20);
+    static_assert(AllPixelFormats.size() == 25);
     switch (pixelFormat) {
         default:
         case PixelFormat::RGB8BitInterleavedRGBA:
@@ -17,6 +17,8 @@ VideoFrameLayout VideoFrameWrapper::GetLayoutType() const
         case PixelFormat::RGB10BitInterleavedRGBXLE:
         case PixelFormat::RGB10BitInterleavedXRGBBE:
         case PixelFormat::RGB10BitInterleavedXRGBLE:
+        case PixelFormat::RGB10BitInterleavedXBGRBE:
+        case PixelFormat::RGB10BitInterleavedXBGRLE:
         case PixelFormat::RGB12BitInterleavedBGRBE:
         case PixelFormat::RGB12BitInterleavedBGRLE:
         case PixelFormat::YCC8Bit422InterleavedUYVY:
@@ -31,6 +33,9 @@ VideoFrameLayout VideoFrameWrapper::GetLayoutType() const
         case PixelFormat::YCC10Bit444Planar:
             return VideoFrameLayout::Planar;
         case PixelFormat::YCC8Bit420BiplanarNV12:
+        case PixelFormat::YCC10Bit420BiplanarP010:
+        case PixelFormat::YCC10Bit422BiplanarP210:
+        case PixelFormat::YCC10Bit444BiplanarP410:
         case PixelFormat::YCC16Bit422BiplanarP216:
             return VideoFrameLayout::Biplanar;
     }
@@ -54,7 +59,7 @@ uint64_t VideoFrameWrapper::GetBufferSize() const
 
 ChromaSubsampling VideoFrameWrapper::GetChromaSubsampling() const
 {
-    static_assert(AllPixelFormats.size() == 20);
+    static_assert(AllPixelFormats.size() == 25);
     switch (pixelFormat) {
         default:
         case PixelFormat::RGB8BitInterleavedBGRA:
@@ -64,6 +69,8 @@ ChromaSubsampling VideoFrameWrapper::GetChromaSubsampling() const
         case PixelFormat::RGB10BitInterleavedXRGBLE:
         case PixelFormat::RGB10BitInterleavedRGBXBE:
         case PixelFormat::RGB10BitInterleavedRGBXLE:
+        case PixelFormat::RGB10BitInterleavedXBGRBE:
+        case PixelFormat::RGB10BitInterleavedXBGRLE:
         case PixelFormat::RGB12BitInterleavedBGRBE:
         case PixelFormat::RGB12BitInterleavedBGRLE:
             return ChromaSubsampling::None;
@@ -71,15 +78,18 @@ ChromaSubsampling VideoFrameWrapper::GetChromaSubsampling() const
         case PixelFormat::YCC8Bit420PlanarYV12:
         case PixelFormat::YCC8Bit420BiplanarNV12:
         case PixelFormat::YCC10Bit420Planar:
+        case PixelFormat::YCC10Bit420BiplanarP010:
             return ChromaSubsampling::_420;
         case PixelFormat::YCC8Bit422Planar:
         case PixelFormat::YCC8Bit422InterleavedUYVY:
         case PixelFormat::YCC10Bit422Planar:
         case PixelFormat::YCC10Bit422InterleavedV210:
+        case PixelFormat::YCC10Bit422BiplanarP210:
         case PixelFormat::YCC16Bit422BiplanarP216:
             return ChromaSubsampling::_422;
         case PixelFormat::YCC8Bit444Planar:
         case PixelFormat::YCC10Bit444Planar:
+        case PixelFormat::YCC10Bit444BiplanarP410:
             return ChromaSubsampling::_444;
     }
 }
@@ -129,7 +139,7 @@ uint32_t VideoFrameWrapper::GetChromaOffset() const
 
 uint32_t VideoFrameWrapper::GetCbOffset() const
 {
-    static_assert(AllPixelFormats.size() == 20);
+    static_assert(AllPixelFormats.size() == 25);
     switch (pixelFormat) {
         case PixelFormat::YCC8Bit420Planar:
         case PixelFormat::YCC8Bit422Planar:
@@ -138,6 +148,9 @@ uint32_t VideoFrameWrapper::GetCbOffset() const
         case PixelFormat::YCC10Bit422Planar:
         case PixelFormat::YCC10Bit444Planar:
         case PixelFormat::YCC8Bit420BiplanarNV12:
+        case PixelFormat::YCC10Bit422BiplanarP210:
+        case PixelFormat::YCC10Bit420BiplanarP010:
+        case PixelFormat::YCC10Bit444BiplanarP410:
         case PixelFormat::YCC16Bit422BiplanarP216:
             return GetChromaOffset();
         case PixelFormat::YCC8Bit420PlanarYV12:
@@ -149,7 +162,7 @@ uint32_t VideoFrameWrapper::GetCbOffset() const
 
 uint32_t VideoFrameWrapper::GetCrOffset() const
 {
-    static_assert(AllPixelFormats.size() == 20);
+    static_assert(AllPixelFormats.size() == 25);
     switch (pixelFormat) {
         case PixelFormat::YCC8Bit420Planar:
         case PixelFormat::YCC8Bit422Planar:
@@ -160,6 +173,9 @@ uint32_t VideoFrameWrapper::GetCrOffset() const
             return GetChromaOffset() + GetChromaHeight() * GetChromaStride();
         case PixelFormat::YCC8Bit420PlanarYV12:
         case PixelFormat::YCC8Bit420BiplanarNV12:
+        case PixelFormat::YCC10Bit420BiplanarP010:
+        case PixelFormat::YCC10Bit422BiplanarP210:
+        case PixelFormat::YCC10Bit444BiplanarP410:
         case PixelFormat::YCC16Bit422BiplanarP216:
             return GetChromaOffset();
         default:
@@ -169,7 +185,7 @@ uint32_t VideoFrameWrapper::GetCrOffset() const
 
 uint32_t VideoFrameWrapper::GetBitDepth() const
 {
-    static_assert(AllPixelFormats.size() == 20);
+    static_assert(AllPixelFormats.size() == 25);
     switch (pixelFormat) {
         case PixelFormat::RGB8BitInterleavedBGRA:
         case PixelFormat::RGB8BitInterleavedRGBA:
@@ -185,9 +201,14 @@ uint32_t VideoFrameWrapper::GetBitDepth() const
         case PixelFormat::RGB10BitInterleavedXRGBLE:
         case PixelFormat::RGB10BitInterleavedRGBXBE:
         case PixelFormat::RGB10BitInterleavedRGBXLE:
+        case PixelFormat::RGB10BitInterleavedXBGRBE:
+        case PixelFormat::RGB10BitInterleavedXBGRLE:
         case PixelFormat::YCC10Bit420Planar:
         case PixelFormat::YCC10Bit422Planar:
         case PixelFormat::YCC10Bit444Planar:
+        case PixelFormat::YCC10Bit420BiplanarP010:
+        case PixelFormat::YCC10Bit422BiplanarP210:
+        case PixelFormat::YCC10Bit444BiplanarP410:
         case PixelFormat::YCC10Bit422InterleavedV210:
             return 10;
         case PixelFormat::RGB12BitInterleavedBGRBE:

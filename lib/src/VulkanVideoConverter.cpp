@@ -7,6 +7,7 @@
 
 namespace Pixelweave
 {
+
 VulkanVideoConverter::VulkanVideoConverter(VulkanDevice* device)
     : mDevice(nullptr),
       mEnableBenchmark(false),
@@ -17,6 +18,12 @@ VulkanVideoConverter::VulkanVideoConverter(VulkanDevice* device)
 {
     device->AddRef();
     mDevice = device;
+}
+
+VulkanVideoConverter::~VulkanVideoConverter()
+{
+    CleanUp();
+    mDevice->Release();
 }
 
 Result VulkanVideoConverter::ValidateInput(const VideoFrameWrapper& src, const VideoFrameWrapper& dst)
@@ -44,7 +51,7 @@ Result VulkanVideoConverter::ValidateInput(const VideoFrameWrapper& src, const V
 
 bool VulkanVideoConverter::IsInputFormatSupported(PixelFormat inputFormat)
 {
-    static_assert(AllPixelFormats.size() == 20);
+    static_assert(AllPixelFormats.size() == 25);
     std::vector<PixelFormat> validInputFormats{
         PixelFormat::RGB8BitInterleavedBGRA,
         PixelFormat::RGB8BitInterleavedRGBA,
@@ -59,9 +66,14 @@ bool VulkanVideoConverter::IsInputFormatSupported(PixelFormat inputFormat)
         PixelFormat::RGB10BitInterleavedRGBXLE,
         PixelFormat::RGB10BitInterleavedXRGBBE,
         PixelFormat::RGB10BitInterleavedXRGBLE,
+        PixelFormat::RGB10BitInterleavedXBGRBE,
+        PixelFormat::RGB10BitInterleavedXBGRLE,
         PixelFormat::YCC10Bit420Planar,
         PixelFormat::YCC10Bit422Planar,
         PixelFormat::YCC10Bit444Planar,
+        PixelFormat::YCC10Bit420BiplanarP010,
+        PixelFormat::YCC10Bit422BiplanarP210,
+        PixelFormat::YCC10Bit444BiplanarP410,
         PixelFormat::YCC10Bit422InterleavedV210,
         PixelFormat::RGB12BitInterleavedBGRBE,
         PixelFormat::RGB12BitInterleavedBGRLE,
@@ -74,7 +86,7 @@ bool VulkanVideoConverter::IsInputFormatSupported(PixelFormat inputFormat)
 
 bool VulkanVideoConverter::IsOutputFormatSupported(PixelFormat outputFormat)
 {
-    static_assert(AllPixelFormats.size() == 20);
+    static_assert(AllPixelFormats.size() == 25);
     std::vector<PixelFormat> validOutputFormats{
         PixelFormat::RGB8BitInterleavedBGRA,
         PixelFormat::YCC8Bit420Planar,
@@ -350,12 +362,6 @@ ResultValue<BenchmarkResult> VulkanVideoConverter::ConvertInternal(
     benchmarkResult.copyDeviceVisibleToHostLocalTimeMicros = cpuTimer.ElapsedMicros();
 
     return ResultValue<BenchmarkResult>{Result::Success, benchmarkResult};
-}
-
-VulkanVideoConverter::~VulkanVideoConverter()
-{
-    CleanUp();
-    mDevice->Release();
 }
 
 }  // namespace Pixelweave
