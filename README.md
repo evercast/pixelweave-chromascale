@@ -83,19 +83,23 @@ auto [result, device] = Pixelweave::Device::Create();
 if (result == Pixelweave::Result::Success) {
     // Generate wrapper around source frame buffer
     auto srcBuffer = Pixelweave::VideoFrameWrapper{
-        srcBuffer,
-        bytesPerLine,
-        srcWidth,
-        srcHeight,
-        Pixelweave::PixelFormat::Interleaved8BitUYVY};
+        .buffer = srcBuffer,
+        .stride = bytesPerLine,
+        .chromaStride = bytesPerLine / 2,
+        .width = srcWidth,
+        .height = srcHeight,
+        .pixelFormat = Pixelweave::PixelFormat::YCC8Bit422InterleavedUYVY,
+    };
 
     // Generate wrapper around dst frame buffer (application controls allocation)
     auto dstBuffer = Pixelweave::VideoFrameWrapper{
-        dstBuffer,
-        dstStride,
-        dstWidth,
-        dstHeight,
-        Pixelweave::PixelFormat::Planar8Bit444};
+        .buffer = dstBuffer,
+        .stride = dstStride,
+        .chromaStride = dstStride,
+        .width = dstWidth,
+        .height = dstHeight,
+        .pixelFormat = Pixelweave::PixelFormat::YCC8Bit444Planar,
+    };
 
     // Create converter and call
     Pixelweave::VideoConverter* videoConverter = videoConversionDevice->CreateVideoConverter();
