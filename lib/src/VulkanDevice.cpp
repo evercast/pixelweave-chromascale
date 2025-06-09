@@ -149,13 +149,13 @@ std::vector<uint32_t> CompileShader(const VideoFrameWrapper& src, const VideoFra
     options.AddMacroDefinition("SRC_PICTURE_YUV_TO_RGB_MATRIX", encodeMatrix(srcYUVToRGBMatrix));
     options.AddMacroDefinition(
         "SRC_PICTURE_YUV_OFFSET",
-        encodeVector(Pixelweave::GetLumaChromaOffset(src.range == VideoRange::Full, src.GetBitDepth())));
+        encodeVector(GetLumaChromaOffset(src.range == VideoRange::Full, src.GetBitDepth())));
     options.AddMacroDefinition(
         "SRC_PICTURE_YUV_OFFSET_FULL",
-        encodeVector(Pixelweave::GetLumaChromaOffset(true, src.GetBitDepth())));
+        encodeVector(GetLumaChromaOffset(true, src.GetBitDepth())));
     options.AddMacroDefinition(
         "SRC_PICTURE_YUV_SCALE",
-        encodeVector(Pixelweave::GetLumaChromaScale(src.range == VideoRange::Full, src.GetBitDepth())));
+        encodeVector(GetLumaChromaScale(src.range == VideoRange::Full, src.GetBitDepth())));
 
     const glm::mat3 dstRGBToYUVMatrix = GetLumaChromaMatrix(dst.lumaChromaMatrix);
     const glm::mat3 dstYUVToRGBMatrix = glm::inverse(dstRGBToYUVMatrix);
@@ -181,13 +181,13 @@ std::vector<uint32_t> CompileShader(const VideoFrameWrapper& src, const VideoFra
     options.AddMacroDefinition("DST_PICTURE_YUV_TO_RGB_MATRIX", encodeMatrix(dstYUVToRGBMatrix));
     options.AddMacroDefinition(
         "DST_PICTURE_YUV_OFFSET",
-        encodeVector(Pixelweave::GetLumaChromaOffset(dst.range == VideoRange::Full, dst.GetBitDepth())));
+        encodeVector(GetLumaChromaOffset(dst.range == VideoRange::Full, dst.GetBitDepth())));
     options.AddMacroDefinition(
         "DST_PICTURE_YUV_OFFSET_FULL",
-        encodeVector(Pixelweave::GetLumaChromaOffset(true, dst.GetBitDepth())));
+        encodeVector(GetLumaChromaOffset(true, dst.GetBitDepth())));
     options.AddMacroDefinition(
         "DST_PICTURE_YUV_SCALE",
-        encodeVector(Pixelweave::GetLumaChromaScale(dst.range == VideoRange::Full, dst.GetBitDepth())));
+        encodeVector(GetLumaChromaScale(dst.range == VideoRange::Full, dst.GetBitDepth())));
 
     shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(
         reinterpret_cast<const char*>(shaderResource.buffer),

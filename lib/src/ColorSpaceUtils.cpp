@@ -20,16 +20,10 @@ glm::mat3 GetLumaChromaMatrix(LumaChromaMatrix matrix)
     };
 
     switch (matrix) {
-        case LumaChromaMatrix::BT709: {
-            constexpr float KR = 0.2126f;
-            constexpr float KB = 0.0722f;
-            return nclMatrix(KR, KB);
-        }
-        case LumaChromaMatrix::BT2020NCL: {
-            constexpr float KR = 0.2627f;
-            constexpr float KB = 0.0593f;
-            return nclMatrix(KR, KB);
-        }
+        case LumaChromaMatrix::BT709:
+            return nclMatrix(0.2126f, 0.0722f);
+        case LumaChromaMatrix::BT2020NCL:
+            return nclMatrix(0.2627f, 0.0593f);
         default:
             return glm::mat3();
     }
@@ -37,17 +31,24 @@ glm::mat3 GetLumaChromaMatrix(LumaChromaMatrix matrix)
 
 glm::vec3 GetLumaChromaScale(bool fullRange, uint32_t bitDepth)
 {
-    return fullRange ? glm::vec3(1.0f)
-                     : glm::vec3((235.0f - 16.0f) / 255.0f, (240.0f - 16.0f) / 255.0f, (240.0f - 16.0f) / 255.0f);
+    if (fullRange) {
+        return glm::vec3(1.0f);
+    }
+    float scale = static_cast<float>(1 << (bitDepth - 8));
+    float legalMin = 16.0f * scale;
+    float lumaLegalMax = 235.0f * scale;
+    float chromaLegalMax = 240.0f * scale;
+    float maxValue = static_cast<float>((1 << bitDepth) - 1);
+    return glm::vec3(lumaLegalMax - legalMin, chromaLegalMax - legalMin, chromaLegalMax - legalMin) /
+           glm::vec3(maxValue);
 }
 
 glm::vec3 GetLumaChromaOffset(bool fullRange, uint32_t bitDepth)
 {
-    return glm::vec3(
-               fullRange ? 0.0f : static_cast<float>(1 << (bitDepth - 4)),
-               static_cast<float>(1 << (bitDepth - 1)),
-               static_cast<float>(1 << (bitDepth - 1))) /
-           glm::vec3(static_cast<float>((1 << bitDepth) - 1));
+    float blackLevel = !fullRange ? static_cast<float>(1 << (bitDepth - 4)) : 0.0f;
+    float achromaticLevel = static_cast<float>(1 << (bitDepth - 1));
+    float maxValue = static_cast<float>((1 << bitDepth) - 1);
+    return glm::vec3(blackLevel, achromaticLevel, achromaticLevel) / glm::vec3(maxValue);
 }
 
 }  // namespace Pixelweave

@@ -328,7 +328,7 @@ ResultValue<BenchmarkResult> VulkanVideoConverter::ConvertInternal(
 
     // Copy src buffer into GPU readable buffer
     BenchmarkResult benchmarkResult;
-    Pixelweave::Timer cpuTimer;
+    Timer cpuTimer;
     cpuTimer.Start();
     const vk::DeviceSize srcBufferSize = src.GetBufferSize();
     uint8_t* mappedSrcBuffer = mSrcLocalBuffer->MapBuffer();
