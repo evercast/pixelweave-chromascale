@@ -152,7 +152,7 @@ uint32_t VideoFrameWrapper::GetChromaOffset() const
     switch (GetLayoutType()) {
         case VideoFrameLayout::Planar:
         case VideoFrameLayout::Biplanar:
-            return GetPlaneOffset(1);
+            return static_cast<uint32_t>(GetPlaneOffset(1));
         default:
         case VideoFrameLayout::Interleaved:
             return 0;
@@ -174,9 +174,9 @@ uint32_t VideoFrameWrapper::GetCbOffset() const
         case PixelFormat::YCC10Bit420BiplanarP010:
         case PixelFormat::YCC10Bit444BiplanarP410:
         case PixelFormat::YCC16Bit422BiplanarP216:
-            return GetPlaneOffset(1);
+            return static_cast<uint32_t>(GetPlaneOffset(1));
         case PixelFormat::YCC8Bit420PlanarYV12:
-            return GetPlaneOffset(2);
+            return static_cast<uint32_t>(GetPlaneOffset(2));
         default:
             return 0;
     }
@@ -192,14 +192,14 @@ uint32_t VideoFrameWrapper::GetCrOffset() const
         case PixelFormat::YCC10Bit420Planar:
         case PixelFormat::YCC10Bit422Planar:
         case PixelFormat::YCC10Bit444Planar:
-            return GetPlaneOffset(2);
+            return static_cast<uint32_t>(GetPlaneOffset(2));
         case PixelFormat::YCC8Bit420PlanarYV12:
         case PixelFormat::YCC8Bit420BiplanarNV12:
         case PixelFormat::YCC10Bit420BiplanarP010:
         case PixelFormat::YCC10Bit422BiplanarP210:
         case PixelFormat::YCC10Bit444BiplanarP410:
         case PixelFormat::YCC16Bit422BiplanarP216:
-            return GetPlaneOffset(1);
+            return static_cast<uint32_t>(GetPlaneOffset(1));
         default:
             return 0;
     }

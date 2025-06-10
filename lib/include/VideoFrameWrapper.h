@@ -30,6 +30,7 @@ enum class VideoFrameLayout {
 struct PIXELWEAVE_LIB_CLASS VideoFrameWrapper {
     uint8_t* buffer = nullptr;
     size_t bufferSize = 0;             // Buffer size in bytes: set to zero to calculate based on stride and height
+#pragma warning(suppress : 4251)       // MSVC: suppress spurious MSVC warning caused by exporting `std::vector`
     std::vector<size_t> planeOffsets;  // Plane offsets in bytes: leave empty to calculate based on stride and height
     uint32_t stride = 0;               // Luma/interleaved stride in bytes
     uint32_t chromaStride = 0;         // Chroma stride in bytes
