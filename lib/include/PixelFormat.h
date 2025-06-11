@@ -65,11 +65,11 @@ constexpr std::array<PixelFormat, PixelFormatCount> AllPixelFormats{
     PixelFormat::YCC16Bit422BiplanarP216,
 };
 
-enum class ChromaSubsampling : uint32_t {
-    None = 0,
-    _444,
-    _422,
-    _420,
+enum class ColorFormat : uint32_t {
+    RGB = 0,
+    YUV444,
+    YUV422,
+    YUV420,
 };
 
 }  // namespace Pixelweave

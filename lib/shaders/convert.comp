@@ -35,11 +35,11 @@
 #define PixelFormatRGB12BitInterleavedBGRLE     23
 #define PixelFormatYCC16Bit422BiplanarP216      24
 
-// The values here must match the `ChromaSubsampling` enum values in `PixelFormat.h`
-#define CHROMA_SUBSAMPLING_NONE 0
-#define CHROMA_SUBSAMPLING_444  1
-#define CHROMA_SUBSAMPLING_422  2
-#define CHROMA_SUBSAMPLING_420  3
+// The values here must match the `ColorFormat` enum values in `PixelFormat.h`
+#define ColorFormatRGB      0
+#define ColorFormatYUV444   1
+#define ColorFormatYUV422   2
+#define ColorFormatYUV420   3
 
 #define SRC_PICTURE_BLOCK_COUNT_X (SRC_PICTURE_WIDTH + 1) / 2
 #define SRC_PICTURE_BLOCK_COUNT_Y (SRC_PICTURE_HEIGHT + 1) / 2
@@ -632,7 +632,7 @@ u32vec3 srcPixelToDstPixel(u32vec3 srcPixel)
     vec3 pixel = vec3(srcPixel) / vec3(maxValueSrc);
 
     // Convert RGB samples to YUV for consistency
-#if (SRC_PICTURE_CHROMA_SUBSAMPLING == CHROMA_SUBSAMPLING_NONE)
+#if (SRC_PICTURE_COLOR_FORMAT == ColorFormatRGB)
     const mat3 rgbToYUVMatrix = srcPictureRGBToYUVMatrix;
     // Preserve range, conversions are handled later
     const vec3 offsetFullRange = SRC_PICTURE_YUV_OFFSET_FULL;
@@ -1032,11 +1032,13 @@ void main()
     readBlock = readBilinear(blockCoords);
 #endif
     readBlock = convertToDstSample(readBlock);
-#if (DST_PICTURE_CHROMA_SUBSAMPLING == CHROMA_SUBSAMPLING_420)
-    write420Sample(blockCoords, convert444To420(readBlock));
-#elif (DST_PICTURE_CHROMA_SUBSAMPLING == CHROMA_SUBSAMPLING_422)
-    write422Sample(blockCoords, convert444To422(readBlock));
-#elif (DST_PICTURE_CHROMA_SUBSAMPLING == CHROMA_SUBSAMPLING_444 || DST_PICTURE_CHROMA_SUBSAMPLING == CHROMA_SUBSAMPLING_NONE)
+#if (DST_PICTURE_COLOR_FORMAT == ColorFormatYUV444 || DST_PICTURE_COLOR_FORMAT == ColorFormatRGB)
     write444Sample(blockCoords, readBlock);
+#elif (DST_PICTURE_COLOR_FORMAT == ColorFormatYUV422)
+    write422Sample(blockCoords, convert444To422(readBlock));
+#elif (DST_PICTURE_COLOR_FORMAT == ColorFormatYUV420)
+    write420Sample(blockCoords, convert444To420(readBlock));
+#else
+    #error "DST_PICTURE_COLOR_FORMAT value not supported"
 #endif
 }

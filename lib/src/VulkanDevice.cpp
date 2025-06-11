@@ -135,9 +135,7 @@ std::vector<uint32_t> CompileShader(const VideoFrameWrapper& src, const VideoFra
     options.AddMacroDefinition("SRC_PICTURE_CHROMA_HEIGHT", std::to_string(src.GetChromaHeight()));
     options.AddMacroDefinition("SRC_PICTURE_CHROMA_STRIDE", std::to_string(src.GetChromaStride()));
     options.AddMacroDefinition("SRC_PICTURE_FORMAT", std::to_string(static_cast<uint32_t>(src.pixelFormat)));
-    options.AddMacroDefinition(
-        "SRC_PICTURE_CHROMA_SUBSAMPLING",
-        std::to_string(static_cast<uint32_t>(src.GetChromaSubsampling())));
+    options.AddMacroDefinition("SRC_PICTURE_COLOR_FORMAT", std::to_string(static_cast<uint32_t>(src.GetColorFormat())));
     options.AddMacroDefinition("SRC_PICTURE_CHROMA_OFFSET", std::to_string(src.GetChromaOffset()));
     options.AddMacroDefinition("SRC_PICTURE_U_OFFSET", std::to_string(src.GetCbOffset()));
     options.AddMacroDefinition("SRC_PICTURE_V_OFFSET", std::to_string(src.GetCrOffset()));
@@ -167,9 +165,7 @@ std::vector<uint32_t> CompileShader(const VideoFrameWrapper& src, const VideoFra
     options.AddMacroDefinition("DST_PICTURE_CHROMA_HEIGHT", std::to_string(dst.GetChromaHeight()));
     options.AddMacroDefinition("DST_PICTURE_CHROMA_STRIDE", std::to_string(dst.GetChromaStride()));
     options.AddMacroDefinition("DST_PICTURE_FORMAT", std::to_string(static_cast<uint32_t>(dst.pixelFormat)));
-    options.AddMacroDefinition(
-        "DST_PICTURE_CHROMA_SUBSAMPLING",
-        std::to_string(static_cast<uint32_t>(dst.GetChromaSubsampling())));
+    options.AddMacroDefinition("DST_PICTURE_COLOR_FORMAT", std::to_string(static_cast<uint32_t>(dst.GetColorFormat())));
     options.AddMacroDefinition("DST_PICTURE_CHROMA_OFFSET", std::to_string(dst.GetChromaOffset()));
     options.AddMacroDefinition("DST_PICTURE_U_OFFSET", std::to_string(dst.GetCbOffset()));
     options.AddMacroDefinition("DST_PICTURE_V_OFFSET", std::to_string(dst.GetCrOffset()));

@@ -79,7 +79,7 @@ size_t VideoFrameWrapper::GetPlaneOffset(size_t index) const
     }
 }
 
-ChromaSubsampling VideoFrameWrapper::GetChromaSubsampling() const
+ColorFormat VideoFrameWrapper::GetColorFormat() const
 {
     static_assert(AllPixelFormats.size() == 25);
     switch (pixelFormat) {
@@ -95,34 +95,34 @@ ChromaSubsampling VideoFrameWrapper::GetChromaSubsampling() const
         case PixelFormat::RGB10BitInterleavedXBGRLE:
         case PixelFormat::RGB12BitInterleavedBGRBE:
         case PixelFormat::RGB12BitInterleavedBGRLE:
-            return ChromaSubsampling::None;
+            return ColorFormat::RGB;
         case PixelFormat::YCC8Bit420Planar:
         case PixelFormat::YCC8Bit420PlanarYV12:
         case PixelFormat::YCC8Bit420BiplanarNV12:
         case PixelFormat::YCC10Bit420Planar:
         case PixelFormat::YCC10Bit420BiplanarP010:
-            return ChromaSubsampling::_420;
+            return ColorFormat::YUV420;
         case PixelFormat::YCC8Bit422Planar:
         case PixelFormat::YCC8Bit422InterleavedUYVY:
         case PixelFormat::YCC10Bit422Planar:
         case PixelFormat::YCC10Bit422InterleavedV210:
         case PixelFormat::YCC10Bit422BiplanarP210:
         case PixelFormat::YCC16Bit422BiplanarP216:
-            return ChromaSubsampling::_422;
+            return ColorFormat::YUV422;
         case PixelFormat::YCC8Bit444Planar:
         case PixelFormat::YCC10Bit444Planar:
         case PixelFormat::YCC10Bit444BiplanarP410:
-            return ChromaSubsampling::_444;
+            return ColorFormat::YUV444;
     }
 }
 
 uint32_t VideoFrameWrapper::GetChromaWidth() const
 {
-    switch (GetChromaSubsampling()) {
-        case ChromaSubsampling::_444:
+    switch (GetColorFormat()) {
+        case ColorFormat::YUV444:
             return width;
-        case ChromaSubsampling::_422:
-        case ChromaSubsampling::_420:
+        case ColorFormat::YUV422:
+        case ColorFormat::YUV420:
             return (width + 1) / 2;
         default:
             return 0;
@@ -131,11 +131,11 @@ uint32_t VideoFrameWrapper::GetChromaWidth() const
 
 uint32_t VideoFrameWrapper::GetChromaHeight() const
 {
-    switch (GetChromaSubsampling()) {
-        case ChromaSubsampling::_444:
-        case ChromaSubsampling::_422:
+    switch (GetColorFormat()) {
+        case ColorFormat::YUV444:
+        case ColorFormat::YUV422:
             return height;
-        case ChromaSubsampling::_420:
+        case ColorFormat::YUV420:
             return (height + 1) / 2;
         default:
             return 0;

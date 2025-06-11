@@ -51,7 +51,7 @@ struct PIXELWEAVE_LIB_CLASS VideoFrameWrapper {
     uint32_t GetCbOffset() const;
     uint32_t GetCrOffset() const;
     uint32_t GetChromaStride() const;
-    ChromaSubsampling GetChromaSubsampling() const;
+    ColorFormat GetColorFormat() const;
     uint32_t GetChromaWidth() const;
     uint32_t GetChromaHeight() const;
 
