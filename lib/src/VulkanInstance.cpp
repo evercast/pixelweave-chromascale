@@ -106,6 +106,7 @@ VulkanInstance::VulkanInstance(const vk::Instance& instance) : mInstanceHandle(i
             .setMessageType(
                 vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
                 vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance)
+#pragma warning(suppress : 4996)  // MSVC: suppress deprecation warning for `setPfnUserCallback()`
             .setPfnUserCallback(vkDebugCallback);
 
     mDebugMessenger = PIXELWEAVE_ASSERT_VK(mInstanceHandle.createDebugUtilsMessengerEXT(debugCallbackCreateInfo, nullptr, mDynamicDispatcher));

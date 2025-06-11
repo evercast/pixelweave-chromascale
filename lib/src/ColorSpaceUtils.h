@@ -7,10 +7,8 @@
 namespace Pixelweave
 {
 
-glm::mat3 GetMatrix(YUVMatrix matrix);
-
-glm::vec3 GetYUVScale(Range range, [[maybe_unused]] uint32_t bitDepth);
-
-glm::vec3 GetYUVOffset(Range range, uint32_t bitDepth);
+glm::mat3 GetLumaChromaMatrix(LumaChromaMatrix matrix);
+glm::vec3 GetLumaChromaScale(bool fullRange, uint32_t bitDepth);
+glm::vec3 GetLumaChromaOffset(bool fullRange, uint32_t bitDepth);
 
 }  // namespace Pixelweave

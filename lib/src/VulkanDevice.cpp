@@ -48,7 +48,8 @@ VulkanDevice::VulkanDevice(const std::shared_ptr<VulkanInstance>& instance, vk::
     vk::PhysicalDeviceVulkan11Features physicalDeviceFeatures1_1{};
     vk::PhysicalDeviceVulkan12Features physicalDeviceFeatures1_2{};
     physicalDeviceFeatures1_1.setPNext(&physicalDeviceFeatures1_2);
-    vk::PhysicalDeviceFeatures2 physicalDeviceFeatures = vk::PhysicalDeviceFeatures2().setPNext(&physicalDeviceFeatures1_1);
+    vk::PhysicalDeviceFeatures2 physicalDeviceFeatures =
+        vk::PhysicalDeviceFeatures2().setPNext(&physicalDeviceFeatures1_1);
     physicalDevice.getFeatures2(&physicalDeviceFeatures);
 
     const vk::DeviceCreateInfo deviceCreateInfo =
@@ -58,7 +59,9 @@ VulkanDevice::VulkanDevice(const std::shared_ptr<VulkanInstance>& instance, vk::
     mComputeQueue = mLogicalDevice.getQueue(queueFamilyIndex, 0);
 
     const vk::CommandPoolCreateInfo commandPoolCreateInfo =
-        vk::CommandPoolCreateInfo().setQueueFamilyIndex(queueFamilyIndex).setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
+        vk::CommandPoolCreateInfo()
+            .setQueueFamilyIndex(queueFamilyIndex)
+            .setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
     mCommandPool = PIXELWEAVE_ASSERT_VK(mLogicalDevice.createCommandPool(commandPoolCreateInfo));
 
     VmaVulkanFunctions vulkanFunctions = {};
@@ -122,7 +125,7 @@ std::vector<uint32_t> CompileShader(const VideoFrameWrapper& src, const VideoFra
         return stringStream.str();
     };
 
-    const glm::mat3 srcRGBToYUVMatrix = Pixelweave::GetMatrix(src.yuvMatrix);
+    const glm::mat3 srcRGBToYUVMatrix = GetLumaChromaMatrix(src.lumaChromaMatrix);
     const glm::mat3 srcYUVToRGBMatrix = glm::inverse(srcRGBToYUVMatrix);
 
     options.AddMacroDefinition("SRC_PICTURE_WIDTH", std::to_string(src.width));
@@ -132,20 +135,27 @@ std::vector<uint32_t> CompileShader(const VideoFrameWrapper& src, const VideoFra
     options.AddMacroDefinition("SRC_PICTURE_CHROMA_HEIGHT", std::to_string(src.GetChromaHeight()));
     options.AddMacroDefinition("SRC_PICTURE_CHROMA_STRIDE", std::to_string(src.GetChromaStride()));
     options.AddMacroDefinition("SRC_PICTURE_FORMAT", std::to_string(static_cast<uint32_t>(src.pixelFormat)));
-    options.AddMacroDefinition("SRC_PICTURE_SUBSAMPLE_TYPE", std::to_string(static_cast<uint32_t>(src.GetSubsampleType())));
-    options.AddMacroDefinition("SRC_PICTURE_U_OFFSET", std::to_string(src.GetUOffset()));
-    options.AddMacroDefinition("SRC_PICTURE_V_OFFSET", std::to_string(src.GetVOffset()));
+    options.AddMacroDefinition("SRC_PICTURE_COLOR_FORMAT", std::to_string(static_cast<uint32_t>(src.GetColorFormat())));
+    options.AddMacroDefinition("SRC_PICTURE_CHROMA_OFFSET", std::to_string(src.GetChromaOffset()));
+    options.AddMacroDefinition("SRC_PICTURE_U_OFFSET", std::to_string(src.GetCbOffset()));
+    options.AddMacroDefinition("SRC_PICTURE_V_OFFSET", std::to_string(src.GetCrOffset()));
     options.AddMacroDefinition("SRC_PICTURE_BIT_DEPTH", std::to_string(src.GetBitDepth()));
     options.AddMacroDefinition("SRC_PICTURE_BYTE_DEPTH", std::to_string(src.GetByteDepth()));
     options.AddMacroDefinition("SRC_PICTURE_RANGE", std::to_string(static_cast<uint32_t>(src.range)));
-    options.AddMacroDefinition("SRC_PICTURE_YUV_MATRIX", std::to_string(static_cast<uint32_t>(src.yuvMatrix)));
+    options.AddMacroDefinition("SRC_PICTURE_YUV_MATRIX", std::to_string(static_cast<uint32_t>(src.lumaChromaMatrix)));
     options.AddMacroDefinition("SRC_PICTURE_RGB_TO_YUV_MATRIX", encodeMatrix(srcRGBToYUVMatrix));
     options.AddMacroDefinition("SRC_PICTURE_YUV_TO_RGB_MATRIX", encodeMatrix(srcYUVToRGBMatrix));
-    options.AddMacroDefinition("SRC_PICTURE_YUV_OFFSET", encodeVector(Pixelweave::GetYUVOffset(src.range, src.GetBitDepth())));
-    options.AddMacroDefinition("SRC_PICTURE_YUV_OFFSET_FULL", encodeVector(Pixelweave::GetYUVOffset(Range::Full, src.GetBitDepth())));
-    options.AddMacroDefinition("SRC_PICTURE_YUV_SCALE", encodeVector(Pixelweave::GetYUVScale(src.range, src.GetBitDepth())));
+    options.AddMacroDefinition(
+        "SRC_PICTURE_YUV_OFFSET",
+        encodeVector(GetLumaChromaOffset(src.range == VideoRange::Full, src.GetBitDepth())));
+    options.AddMacroDefinition(
+        "SRC_PICTURE_YUV_OFFSET_FULL",
+        encodeVector(GetLumaChromaOffset(true, src.GetBitDepth())));
+    options.AddMacroDefinition(
+        "SRC_PICTURE_YUV_SCALE",
+        encodeVector(GetLumaChromaScale(src.range == VideoRange::Full, src.GetBitDepth())));
 
-    const glm::mat3 dstRGBToYUVMatrix = GetMatrix(dst.yuvMatrix);
+    const glm::mat3 dstRGBToYUVMatrix = GetLumaChromaMatrix(dst.lumaChromaMatrix);
     const glm::mat3 dstYUVToRGBMatrix = glm::inverse(dstRGBToYUVMatrix);
 
     options.AddMacroDefinition("DST_PICTURE_WIDTH", std::to_string(dst.width));
@@ -155,18 +165,25 @@ std::vector<uint32_t> CompileShader(const VideoFrameWrapper& src, const VideoFra
     options.AddMacroDefinition("DST_PICTURE_CHROMA_HEIGHT", std::to_string(dst.GetChromaHeight()));
     options.AddMacroDefinition("DST_PICTURE_CHROMA_STRIDE", std::to_string(dst.GetChromaStride()));
     options.AddMacroDefinition("DST_PICTURE_FORMAT", std::to_string(static_cast<uint32_t>(dst.pixelFormat)));
-    options.AddMacroDefinition("DST_PICTURE_SUBSAMPLE_TYPE", std::to_string(static_cast<uint32_t>(dst.GetSubsampleType())));
-    options.AddMacroDefinition("DST_PICTURE_U_OFFSET", std::to_string(dst.GetUOffset()));
-    options.AddMacroDefinition("DST_PICTURE_V_OFFSET", std::to_string(dst.GetVOffset()));
+    options.AddMacroDefinition("DST_PICTURE_COLOR_FORMAT", std::to_string(static_cast<uint32_t>(dst.GetColorFormat())));
+    options.AddMacroDefinition("DST_PICTURE_CHROMA_OFFSET", std::to_string(dst.GetChromaOffset()));
+    options.AddMacroDefinition("DST_PICTURE_U_OFFSET", std::to_string(dst.GetCbOffset()));
+    options.AddMacroDefinition("DST_PICTURE_V_OFFSET", std::to_string(dst.GetCrOffset()));
     options.AddMacroDefinition("DST_PICTURE_BIT_DEPTH", std::to_string(dst.GetBitDepth()));
     options.AddMacroDefinition("DST_PICTURE_BYTE_DEPTH", std::to_string(dst.GetByteDepth()));
     options.AddMacroDefinition("DST_PICTURE_RANGE", std::to_string(static_cast<uint32_t>(dst.range)));
-    options.AddMacroDefinition("DST_PICTURE_YUV_MATRIX", std::to_string(static_cast<uint32_t>(dst.yuvMatrix)));
+    options.AddMacroDefinition("DST_PICTURE_YUV_MATRIX", std::to_string(static_cast<uint32_t>(dst.lumaChromaMatrix)));
     options.AddMacroDefinition("DST_PICTURE_RGB_TO_YUV_MATRIX", encodeMatrix(dstRGBToYUVMatrix));
     options.AddMacroDefinition("DST_PICTURE_YUV_TO_RGB_MATRIX", encodeMatrix(dstYUVToRGBMatrix));
-    options.AddMacroDefinition("DST_PICTURE_YUV_OFFSET", encodeVector(Pixelweave::GetYUVOffset(dst.range, dst.GetBitDepth())));
-    options.AddMacroDefinition("DST_PICTURE_YUV_OFFSET_FULL", encodeVector(Pixelweave::GetYUVOffset(Range::Full, dst.GetBitDepth())));
-    options.AddMacroDefinition("DST_PICTURE_YUV_SCALE", encodeVector(Pixelweave::GetYUVScale(dst.range, dst.GetBitDepth())));
+    options.AddMacroDefinition(
+        "DST_PICTURE_YUV_OFFSET",
+        encodeVector(GetLumaChromaOffset(dst.range == VideoRange::Full, dst.GetBitDepth())));
+    options.AddMacroDefinition(
+        "DST_PICTURE_YUV_OFFSET_FULL",
+        encodeVector(GetLumaChromaOffset(true, dst.GetBitDepth())));
+    options.AddMacroDefinition(
+        "DST_PICTURE_YUV_SCALE",
+        encodeVector(GetLumaChromaScale(dst.range == VideoRange::Full, dst.GetBitDepth())));
 
     shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(
         reinterpret_cast<const char*>(shaderResource.buffer),
@@ -174,10 +191,10 @@ std::vector<uint32_t> CompileShader(const VideoFrameWrapper& src, const VideoFra
         shaderc_shader_kind::shaderc_glsl_compute_shader,
         "convert.comp",
         options);
-
     if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
         return {};
     }
+
     ResourceLoader::CleanUp(shaderResource);
     return std::vector<uint32_t>(module.cbegin(), module.cend());
 }
@@ -208,7 +225,8 @@ ResultValue<VulkanDevice::VideoConversionPipelineResources> VulkanDevice::Create
     resources.descriptorLayout = PIXELWEAVE_ASSERT_VK(mLogicalDevice.createDescriptorSetLayout(descriptorLayoutInfo));
 
     // Create pipeline including layout, shader (loaded from file), and pipeline itself
-    const vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo().setSetLayouts(resources.descriptorLayout);
+    const vk::PipelineLayoutCreateInfo pipelineLayoutInfo =
+        vk::PipelineLayoutCreateInfo().setSetLayouts(resources.descriptorLayout);
     resources.pipelineLayout = PIXELWEAVE_ASSERT_VK(mLogicalDevice.createPipelineLayout(pipelineLayoutInfo));
 
     std::vector<uint32_t> compiledShader = CompileShader(src, dst);
@@ -216,20 +234,25 @@ ResultValue<VulkanDevice::VideoConversionPipelineResources> VulkanDevice::Create
         DestroyVideoConversionPipeline(resources);
         return {Result::ShaderCompilationFailed, {}};
     }
-    vk::ShaderModuleCreateInfo shaderCreateInfo =
-        vk::ShaderModuleCreateInfo().setCodeSize(compiledShader.size() * sizeof(uint32_t)).setPCode(compiledShader.data());
+    vk::ShaderModuleCreateInfo shaderCreateInfo = vk::ShaderModuleCreateInfo()
+                                                      .setCodeSize(compiledShader.size() * sizeof(uint32_t))
+                                                      .setPCode(compiledShader.data());
     resources.shader = PIXELWEAVE_ASSERT_VK(mLogicalDevice.createShaderModule(shaderCreateInfo));
 
-    const vk::PipelineShaderStageCreateInfo stageCreateInfo =
-        vk::PipelineShaderStageCreateInfo().setStage(vk::ShaderStageFlagBits::eCompute).setModule(resources.shader).setPName("main");
+    const vk::PipelineShaderStageCreateInfo stageCreateInfo = vk::PipelineShaderStageCreateInfo()
+                                                                  .setStage(vk::ShaderStageFlagBits::eCompute)
+                                                                  .setModule(resources.shader)
+                                                                  .setPName("main");
     const vk::ComputePipelineCreateInfo computePipelineInfo =
         vk::ComputePipelineCreateInfo().setLayout(resources.pipelineLayout).setStage(stageCreateInfo);
     resources.pipeline = PIXELWEAVE_ASSERT_VK(mLogicalDevice.createComputePipeline(nullptr, computePipelineInfo));
 
     // Write descriptor sets for each buffer
-    const vk::DescriptorPoolSize poolSize = vk::DescriptorPoolSize().setDescriptorCount(2).setType(vk::DescriptorType::eStorageBuffer);
+    const vk::DescriptorPoolSize poolSize =
+        vk::DescriptorPoolSize().setDescriptorCount(2).setType(vk::DescriptorType::eStorageBuffer);
     const vk::DescriptorPoolCreateInfo poolInfo =
-        vk::DescriptorPoolCreateInfo().setPoolSizes(poolSize).setMaxSets(1).setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
+        vk::DescriptorPoolCreateInfo().setPoolSizes(poolSize).setMaxSets(1).setFlags(
+            vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
     resources.descriptorPool = PIXELWEAVE_ASSERT_VK(mLogicalDevice.createDescriptorPool(poolInfo));
 
     const vk::DescriptorSetAllocateInfo descriptorAllocInfo = vk::DescriptorSetAllocateInfo()
@@ -268,8 +291,10 @@ void VulkanDevice::DestroyVideoConversionPipeline(VideoConversionPipelineResourc
 
 vk::CommandBuffer VulkanDevice::CreateCommandBuffer()
 {
-    vk::CommandBufferAllocateInfo commandInfo =
-        vk::CommandBufferAllocateInfo().setCommandBufferCount(1).setCommandPool(mCommandPool).setLevel(vk::CommandBufferLevel::ePrimary);
+    vk::CommandBufferAllocateInfo commandInfo = vk::CommandBufferAllocateInfo()
+                                                    .setCommandBufferCount(1)
+                                                    .setCommandPool(mCommandPool)
+                                                    .setLevel(vk::CommandBufferLevel::ePrimary);
     return PIXELWEAVE_ASSERT_VK(mLogicalDevice.allocateCommandBuffers(commandInfo))[0];
 }
 

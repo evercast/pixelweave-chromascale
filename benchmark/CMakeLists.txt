@@ -1,12 +1,8 @@
 set(SUBPROJECT_NAME "Benchmark")
 
-include_directories(
-    ../lib/include
-)
+include_directories(../lib/include)
 
-# Attach source files to build
 set(HEADERS)
-
 set(SOURCES main.cpp)
 
 add_executable(${SUBPROJECT_NAME} ${HEADERS} ${SOURCES})
