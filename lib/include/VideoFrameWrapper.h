@@ -15,12 +15,6 @@ enum class LumaChromaMatrix {
     BT2020NCL = 9,
 };
 
-// Video range is actually a simple flag (see Rec. H.273), but represented as an enum here
-enum class VideoRange {
-    Legal = 0,
-    Full,
-};
-
 enum class VideoFrameLayout {
     Planar,
     Biplanar,
@@ -37,7 +31,7 @@ struct PIXELWEAVE_LIB_CLASS VideoFrameWrapper {
     uint32_t width = 0;
     uint32_t height = 0;
     PixelFormat pixelFormat = PixelFormat::RGB8BitInterleavedRGBA;
-    VideoRange range = VideoRange::Legal;
+    bool isVideoFullRange = false;
     LumaChromaMatrix lumaChromaMatrix = LumaChromaMatrix::BT709;
 
     VideoFrameLayout GetLayoutType() const;

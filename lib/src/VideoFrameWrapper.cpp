@@ -254,7 +254,8 @@ uint32_t VideoFrameWrapper::GetByteDepth() const
 bool VideoFrameWrapper::AreFramePropertiesEqual(const VideoFrameWrapper& other) const
 {
     return stride == other.stride && width == other.width && height == other.height &&
-           pixelFormat == other.pixelFormat && range == other.range && lumaChromaMatrix == other.lumaChromaMatrix;
+           pixelFormat == other.pixelFormat && isVideoFullRange == other.isVideoFullRange &&
+           lumaChromaMatrix == other.lumaChromaMatrix;
 }
 
 }  // namespace Pixelweave

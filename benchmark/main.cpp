@@ -1,7 +1,6 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
-#include <memory>
 #include <vector>
 
 #include "Device.h"
@@ -29,6 +28,7 @@ VideoFrameWrapper GetUYVYFrame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC8Bit422InterleavedUYVY,
+        .isVideoFullRange = false,
     };
 }
 
@@ -63,7 +63,7 @@ VideoFrameWrapper GetPlanar420Frame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC8Bit420Planar,
-        .range = VideoRange::Legal,
+        .isVideoFullRange = false,
     };
 }
 
@@ -82,6 +82,7 @@ VideoFrameWrapper GetPlanar422Frame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC8Bit422Planar,
+        .isVideoFullRange = false,
     };
 }
 
@@ -100,6 +101,7 @@ VideoFrameWrapper GetPlanar444Frame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC8Bit444Planar,
+        .isVideoFullRange = false,
     };
 }
 
@@ -128,6 +130,7 @@ VideoFrameWrapper GetYV12Frame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC8Bit420PlanarYV12,
+        .isVideoFullRange = false,
     };
 }
 
@@ -152,6 +155,7 @@ VideoFrameWrapper GetNV12Frame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC8Bit420BiplanarNV12,
+        .isVideoFullRange = false,
     };
 }
 
@@ -172,7 +176,7 @@ VideoFrameWrapper GetRGBAFrame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::RGB8BitInterleavedRGBA,
-        .range = VideoRange::Full,
+        .isVideoFullRange = true,
     };
 }
 
@@ -193,7 +197,7 @@ VideoFrameWrapper GetBGRAFrame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::RGB8BitInterleavedBGRA,
-        .range = VideoRange::Full,
+        .isVideoFullRange = true,
     };
 }
 
@@ -221,7 +225,7 @@ VideoFrameWrapper GetPlanar42010BitFrame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC10Bit420Planar,
-        .range = VideoRange::Full,
+        .isVideoFullRange = true,
     };
 }
 
@@ -249,6 +253,7 @@ VideoFrameWrapper GetPlanar42210BitFrame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC10Bit422Planar,
+        .isVideoFullRange = false,
     };
 }
 
@@ -276,6 +281,7 @@ VideoFrameWrapper GetPlanar44410BitFrame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC10Bit444Planar,
+        .isVideoFullRange = false,
     };
 }
 
@@ -293,6 +299,7 @@ VideoFrameWrapper Get10BitXRGBBEBuffer(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::RGB10BitInterleavedXRGBBE,
+        .isVideoFullRange = false,
     };
 }
 
@@ -323,6 +330,7 @@ VideoFrameWrapper GetP216Frame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC16Bit422BiplanarP216,
+        .isVideoFullRange = false,
     };
 }
 
@@ -341,6 +349,7 @@ VideoFrameWrapper GetV210Buffer(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC10Bit422InterleavedV210,
+        .isVideoFullRange = false,
     };
 }
 

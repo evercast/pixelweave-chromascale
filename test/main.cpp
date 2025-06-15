@@ -2,7 +2,6 @@
 #include <chrono>
 #include <cstring>
 #include <iostream>
-#include <memory>
 #include <set>
 #include <vector>
 
@@ -44,6 +43,7 @@ VideoFrameWrapper GetUYVYFrame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC8Bit422InterleavedUYVY,
+        .isVideoFullRange = false,
     };
 }
 
@@ -79,7 +79,7 @@ VideoFrameWrapper GetPlanar420Frame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC8Bit420Planar,
-        .range = VideoRange::Legal,
+        .isVideoFullRange = false,
     };
 }
 
@@ -98,6 +98,7 @@ VideoFrameWrapper GetPlanar422Frame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC8Bit422Planar,
+        .isVideoFullRange = false,
     };
 }
 
@@ -116,6 +117,7 @@ VideoFrameWrapper GetPlanar444Frame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC8Bit444Planar,
+        .isVideoFullRange = false,
     };
 }
 
@@ -144,6 +146,7 @@ VideoFrameWrapper GetYV12Frame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC8Bit420PlanarYV12,
+        .isVideoFullRange = false,
     };
 }
 
@@ -168,6 +171,7 @@ VideoFrameWrapper GetNV12Frame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC8Bit420BiplanarNV12,
+        .isVideoFullRange = false,
     };
 }
 
@@ -188,7 +192,7 @@ VideoFrameWrapper GetRGBAFrame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::RGB8BitInterleavedRGBA,
-        .range = VideoRange::Full,
+        .isVideoFullRange = true,
     };
 }
 
@@ -209,7 +213,7 @@ VideoFrameWrapper GetBGRAFrame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::RGB8BitInterleavedBGRA,
-        .range = VideoRange::Full,
+        .isVideoFullRange = true,
     };
 }
 
@@ -237,7 +241,7 @@ VideoFrameWrapper GetPlanar42010BitFrame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC10Bit420Planar,
-        .range = VideoRange::Full,
+        .isVideoFullRange = true,
     };
 }
 
@@ -265,6 +269,7 @@ VideoFrameWrapper GetPlanar42210BitFrame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC10Bit422Planar,
+        .isVideoFullRange = false,
     };
 }
 
@@ -292,6 +297,7 @@ VideoFrameWrapper GetPlanar44410BitFrame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC10Bit444Planar,
+        .isVideoFullRange = false,
     };
 }
 
@@ -309,6 +315,7 @@ VideoFrameWrapper Get10BitXRGBBEBuffer(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::RGB10BitInterleavedXRGBBE,
+        .isVideoFullRange = false,
     };
 }
 
@@ -339,6 +346,7 @@ VideoFrameWrapper GetP216Frame(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC16Bit422BiplanarP216,
+        .isVideoFullRange = false,
     };
 }
 
@@ -357,6 +365,7 @@ VideoFrameWrapper GetV210Buffer(uint32_t width, uint32_t height)
         .width = width,
         .height = height,
         .pixelFormat = PixelFormat::YCC10Bit422InterleavedV210,
+        .isVideoFullRange = false,
     };
 }
 
@@ -489,16 +498,9 @@ std::string GetFormatName(PixelFormat pixelFormat)
     }
 }
 
-std::string GetRangeName(VideoRange range)
+std::string GetRangeName(bool isVideoFullRange)
 {
-    switch (range) {
-        case VideoRange::Legal:
-            return "Legal";
-        case VideoRange::Full:
-            return "Full";
-        default:
-            return "";
-    }
+    return isVideoFullRange ? "Full" : "Legal";
 }
 
 std::string GetYUVMatrixName(LumaChromaMatrix matrix)
@@ -558,8 +560,6 @@ int main()
         Resolution{1280, 720},
     };
 
-    std::vector<VideoRange> ranges{VideoRange::Legal, VideoRange::Full};
-
     std::vector<LumaChromaMatrix> matrices{LumaChromaMatrix::BT709, LumaChromaMatrix::BT2020NCL};
 
     const auto videoConverter = device->CreateVideoConverter();
@@ -567,29 +567,29 @@ int main()
     // Iterates over all possible types of conversions
     for (Resolution inputResolution : resolutions) {
         for (PixelFormat inputFormat : validInputFormats) {
-            for (VideoRange inputRange : ranges) {
+            for (bool inputVideoFullRange : {false, true}) {
                 for (LumaChromaMatrix inputMatrix : matrices) {
                     VideoFrameWrapper inputFrame =
                         CreateFrame(inputFormat, inputResolution.width, inputResolution.height);
-                    inputFrame.range = inputRange;
+                    inputFrame.isVideoFullRange = inputVideoFullRange;
                     inputFrame.lumaChromaMatrix = inputMatrix;
                     for (Resolution outputResolution : resolutions) {
                         for (PixelFormat outputFormat : validOutputFormats) {
-                            for (VideoRange outputRange : ranges) {
+                            for (bool outputVideoFullRange : {false, true}) {
                                 for (LumaChromaMatrix outputMatrix : matrices) {
                                     VideoFrameWrapper outputFrame =
                                         CreateFrame(outputFormat, outputResolution.width, outputResolution.height);
-                                    outputFrame.range = outputRange;
+                                    outputFrame.isVideoFullRange = outputVideoFullRange;
                                     outputFrame.lumaChromaMatrix = outputMatrix;
 
                                     std::cout << "Testing:" << std::endl
                                               << "\t Input: " << inputFrame.width << "x" << inputFrame.height << "("
                                               << GetFormatName(inputFrame.pixelFormat) << ","
-                                              << GetRangeName(inputFrame.range) << ","
+                                              << GetRangeName(inputFrame.isVideoFullRange) << ","
                                               << GetYUVMatrixName(inputFrame.lumaChromaMatrix) << ")" << std::endl
                                               << "\t Output: " << outputFrame.width << "x" << outputFrame.height << "("
                                               << GetFormatName(outputFrame.pixelFormat) << ","
-                                              << GetRangeName(outputFrame.range) << ","
+                                              << GetRangeName(outputFrame.isVideoFullRange) << ","
                                               << GetYUVMatrixName(outputFrame.lumaChromaMatrix) << ")" << std::endl;
 
                                     if (videoConverter->Convert(inputFrame, outputFrame) != Result::Success) {
@@ -627,8 +627,8 @@ int main()
             VideoFrameWrapper outputFrame = CreateFrame(format, inputResolution.width, inputResolution.height);
             std::cout << "Testing comparison:" << std::endl
                       << "\t Input: " << inputFrame.width << "x" << inputFrame.height << "("
-                      << GetFormatName(inputFrame.pixelFormat) << "," << GetRangeName(inputFrame.range) << ","
-                      << GetYUVMatrixName(inputFrame.lumaChromaMatrix) << ")" << std::endl;
+                      << GetFormatName(inputFrame.pixelFormat) << "," << GetRangeName(inputFrame.isVideoFullRange)
+                      << "," << GetYUVMatrixName(inputFrame.lumaChromaMatrix) << ")" << std::endl;
             if (videoConverter->Convert(inputFrame, outputFrame) != Result::Success) {
                 std::cout << "Error converting" << std::endl;
                 return -1;

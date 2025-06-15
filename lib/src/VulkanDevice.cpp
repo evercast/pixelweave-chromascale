@@ -141,19 +141,19 @@ std::vector<uint32_t> CompileShader(const VideoFrameWrapper& src, const VideoFra
     options.AddMacroDefinition("SRC_PICTURE_V_OFFSET", std::to_string(src.GetCrOffset()));
     options.AddMacroDefinition("SRC_PICTURE_BIT_DEPTH", std::to_string(src.GetBitDepth()));
     options.AddMacroDefinition("SRC_PICTURE_BYTE_DEPTH", std::to_string(src.GetByteDepth()));
-    options.AddMacroDefinition("SRC_PICTURE_RANGE", std::to_string(static_cast<uint32_t>(src.range)));
+    options.AddMacroDefinition("SRC_PICTURE_RANGE", std::to_string(static_cast<uint32_t>(src.isVideoFullRange)));
     options.AddMacroDefinition("SRC_PICTURE_YUV_MATRIX", std::to_string(static_cast<uint32_t>(src.lumaChromaMatrix)));
     options.AddMacroDefinition("SRC_PICTURE_RGB_TO_YUV_MATRIX", encodeMatrix(srcRGBToYUVMatrix));
     options.AddMacroDefinition("SRC_PICTURE_YUV_TO_RGB_MATRIX", encodeMatrix(srcYUVToRGBMatrix));
     options.AddMacroDefinition(
         "SRC_PICTURE_YUV_OFFSET",
-        encodeVector(GetLumaChromaOffset(src.range == VideoRange::Full, src.GetBitDepth())));
+        encodeVector(GetLumaChromaOffset(src.isVideoFullRange, src.GetBitDepth())));
     options.AddMacroDefinition(
         "SRC_PICTURE_YUV_OFFSET_FULL",
         encodeVector(GetLumaChromaOffset(true, src.GetBitDepth())));
     options.AddMacroDefinition(
         "SRC_PICTURE_YUV_SCALE",
-        encodeVector(GetLumaChromaScale(src.range == VideoRange::Full, src.GetBitDepth())));
+        encodeVector(GetLumaChromaScale(src.isVideoFullRange, src.GetBitDepth())));
 
     const glm::mat3 dstRGBToYUVMatrix = GetLumaChromaMatrix(dst.lumaChromaMatrix);
     const glm::mat3 dstYUVToRGBMatrix = glm::inverse(dstRGBToYUVMatrix);
@@ -171,19 +171,19 @@ std::vector<uint32_t> CompileShader(const VideoFrameWrapper& src, const VideoFra
     options.AddMacroDefinition("DST_PICTURE_V_OFFSET", std::to_string(dst.GetCrOffset()));
     options.AddMacroDefinition("DST_PICTURE_BIT_DEPTH", std::to_string(dst.GetBitDepth()));
     options.AddMacroDefinition("DST_PICTURE_BYTE_DEPTH", std::to_string(dst.GetByteDepth()));
-    options.AddMacroDefinition("DST_PICTURE_RANGE", std::to_string(static_cast<uint32_t>(dst.range)));
+    options.AddMacroDefinition("DST_PICTURE_RANGE", std::to_string(static_cast<uint32_t>(dst.isVideoFullRange)));
     options.AddMacroDefinition("DST_PICTURE_YUV_MATRIX", std::to_string(static_cast<uint32_t>(dst.lumaChromaMatrix)));
     options.AddMacroDefinition("DST_PICTURE_RGB_TO_YUV_MATRIX", encodeMatrix(dstRGBToYUVMatrix));
     options.AddMacroDefinition("DST_PICTURE_YUV_TO_RGB_MATRIX", encodeMatrix(dstYUVToRGBMatrix));
     options.AddMacroDefinition(
         "DST_PICTURE_YUV_OFFSET",
-        encodeVector(GetLumaChromaOffset(dst.range == VideoRange::Full, dst.GetBitDepth())));
+        encodeVector(GetLumaChromaOffset(dst.isVideoFullRange, dst.GetBitDepth())));
     options.AddMacroDefinition(
         "DST_PICTURE_YUV_OFFSET_FULL",
         encodeVector(GetLumaChromaOffset(true, dst.GetBitDepth())));
     options.AddMacroDefinition(
         "DST_PICTURE_YUV_SCALE",
-        encodeVector(GetLumaChromaScale(dst.range == VideoRange::Full, dst.GetBitDepth())));
+        encodeVector(GetLumaChromaScale(dst.isVideoFullRange, dst.GetBitDepth())));
 
     shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(
         reinterpret_cast<const char*>(shaderResource.buffer),
