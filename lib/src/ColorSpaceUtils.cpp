@@ -20,12 +20,13 @@ glm::mat3 GetLumaChromaMatrix(LumaChromaMatrix matrix)
     };
 
     switch (matrix) {
+        default:
+        case LumaChromaMatrix::Identity:
+            return glm::mat3{1.0f};
         case LumaChromaMatrix::BT709:
             return nclMatrix(0.2126f, 0.0722f);
         case LumaChromaMatrix::BT2020NCL:
             return nclMatrix(0.2627f, 0.0593f);
-        default:
-            return glm::mat3();
     }
 }
 

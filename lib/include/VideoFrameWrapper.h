@@ -11,6 +11,7 @@ namespace Pixelweave
 
 // Values match Rec. ITU-T H.273, Coding-Independent Code Points for Video Signal Type Identification
 enum class LumaChromaMatrix {
+    Identity = 0,
     BT709 = 1,
     BT2020NCL = 9,
 };
@@ -31,8 +32,8 @@ struct PIXELWEAVE_LIB_CLASS VideoFrameWrapper {
     uint32_t width = 0;
     uint32_t height = 0;
     PixelFormat pixelFormat = PixelFormat::RGB8BitInterleavedRGBA;
-    bool isVideoFullRange = false;
-    LumaChromaMatrix lumaChromaMatrix = LumaChromaMatrix::BT709;
+    bool isVideoFullRange = true;
+    LumaChromaMatrix lumaChromaMatrix = LumaChromaMatrix::Identity;
 
     VideoFrameLayout GetLayoutType() const;
     uint64_t GetBufferSize() const;

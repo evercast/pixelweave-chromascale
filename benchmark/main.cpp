@@ -29,6 +29,7 @@ VideoFrameWrapper GetUYVYFrame(uint32_t width, uint32_t height)
         .height = height,
         .pixelFormat = PixelFormat::YCC8Bit422InterleavedUYVY,
         .isVideoFullRange = false,
+        .lumaChromaMatrix = LumaChromaMatrix::BT709,
     };
 }
 
@@ -64,6 +65,7 @@ VideoFrameWrapper GetPlanar420Frame(uint32_t width, uint32_t height)
         .height = height,
         .pixelFormat = PixelFormat::YCC8Bit420Planar,
         .isVideoFullRange = false,
+        .lumaChromaMatrix = LumaChromaMatrix::BT709,
     };
 }
 
@@ -83,6 +85,7 @@ VideoFrameWrapper GetPlanar422Frame(uint32_t width, uint32_t height)
         .height = height,
         .pixelFormat = PixelFormat::YCC8Bit422Planar,
         .isVideoFullRange = false,
+        .lumaChromaMatrix = LumaChromaMatrix::BT709,
     };
 }
 
@@ -102,6 +105,7 @@ VideoFrameWrapper GetPlanar444Frame(uint32_t width, uint32_t height)
         .height = height,
         .pixelFormat = PixelFormat::YCC8Bit444Planar,
         .isVideoFullRange = false,
+        .lumaChromaMatrix = LumaChromaMatrix::BT709,
     };
 }
 
@@ -131,6 +135,7 @@ VideoFrameWrapper GetYV12Frame(uint32_t width, uint32_t height)
         .height = height,
         .pixelFormat = PixelFormat::YCC8Bit420PlanarYV12,
         .isVideoFullRange = false,
+        .lumaChromaMatrix = LumaChromaMatrix::BT709,
     };
 }
 
@@ -156,6 +161,7 @@ VideoFrameWrapper GetNV12Frame(uint32_t width, uint32_t height)
         .height = height,
         .pixelFormat = PixelFormat::YCC8Bit420BiplanarNV12,
         .isVideoFullRange = false,
+        .lumaChromaMatrix = LumaChromaMatrix::BT709,
     };
 }
 
@@ -177,6 +183,7 @@ VideoFrameWrapper GetRGBAFrame(uint32_t width, uint32_t height)
         .height = height,
         .pixelFormat = PixelFormat::RGB8BitInterleavedRGBA,
         .isVideoFullRange = true,
+        .lumaChromaMatrix = LumaChromaMatrix::Identity,
     };
 }
 
@@ -198,6 +205,7 @@ VideoFrameWrapper GetBGRAFrame(uint32_t width, uint32_t height)
         .height = height,
         .pixelFormat = PixelFormat::RGB8BitInterleavedBGRA,
         .isVideoFullRange = true,
+        .lumaChromaMatrix = LumaChromaMatrix::Identity,
     };
 }
 
@@ -226,6 +234,7 @@ VideoFrameWrapper GetPlanar42010BitFrame(uint32_t width, uint32_t height)
         .height = height,
         .pixelFormat = PixelFormat::YCC10Bit420Planar,
         .isVideoFullRange = true,
+        .lumaChromaMatrix = LumaChromaMatrix::BT709,
     };
 }
 
@@ -254,6 +263,7 @@ VideoFrameWrapper GetPlanar42210BitFrame(uint32_t width, uint32_t height)
         .height = height,
         .pixelFormat = PixelFormat::YCC10Bit422Planar,
         .isVideoFullRange = false,
+        .lumaChromaMatrix = LumaChromaMatrix::BT709,
     };
 }
 
@@ -282,6 +292,7 @@ VideoFrameWrapper GetPlanar44410BitFrame(uint32_t width, uint32_t height)
         .height = height,
         .pixelFormat = PixelFormat::YCC10Bit444Planar,
         .isVideoFullRange = false,
+        .lumaChromaMatrix = LumaChromaMatrix::BT709,
     };
 }
 
@@ -300,6 +311,7 @@ VideoFrameWrapper Get10BitXRGBBEBuffer(uint32_t width, uint32_t height)
         .height = height,
         .pixelFormat = PixelFormat::RGB10BitInterleavedXRGBBE,
         .isVideoFullRange = false,
+        .lumaChromaMatrix = LumaChromaMatrix::Identity,
     };
 }
 
@@ -331,6 +343,7 @@ VideoFrameWrapper GetP216Frame(uint32_t width, uint32_t height)
         .height = height,
         .pixelFormat = PixelFormat::YCC16Bit422BiplanarP216,
         .isVideoFullRange = false,
+        .lumaChromaMatrix = LumaChromaMatrix::BT709,
     };
 }
 
@@ -350,6 +363,7 @@ VideoFrameWrapper GetV210Buffer(uint32_t width, uint32_t height)
         .height = height,
         .pixelFormat = PixelFormat::YCC10Bit422InterleavedV210,
         .isVideoFullRange = false,
+        .lumaChromaMatrix = LumaChromaMatrix::BT709,
     };
 }
 
