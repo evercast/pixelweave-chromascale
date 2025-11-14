@@ -1,14 +1,14 @@
-set(SUBPROJECT_NAME "Tests")
+set(TARGET_NAME "Tests")
 
 include_directories(../lib/include)
 
 set(HEADERS)
 set(SOURCES main.cpp)
 
-add_executable(${SUBPROJECT_NAME} ${HEADERS} ${SOURCES})
+add_executable(${TARGET_NAME} ${HEADERS} ${SOURCES})
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../CXXUtils.cmake)
-pw_configure_cxx(${SUBPROJECT_NAME})
+pw_configure_target(${TARGET_NAME})
 
-add_dependencies(${SUBPROJECT_NAME} Pixelweave)
-target_link_libraries(${SUBPROJECT_NAME} Pixelweave)
+add_dependencies(${TARGET_NAME} Pixelweave)
+target_link_libraries(${TARGET_NAME} Pixelweave)

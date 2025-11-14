@@ -1,4 +1,4 @@
-set(SUBPROJECT_NAME "Pixelweave")
+set(TARGET_NAME "Pixelweave")
 
 # Public headers
 set(HEADERS
@@ -61,19 +61,19 @@ elseif(LINUX)
     add_compile_options("-Wa,-I${CMAKE_CURRENT_SOURCE_DIR}/src/shaders")
 endif()
 
-add_library(${SUBPROJECT_NAME} SHARED
+add_library(${TARGET_NAME} SHARED
     ${HEADERS}
     ${SOURCE}
     ${PLATFORM_SPECIFIC_SOURCES}
     ${RESOURCE_FILES}
     ${RELATIVE_SHADER_PATHS}
 )
-set_target_properties(${SUBPROJECT_NAME} PROPERTIES PUBLIC_HEADER "${HEADERS}")
+set_target_properties(${TARGET_NAME} PROPERTIES PUBLIC_HEADER "${HEADERS}")
 
 include_directories(include)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../CXXUtils.cmake)
-pw_configure_cxx(${SUBPROJECT_NAME})
+pw_configure_target(${TARGET_NAME})
 
 # Set up DLL export macro
 add_compile_definitions(PIXELWEAVE_IS_LIB)
@@ -84,7 +84,7 @@ add_compile_definitions(VMA_VULKAN_VERSION=1002000)
 add_compile_definitions(VMA_STATIC_VULKAN_FUNCTIONS=0)
 add_compile_definitions(VMA_DYNAMIC_VULKAN_FUNCTIONS=1)
 find_package(Vulkan REQUIRED)
-target_link_libraries(${SUBPROJECT_NAME} PRIVATE Vulkan::Vulkan)
+target_link_libraries(${TARGET_NAME} PRIVATE Vulkan::Vulkan)
 include_directories(${Vulkan_INCLUDE_DIRS})
 
 # Find and link VMA
@@ -102,7 +102,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm)
 # Set up macOS framework
 if(APPLE)
     set(PIXELWEAVE_BUNDLE_ID us.evercast.pixelweave)
-    set_target_properties(${SUBPROJECT_NAME} PROPERTIES
+    set_target_properties(${TARGET_NAME} PROPERTIES
         FRAMEWORK TRUE
         FRAMEWORK_VERSION A
         MACOSX_BUNDLE TRUE
@@ -127,8 +127,8 @@ if(APPLE)
         XCODE_ATTRIBUTE_GCC_WARN_UNUSED_FUNCTION "YES"
         XCODE_ATTRIBUTE_ENABLE_TESTABILITY "YES"
     )
-    target_link_libraries(${SUBPROJECT_NAME} PRIVATE "-framework CoreFoundation")
+    target_link_libraries(${TARGET_NAME} PRIVATE "-framework CoreFoundation")
     add_compile_definitions(PIXELWEAVE_BUNDLE_ID="${PIXELWEAVE_BUNDLE_ID}")
 elseif(LINUX)
-    install(TARGETS ${SUBPROJECT_NAME} LIBRARY DESTINATION lib PUBLIC_HEADER DESTINATION include/Pixelweave)
+    install(TARGETS ${TARGET_NAME} LIBRARY DESTINATION lib PUBLIC_HEADER DESTINATION include/Pixelweave)
 endif()

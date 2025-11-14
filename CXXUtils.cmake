@@ -1,16 +1,16 @@
 cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 
-function(pw_configure_cxx SUBPROJECT_NAME)
+function(pw_configure_target TARGET_NAME)
     # Configure C++ compiler
-    set_property(TARGET ${SUBPROJECT_NAME} PROPERTY CXX_STANDARD 20)
-    set_property(TARGET ${SUBPROJECT_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
+    set_property(TARGET ${TARGET_NAME} PROPERTY CXX_STANDARD 20)
+    set_property(TARGET ${TARGET_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 
     # Make compiler extra pedantic for now
     if(MSVC)
-        target_compile_options(${SUBPROJECT_NAME} PRIVATE /W4 /WX)
+        target_compile_options(${TARGET_NAME} PRIVATE /W4 /WX)
     else()
         # Disable Werror for now, since I didn't find a way having the compiler ignore warnings in vulkan headers
-        #target_compile_options(${SUBPROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+        #target_compile_options(${TARGET_NAME} PRIVATE -Wall -Wextra -Wpedantic -Werror)
     endif()
 
     # Disable exceptions
