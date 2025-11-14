@@ -78,26 +78,38 @@ pw_configure_target(${TARGET_NAME})
 # Set up DLL export macro
 add_compile_definitions(PIXELWEAVE_IS_LIB)
 
-# Find Vulkan SDK
+# Set Vulkan options
 add_compile_definitions(VULKAN_HPP_NO_EXCEPTIONS)
 add_compile_definitions(VMA_VULKAN_VERSION=1002000)
 add_compile_definitions(VMA_STATIC_VULKAN_FUNCTIONS=0)
 add_compile_definitions(VMA_DYNAMIC_VULKAN_FUNCTIONS=1)
-find_package(Vulkan REQUIRED)
-target_link_libraries(${TARGET_NAME} PRIVATE Vulkan::Vulkan)
-include_directories(${Vulkan_INCLUDE_DIRS})
 
-# Find and link VMA
-find_package(VulkanMemoryAllocator CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE GPUOpen::VulkanMemoryAllocator)
+if(PIXELWEAVE_USE_VCPKG)
+    # Find and link Vulkan SDK
+    find_package(Vulkan REQUIRED)
+    target_link_libraries(${TARGET_NAME} PRIVATE Vulkan::Vulkan)
 
-# Add libshaderc dependency
-find_package(unofficial-shaderc CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::shaderc::shaderc)
+    # Find and link VMA
+    find_package(VulkanMemoryAllocator CONFIG REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE GPUOpen::VulkanMemoryAllocator)
 
-# Find and link GLM
-find_package(glm CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm)
+    # Find and link GLM
+    find_package(glm CONFIG REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm)
+
+    # Find and link shaderc
+    find_package(unofficial-shaderc CONFIG REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::shaderc::shaderc)
+else()
+    # Find and link Vulkan SDK and shaderc
+    find_package(Vulkan REQUIRED COMPONENTS shaderc_combined)
+    target_link_libraries(${TARGET_NAME} PRIVATE
+        Vulkan::Vulkan
+        Vulkan::shaderc_combined
+    )
+    # These include directories also include VMA and GLM
+    include_directories("${Vulkan_INCLUDE_DIR}" "${Vulkan_INCLUDE_DIR}/vma")
+endif()
 
 # Set up macOS framework
 if(APPLE)

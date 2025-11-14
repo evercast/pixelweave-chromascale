@@ -7,13 +7,11 @@ Pixelweave is a multi-platform API and library that leverages GPU computing to p
 
 > Aguerre, J., Sena, B., & Stolarz, D. (2024). Using GPU-Accelerated Pixel Format Conversions for Efficient Real-Time Video Streaming. SMPTE Motion Imaging Journal, 133. https://doi.org/10.5594/JMI.2024/YPJG9446
 
-## Overview
+## Architecture
 
 <p align="center">
     <img src="doc/Architecture.png" data-canonical-src="doc/Architecture.png" height="450" />
 </p>
-
-### Architecture
 
 - `Device` is responsible for handling all global resources (video memory, command pools, video device picking, command queue management, etc.).
 
@@ -23,23 +21,21 @@ Pixelweave is a multi-platform API and library that leverages GPU computing to p
 
 - `VideoFrameWrapper` wraps a single video frame in memory for conversion.
 
-### Frame lifecycle
+## Frame lifecycle
 
 <p align="center">
     <img src="doc/FrameLifeCycle.png" data-canonical-src="doc/Architecture.png" height="450" />
 </p>
 
-## Setup
+## Dependencies
 
-### Dependencies
-
-- [CMake  3.19.2](https://cmake.org/download/) or later
-- [Vulkan SDK 1.3.224.1](https://vulkan.lunarg.com/sdk/home) or later. Be sure to set the `VULKAN_SDK` environment variable to point to the SDK path.
+- [CMake 3.24](https://cmake.org/download/) or later. CMake 4 is not currently supported.
+- A recent [Vulkan SDK](https://vulkan.lunarg.com/sdk/home). Include the VMA and GLM headers (not required if using vcpkg for dependencies -- see below). Be sure to set the `VULKAN_SDK` environment variable to point to the SDK path.
 - Windows: Visual Studio 2022 and C++ tools
 - macOS: Xcode
 - Linux: GCC (Clang may also work) and Ninja or Make
 
-### Building the project
+## Building the project
 
 Generate the project:
 
@@ -52,6 +48,10 @@ Project generator:
 - Windows: `Visual Studio 17 2022`
 - macOS: `Xcode`
 - Linux: `Ninja` or `Unix Makefiles`
+
+It is possible to use vcpkg for dependencies. By default, the project will not use it. Set the CMake variable `PIXELWEAVE_USE_VCPKG` to `ON` to use it (`-D PIXELWEAVE_USE_VCPKG=ON`). Note that it is not possible to build a universal library on macOS when using vcpkg for dependencies.
+
+The build architecture may be selected by setting the CMake variable `PIXELWEAVE_ARCH` to either `x86_64` or `arm64` (`-D PIXELWEAVE_ARCH=arm64`). On macOS, use `arm64;x86_64` to build a universal library (note that this is not possible when using vcpkg for dependencies).
 
 Build the project:
 

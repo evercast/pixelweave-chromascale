@@ -5,9 +5,9 @@
 
 #define VMA_IMPLEMENTATION
 #pragma warning(push, 0)
-#include "vk_mem_alloc.h"
+#include <vk_mem_alloc.h>
 #pragma warning(pop)
-#include "shaderc/shaderc.hpp"
+#include <shaderc/shaderc.hpp>
 
 #include "ColorSpaceUtils.h"
 #include "DebugUtils.h"
@@ -280,7 +280,8 @@ ResultValue<VulkanDevice::VideoConversionPipelineResources> VulkanDevice::Create
 void VulkanDevice::DestroyVideoConversionPipeline(VideoConversionPipelineResources& pipelineResources)
 {
     if (pipelineResources.descriptorPool) {
-        mLogicalDevice.freeDescriptorSets(pipelineResources.descriptorPool, pipelineResources.descriptorSet);
+        std::ignore =
+            mLogicalDevice.freeDescriptorSets(pipelineResources.descriptorPool, pipelineResources.descriptorSet);
     }
     mLogicalDevice.destroyDescriptorPool(pipelineResources.descriptorPool);
     mLogicalDevice.destroyPipeline(pipelineResources.pipeline);
