@@ -30,7 +30,7 @@ Pixelweave is a multi-platform API and library that leverages GPU computing to p
 ## Dependencies
 
 - [CMake 3.24](https://cmake.org/download/) or later. CMake 4 is not currently supported.
-- A recent [Vulkan SDK](https://vulkan.lunarg.com/sdk/home). Include the VMA and GLM headers (not required if using vcpkg for dependencies -- see below). Be sure to set the `VULKAN_SDK` environment variable to point to the SDK path.
+- A recent [Vulkan SDK](https://vulkan.lunarg.com/sdk/home) (tested with 1.4.328.1). Include the VMA and GLM headers. Be sure to set the `VULKAN_SDK` environment variable to point to the SDK path.
 - Windows: Visual Studio 2022 and C++ tools
 - macOS: Xcode
 - Linux: GCC (Clang may also work) and Ninja or Make
