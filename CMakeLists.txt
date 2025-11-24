@@ -1,13 +1,9 @@
-cmake_minimum_required(VERSION 3.24 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.25 FATAL_ERROR)
 
 cmake_policy(SET CMP0126 NEW)
 
 set(PROJECT_NAME Pixelweave)
 set(VERSION 0.1)
-
-if(UNIX AND NOT APPLE)
-    set(LINUX ON)
-endif()
 
 if(APPLE)
     set(DEFAULT_PIXELWEAVE_ARCH "arm64;x86_64")
