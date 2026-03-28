@@ -1,6 +1,8 @@
 Pixelweave Chromascale
 ======================
 
+## Data Classification: Public
+
 Pixelweave is a multi-platform API and library that leverages GPU computing to perform video frame conversions. Pixelweave offers an implementation based on the Vulkan graphics API, allowing for a single implementation of GPU kernels that is compatible with most modern graphics hardware. It supports multiple pixel formats, such as RGBA and chroma-subsampled YUV, using up to 16 bits per channel. The implemented compute shaders use a novel generic approach that samples 2x2 pixel windows, making the rest of the code easily extensible and independent of the source and destination formats. Initial tests show that Pixelweave provides significant speedups when compared to state-of-the-art CPU-based libraries, allowing real-time streaming applications to offload resource-demanding tasks from the CPU and therefore improve overall performance.
 
 ## How to cite
